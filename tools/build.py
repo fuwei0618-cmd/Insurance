@@ -110,6 +110,8 @@ def main():
     ap.add_argument('--catalog', required=True)
     ap.add_argument('--selection', required=True)
     ap.add_argument('--out', required=True)
+    ap.add_argument('--docs-manifest', help='DM／條款頁面清單 manifest.json')
+    ap.add_argument('--summaries', help='條款重點 JSON 資料夾')
     a = ap.parse_args()
     pw = os.environ.get('HANDBOOK_PASSWORD')
     if not pw:
@@ -143,13 +145,22 @@ def main():
         chapters.append({'n': n, 'short': short, 'title': title, 'slides': slides})
 
     version = time.strftime('%Y%m%d%H%M%S')
-    data = {'version': version, 'chapters': chapters, 'notes': encrypt(notes, pw), 'selection': selection}
+    docs = {'files': {}, 'summaries': {}}
+    if a.docs_manifest:
+        docs['files'] = json.load(open(a.docs_manifest))
+    if a.summaries:
+        for f in sorted(Path(a.summaries).glob('*.json')):
+            d = json.load(open(f)); docs['summaries'][d['code']] = d
+    data = {'version': version, 'chapters': chapters, 'notes': encrypt(notes, pw), 'selection': selection, 'docs': docs}
     (out / 'data').mkdir(exist_ok=True)
     (out / 'data' / 'handbook.js').write_text('window.HANDBOOK=' + json.dumps(data, ensure_ascii=False) + ';\n')
     (out / 'data' / 'catalog.json').write_text(json.dumps(catalog, ensure_ascii=False))
     sw = (out / 'sw.js').read_text()
     sw = re.sub(r"const VERSION = '[^']*'", f"const VERSION = '{version}'", sw)
     imgs = sorted(set(img.values()))
+    for code, kinds in docs['files'].items():  # DM 預先存到 iPad；條款看過才存
+        if 'dm' in kinds:
+            imgs += [f'docs/{code}/dm/{n:02d}.webp' for n in range(1, kinds['dm']['pages'] + 1)]
     sw = re.sub(r'const IMAGES = \[[^\]]*\]', 'const IMAGES = ' + json.dumps(imgs), sw)
     (out / 'sw.js').write_text(sw)
     print(f'ok {version}: ' + ', '.join(f"{c['short']} {len(c['slides'])} 頁" for c in chapters) + f'，講稿 {len(notes)} 則，圖片 {len(imgs)} 張')

@@ -342,10 +342,12 @@
   vp.addEventListener('pointercancel', (e) => endGesture(e, true));
   vp.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 
-  $('btnUndo').onclick = () => (isBoard() ? Board : Ink).doUndo();
+  const activeSurface = () => (isBoard() ? Board : (Doc.isOpen() ? Doc.active() : Ink));
+  $('btnUndo').onclick = () => { const S = activeSurface(); if (S) S.doUndo(); else toast('這一頁還沒有筆畫'); };
   $('btnClearPage').onclick = () => {
-    const B = isBoard();
-    confirmBox(B ? '清空白板' : '清除本頁畫記', B ? '白板上的筆畫會全部清除。' : '這一頁的筆畫會全部清除，其他頁不受影響。', '清除', () => (B ? Board : Ink).clear(), true);
+    const B = isBoard(), S = activeSurface();
+    if (!S) { toast('這一頁還沒有筆畫'); return; }
+    confirmBox(B ? '清空白板' : '清除本頁畫記', B ? '白板上的筆畫會全部清除。' : '這一頁的筆畫會全部清除，其他頁不受影響。', '清除', () => S.clear(), true);
   };
 
   /* ---------- 存成圖片 ---------- */
@@ -554,13 +556,15 @@
           h += `<div class="prod"><div><span class="nm">${esc(p.name)}</span><span class="cd">${esc(p.code)}</span>${sel.has(p.code) ? '<span class="tg sel">我的商品</span>' : ''}${p.type ? `<span class="tg">${esc(p.type)}</span>` : ''}${p.currency && p.currency !== '台幣' ? `<span class="tg">${esc(p.currency)}</span>` : ''}</div>
           <div class="ds">${esc(p.desc)}</div>
           <div class="mt">${p.age ? '承保年齡 ' + esc(p.age) : ''}${p.limit ? '　保額 ' + esc(p.limit) : ''}</div>
-          <div class="ln">${p.dm ? `<a href="${esc(p.dm)}" target="_blank" rel="noopener">商品 DM</a>` : ''}${p.terms ? `<a href="${esc(p.terms)}" target="_blank" rel="noopener">條款</a>` : ''}<a href="${esc(p.page)}" target="_blank" rel="noopener">官網頁面</a></div></div>`;
+          ${Doc.has(p.code) ? `<div class="docbtns">${Doc.has(p.code, 'dm') ? `<button class="btn sm" data-doc="${esc(p.code)}" data-kind="dm">看 DM</button>` : ''}${Doc.has(p.code, 'terms') ? `<button class="btn sm" data-doc="${esc(p.code)}" data-kind="sum">條款重點</button><button class="btn sm ghost" data-doc="${esc(p.code)}" data-kind="terms">條款全文</button>` : ''}</div>` : ''}
+          <div class="ln">${p.dm ? `<a href="${esc(p.dm)}" target="_blank" rel="noopener">官網 DM</a>` : ''}${p.terms ? `<a href="${esc(p.terms)}" target="_blank" rel="noopener">官網條款</a>` : ''}<a href="${esc(p.page)}" target="_blank" rel="noopener">官網頁面</a></div></div>`;
         });
       });
       h += `<p class="note" style="margin-top:14px">資料來源：國泰人壽官網，最後同步 ${esc(this.data.updated)}。保障內容以保單條款為準。</p>`;
       el.innerHTML = h;
       el.onclick = (e) => {
         const b = e.target.closest('button'); if (!b) return;
+        if (b.dataset.doc) { Sheet.close(); Doc.open(b.dataset.doc, b.dataset.kind); return; }
         if (b.dataset.mine) this.mineOnly = b.dataset.mine === '1';
         if (b.dataset.g) { this.group = b.dataset.g; this.cur = 'all'; }
         if (b.dataset.c) this.cur = b.dataset.c;
@@ -569,6 +573,119 @@
     },
   };
   $('btnCatalog').onclick = () => Catalog.open();
+
+
+  /* ---------- DM／條款閱讀器（可畫） ---------- */
+  const Doc = {
+    data: (window.HANDBOOK && H.docs) || { files: {}, summaries: {} },
+    code: null, kind: null, pages: [], cur: null, zoom: LS.get('docZoom', 1),
+    has(code, kind) { const f = this.data.files[code]; return !!(f && (!kind || f[kind])); },
+    isOpen() { return !$('doc').classList.contains('hidden'); },
+    active() { return this.cur; },
+    name(code) { const s = this.data.summaries[code]; return (s && s.name) || code; },
+    open(code, kind, page) {
+      this.code = code; this.kind = kind;
+      $('doc').classList.remove('hidden');
+      $('docName').textContent = this.name(code).replace(/^國泰人壽/, '');
+      const hasTerms = this.has(code, 'terms'), hasDm = this.has(code, 'dm');
+      $('docTabs').innerHTML = [hasDm && ['dm', 'DM'], hasTerms && ['sum', '條款重點'], hasTerms && ['terms', '條款全文']].filter(Boolean)
+        .map(([k, t]) => `<button class="chip ${k === kind ? 'on' : ''}" data-k="${k}">${t}</button>`).join('');
+      if (kind === 'sum') this.renderSummary(); else this.renderPages(page);
+    },
+    close() { $('doc').classList.add('hidden'); $('docBody').innerHTML = ''; this.pages = []; this.cur = null; if (this.io) this.io.disconnect(); },
+    renderSummary() {
+      const s = this.data.summaries[this.code], body = $('docBody');
+      $('docZoomBox').classList.add('hidden'); $('docSave').classList.add('hidden'); $('docPage').textContent = '';
+      this.pages = []; this.cur = null;
+      let h = `<div class="sum"><p class="sum-lead">${esc(s.summary)}</p>`;
+      s.sections.forEach((sec) => {
+        h += `<h3>${esc(sec.h)}</h3><ul>` + sec.items.map((it) => `<li><span>${esc(it.t)}</span><button class="pg" data-p="${it.p}">條款第 ${it.p} 頁 →</button></li>`).join('') + '</ul>';
+      });
+      h += '<p class="note">本頁為條款重點整理，實際保障內容以保單條款原文為準。點右側頁碼可直接看原文。</p></div>';
+      body.innerHTML = h; body.scrollTop = 0;
+    },
+    renderPages(page) {
+      const f = this.data.files[this.code][this.kind], body = $('docBody');
+      $('docZoomBox').classList.remove('hidden'); $('docSave').classList.remove('hidden');
+      body.innerHTML = ''; this.pages = []; this.cur = null;
+      const wrap = document.createElement('div'); wrap.className = 'pages'; wrap.style.setProperty('--z', this.zoom);
+      for (let n = 1; n <= f.pages; n++) {
+        const pg = document.createElement('div'); pg.className = 'pg-wrap'; pg.dataset.n = n;
+        const [pw, ph] = (f.sizes && f.sizes[n - 1]) || [f.w, f.h];
+        pg.style.aspectRatio = `${pw} / ${ph}`; if (pw > ph) pg.classList.add('wide');
+        pg.innerHTML = `<img alt="第 ${n} 頁" loading="${n <= 2 ? 'eager' : 'lazy'}" decoding="async" src="docs/${this.code}/${this.kind}/${String(n).padStart(2, '0')}.webp"><span class="pg-no">${n} / ${f.pages}</span>`;
+        wrap.appendChild(pg);
+        this.pages.push({ n, el: pg, surface: null, w: pw, h: ph });
+      }
+      body.appendChild(wrap);
+      if (this.io) this.io.disconnect();
+      this.io = new IntersectionObserver((ents) => ents.forEach((en) => {
+        const P = this.pages[+en.target.dataset.n - 1];
+        if (en.isIntersecting) this.mount(P); else this.unmount(P);
+      }), { root: body, rootMargin: '600px 0px' });
+      this.pages.forEach((P) => this.io.observe(P.el));
+      body.scrollTop = 0;
+      if (page) requestAnimationFrame(() => { const P = this.pages[page - 1]; if (P) body.scrollTop = P.el.offsetTop - 8; });
+      this.updatePageNo();
+    },
+    key(P) { return `doc:${this.code}:${this.kind}:${P.n}`; },
+    mount(P) {
+      if (P.surface) return;
+      const c = document.createElement('canvas'); c.className = 'pg-ink'; P.el.appendChild(c);
+      const self = this;
+      P.surface = makeSurface(c, { width: () => P.w, height: () => P.h, resolution: () => Math.min(2, (P.el.clientWidth / P.w) * (window.devicePixelRatio || 1)), unit: () => P.w / 1500 });
+      P.surface.resize(); P.surface.load(self.key(P)); P.canvas = c;
+    },
+    unmount(P) { if (!P.surface) return; P.canvas.remove(); P.surface = null; P.canvas = null; },
+    pageAt(e) { const el = e.target.closest('.pg-wrap'); return el ? this.pages[+el.dataset.n - 1] : null; },
+    updatePageNo() {
+      const body = $('docBody'), mid = body.scrollTop + body.clientHeight / 3;
+      const P = this.pages.find((x) => x.el.offsetTop + x.el.offsetHeight > mid) || this.pages[0];
+      if (P) { $('docPage').textContent = `第 ${P.n} / ${this.pages.length} 頁`; this.visible = P; if (!this.cur || !this.cur.surface) this.cur = P.surface; }
+    },
+    setZoom(z) {
+      this.zoom = Math.max(1, Math.min(2.5, z)); LS.set('docZoom', this.zoom);
+      const body = $('docBody'), r = body.scrollTop / (body.scrollHeight || 1);
+      body.querySelector('.pages').style.setProperty('--z', this.zoom);
+      requestAnimationFrame(() => { body.scrollTop = r * body.scrollHeight; this.pages.forEach((P) => P.surface && P.surface.resize()); });
+    },
+    saveImage() {
+      const P = this.visible; if (!P) return;
+      const img = P.el.querySelector('img'), out = document.createElement('canvas'); out.width = P.w; out.height = P.h;
+      const ctx = out.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, P.w, P.h);
+      ctx.drawImage(img, 0, 0, P.w, P.h); if (P.canvas) ctx.drawImage(P.canvas, 0, 0, P.w, P.h);
+      showImage(out, `${this.name(this.code).replace(/^國泰人壽/, '')}_${this.kind === 'dm' ? 'DM' : '條款'}_第${P.n}頁`);
+    },
+  };
+  $('docTabs').onclick = (e) => { const b = e.target.closest('button'); if (b) Doc.open(Doc.code, b.dataset.k); };
+  $('docClose').onclick = () => Doc.close();
+  $('docZoomIn').onclick = () => Doc.setZoom(Doc.zoom + 0.25);
+  $('docZoomOut').onclick = () => Doc.setZoom(Doc.zoom - 0.25);
+  $('docSave').onclick = () => Doc.saveImage();
+  $('docBody').addEventListener('scroll', () => Doc.updatePageNo(), { passive: true });
+  $('docBody').addEventListener('click', (e) => { const b = e.target.closest('.pg'); if (b) Doc.open(Doc.code, 'terms', +b.dataset.p); });
+  // 畫筆：Apple Pencil 在頁面上畫；手指捲動（開啟「手指也能畫」時改成畫）
+  let dg = null;
+  const docBody = $('docBody');
+  const pagePt = (P, e) => { const r = P.el.getBoundingClientRect(); return { x: (e.clientX - r.left) * P.w / r.width, y: (e.clientY - r.top) * P.h / r.height }; };
+  docBody.addEventListener('pointerdown', (e) => {
+    if (Doc.kind === 'sum') return;
+    const P = Doc.pageAt(e); if (!P || !P.surface) return;
+    if (!(e.pointerType === 'pen' || Tool.finger || e.pointerType === 'mouse')) return;
+    dg = { id: e.pointerId, P }; Doc.cur = P.surface;
+    try { docBody.setPointerCapture(e.pointerId); } catch (err) { }
+    const p = pagePt(P, e); P.surface.begin(p.x, p.y); e.preventDefault();
+  });
+  docBody.addEventListener('pointermove', (e) => {
+    if (!dg || e.pointerId !== dg.id) return;
+    (e.getCoalescedEvents ? e.getCoalescedEvents() : [e]).forEach((ev) => { const p = pagePt(dg.P, ev); dg.P.surface && dg.P.surface.move(p.x, p.y); });
+    e.preventDefault();
+  });
+  const dEnd = (e, cancel) => { if (!dg || e.pointerId !== dg.id) return; const S = dg.P.surface; dg = null; if (S) (cancel ? S.cancel() : S.end()); };
+  docBody.addEventListener('pointerup', (e) => dEnd(e, false));
+  docBody.addEventListener('pointercancel', (e) => dEnd(e, true));
+  docBody.addEventListener('touchmove', (e) => { if (dg || Tool.finger) e.preventDefault(); }, { passive: false });
+  window.addEventListener('resize', () => { if (Doc.isOpen()) Doc.pages.forEach((P) => P.surface && P.surface.resize()); });
 
   /* ---------- 更多 ---------- */
   $('btnMore').onclick = () => {
@@ -589,7 +706,7 @@
       catch (e) { Sheet.open('我的熱區', `<textarea class="field" rows="8" readonly>${esc(txt)}</textarea><p class="note">全選後複製，貼給 Claude。</p>`); }
     };
     b.querySelector('#mClearAll').onclick = () => confirmBox('清除所有畫記', '所有頁面和白板的筆畫都會清除，無法復原。', '全部清除', () => {
-      try { Object.keys(localStorage).filter((k) => k.startsWith('ink:')).forEach((k) => localStorage.removeItem(k)); } catch (e) { }
+      try { Object.keys(localStorage).filter((k) => k.startsWith('ink:') || k.startsWith('ink:doc:')).forEach((k) => localStorage.removeItem(k)); } catch (e) { }
       Ink.load(keyOf(cur.c, cur.s)); toast('已清除所有畫記');
     }, true);
     b.querySelector('#mLock').onclick = () => { LS.del('npw'); try { sessionStorage.removeItem('npw'); } catch (e) { } Notes.plain = null; Notes.hide(); Sheet.close(); toast('講稿已鎖上'); };
