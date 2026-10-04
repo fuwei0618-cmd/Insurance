@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="googlebot" content="noindex,nofollow">
+<meta name="theme-color" content="#0E3930">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="保險手冊">
+<title>保險手冊</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <button class="tb" id="btnHome" aria-label="回總封面">⌂</button>
+    <button class="tb label" id="btnToc">目錄</button>
+    <div id="where"><span id="whereCh"></span><span id="whereTitle"></span></div>
+    <button class="tb label" id="btnCatalog">商品庫</button>
+    <button class="tb label" id="btnBoard">白板</button>
+    <button class="tb label" id="btnNotes">講稿</button>
+    <button class="tb" id="btnMore" aria-label="更多">⋯</button>
+  </header>
+
+  <main id="viewport">
+    <div id="stage">
+      <div id="slideHost"></div>
+      <div id="hotspots"></div>
+      <canvas id="ink"></canvas>
+    </div>
+  </main>
+
+  <footer id="bottombar">
+    <button class="tb label hidden" id="btnBack">↩ 返回</button>
+    <button class="tb" id="btnPrev" aria-label="上一頁">‹</button>
+    <span id="pageNo"></span>
+    <button class="tb" id="btnNext" aria-label="下一頁">›</button>
+    <div class="spacer"></div>
+    <div id="penbar" role="toolbar" aria-label="畫筆">
+      <button class="pen" data-tool="pen" data-color="#C9962E" title="金色筆"><i style="background:#C9962E"></i></button>
+      <button class="pen" data-tool="pen" data-color="#D2432F" title="紅色筆"><i style="background:#D2432F"></i></button>
+      <button class="pen" data-tool="pen" data-color="#1F8A5B" title="綠色筆"><i style="background:#1F8A5B"></i></button>
+      <button class="pen" data-tool="pen" data-color="#1F2A28" title="黑色筆"><i style="background:#1F2A28"></i></button>
+      <button class="pen hl" data-tool="hl" data-color="#FFD84D" title="螢光筆"><i></i></button>
+      <button class="pen er" data-tool="eraser" title="橡皮擦">⌫</button>
+      <button class="tb" id="btnUndo" title="復原">↶</button>
+      <button class="tb" id="btnClearPage" title="清除本頁">清</button>
+      <button class="tb" id="btnFinger" title="手指也能畫">☝︎</button>
+    </div>
+  </footer>
+</div>
+
+<div id="sheet" class="hidden" role="dialog" aria-modal="true">
+  <div class="sheet-card">
+    <div class="sheet-head"><h2 id="sheetTitle"></h2><button class="tb" id="sheetClose" aria-label="關閉">✕</button></div>
+    <div id="sheetBody"></div>
+  </div>
+</div>
+
+<div id="notesPanel" class="hidden">
+  <div class="np-head"><b id="npTitle">講稿</b><button class="tb" id="npSmaller">A−</button><button class="tb" id="npBigger">A＋</button><button class="tb" id="npClose" aria-label="收起講稿">✕</button></div>
+  <div id="npBody"></div>
+</div>
+
+<div id="board" class="hidden">
+  <canvas id="boardInk"></canvas>
+  <div id="boardBar">
+    <span>白板</span>
+    <div class="spacer"></div>
+    <button class="tb" id="boardUndo">↶ 復原</button>
+    <button class="tb" id="boardClear">清空白板</button>
+    <button class="tb" id="boardSave">存成圖片</button>
+    <button class="tb" id="boardClose">✕ 關閉</button>
+  </div>
+</div>
+
+<div id="toast" class="hidden"></div>
+
+<script src="data/handbook.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
