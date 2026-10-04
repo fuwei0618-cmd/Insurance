@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="googlebot" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0E3930">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="客戶管理">
+<title>客戶管理</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="crm.css">
+</head>
+<body>
+<div id="gate" class="gate"></div>
+
+<div id="app" class="hidden">
+  <nav id="nav">
+    <div class="brand">客戶管理</div>
+    <a href="#today" data-r="today"><i>◎</i><span>今日</span></a>
+    <a href="#clients" data-r="clients"><i>☺</i><span>客戶</span></a>
+    <a href="#deals" data-r="deals"><i>✎</i><span>促約</span></a>
+    <a href="#services" data-r="services"><i>⚙</i><span>保全</span></a>
+    <a href="#claims" data-r="claims"><i>✚</i><span>理賠</span></a>
+    <a href="#tasks" data-r="tasks"><i>☑</i><span>行政</span></a>
+    <div class="nav-foot">
+      <span id="sync" class="sync">—</span>
+      <button id="btnLock" class="navbtn">鎖定</button>
+      <button id="btnSettings" class="navbtn">設定</button>
+    </div>
+  </nav>
+  <main id="main">
+    <header id="head">
+      <button id="btnBack" class="ghostbtn hidden">‹ 返回</button>
+      <h1 id="title"></h1>
+      <div class="spacer"></div>
+      <button id="btnReveal" class="reveal" aria-pressed="false">顯示個資</button>
+      <button id="btnAdd" class="primary">＋ 新增</button>
+    </header>
+    <section id="view"></section>
+  </main>
+</div>
+
+<div id="sheet" class="hidden" role="dialog" aria-modal="true">
+  <div class="card">
+    <div class="card-head"><h2 id="sheetTitle"></h2><button class="x" id="sheetClose" aria-label="關閉">✕</button></div>
+    <div id="sheetBody"></div>
+  </div>
+</div>
+<div id="viewer" class="hidden"><img id="viewerImg" alt=""><div class="vbar"><button id="viewerShare" class="primary">分享／儲存</button><button id="viewerDel" class="danger">刪除照片</button><button id="viewerClose">✕ 關閉</button></div></div>
+<div id="toast" class="hidden"></div>
+
+<script src="config.js"></script>
+<script src="vendor/msal-browser.min.js"></script>
+<script src="crm.js"></script>
+</body>
+</html>
