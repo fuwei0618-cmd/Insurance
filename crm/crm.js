@@ -387,8 +387,8 @@ const tlSorted = (c) => (c.timeline || []).slice().sort((a, b) => (b.date || '')
 const latestStep = (c) => tlSorted(c)[0];
 function timelineHTML(c) {
   const tl = tlSorted(c), done = new Set(tl.map((e) => e.title)), steps = getSteps(c.cat);
-  return `<div class="sec"><h2><span>進度 <span class="sub" style="letter-spacing:0">${tl.length ? tl.length + ' 筆，新的在上面' : '每個時間點記一筆'}</span></span><button class="linkbtn" data-act="editsteps">編輯常用步驟</button></h2>
-   <div class="tags">${steps.map((x) => `<button class="tag${done.has(x) ? ' did' : ''}" data-addstep="${esc(x)}">${done.has(x) ? '✓' : '＋'} ${esc(x)}</button>`).join('')}<button class="tag" data-addstep="">＋ 其他</button></div>
+  return `<div class="sec"><h2>進度 <span class="sub">${tl.length ? tl.length + ' 筆，新的在上面' : '每個時間點記一筆'}</span></h2>
+   <div class="tags">${steps.map((x) => `<button class="tag${done.has(x) ? ' did' : ''}" data-addstep="${esc(x)}">${done.has(x) ? '✓' : '＋'} ${esc(x)}</button>`).join('')}<button class="tag" data-addstep="">＋ 其他</button><button class="tag tagedit" data-act="editsteps">⚙ 編輯常用步驟</button></div>
    ${tl.length ? `<div class="tl">${tl.map((e) => `<div class="tli"><span class="tldot"></span><div class="tlrow"><input type="date" class="tldate" data-tldate="${e.id}" value="${esc(e.date)}" aria-label="日期"><input class="tltitle" data-tltitle="${e.id}" id="tlt_${e.id}" value="${esc(e.title)}" placeholder="做了什麼" aria-label="項目">${e.title && !steps.includes(e.title) ? `<button class="linkbtn" data-favstep="${esc(e.title)}" style="flex:none">＋ 常用</button>` : ''}<button class="tldel" data-tldel="${e.id}" aria-label="刪除這筆">✕</button></div><input class="tlnote" data-tlnote="${e.id}" id="tln_${e.id}" value="${esc(e.note)}" placeholder="備註（可不填）" aria-label="備註"></div>`).join('')}</div>` : ''}</div>`;
 }
 function linksHTML(c) {
@@ -958,6 +958,18 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 window.addEventListener('online', () => { if (Vault.key) { Vault.save(); Files.retryUploads(); } });
 window.addEventListener('beforeunload', (e) => { if (Vault.dirty) { Vault.save(); e.preventDefault(); e.returnValue = ''; } });
 
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { });
+/* 有新版本時提示更新（不會自動重新整理，以免打到一半的字不見） */
+if ('serviceWorker' in navigator) {
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js').then((reg) => {
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => { }); });
+  }).catch(() => { });
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || document.querySelector('.updbar')) return;
+    const bar = document.createElement('button'); bar.className = 'updbar'; bar.textContent = '有新版本，點這裡更新';
+    bar.onclick = async () => { bar.textContent = '更新中…'; try { if (Vault.dirty) await Vault.save(); } catch (e) { } location.reload(); };
+    document.body.appendChild(bar);
+  });
+}
 boot();
 })();
