@@ -104,7 +104,7 @@ const Mock = {
 };
 
 /* ================= 資料庫（記憶體中明文，存檔時加密） ================= */
-const COLLS = ['cases', 'notes', 'files'];
+const COLLS = ['cases', 'notes', 'files', 'clients'];
 const emptyDb = () => Object.fromEntries([['v', 1], ...COLLS.map((c) => [c, {}])]);
 const SYNC_LABEL = { synced: '已同步 OneDrive', saving: '同步中…', pending: '待同步…', offline: '離線中，連上網路會自動同步', idle: '—' };
 const Vault = {
@@ -216,9 +216,10 @@ const ICON = {
   folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>',
   book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21V5M8 7h7"/></svg>',
   list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>',
+  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
   msg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>',
 };
-const NAV = [['quick', '快查', 'bolt'], ['cases', '案件', 'folder'], ['refs', '理賠參考', 'book'], ['sop', 'SOP', 'list'], ['tpl', '範本', 'msg']];
+const NAV = [['quick', '快查', 'bolt'], ['clients', '客戶', 'user'], ['cases', '案件', 'folder'], ['refs', '理賠參考', 'book'], ['sop', 'SOP', 'list'], ['tpl', '範本', 'msg']];
 const CATS = ['理賠', '新契約', '保全', '保費', '保校', '房貸', '服務', '其他', '產險'];
 const STATUS = ['進行中', '待回覆', '已結案'];
 const ITEMS = ['住院醫療', '實支實付', '住院日額', '手術', '意外醫療', '意外失能', '骨折', '重大傷病', '癌症', '長照失能', '門診', '產險-車險', '產險-住火', '產險-旅平'];
@@ -226,10 +227,12 @@ const CAUSE = { '疾病': ['消化系統', '呼吸系統', '心血管', '骨科'
 const SOPGROUPS = ['壽險·新契約', '壽險·保全', '壽險·保費', '壽險·保校', '壽險·理賠', '壽險·房貸', '壽險·服務', '壽險·其他', '產險'];
 
 /* ================= 狀態與畫面 ================= */
-const S = { view: 'cases', sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', sopGroup: '全部', showDetail: false };
+const S = { view: 'cases', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', sopGroup: '全部', showDetail: false };
 const cases = () => Vault.all('cases');
 const notes = () => Vault.all('notes');
 const cur = () => Vault.get('cases', S.sel);
+const clients = () => Vault.all('clients');
+const curClient = () => Vault.get('clients', S.csel);
 const saveCase = (c) => Vault.put('cases', c);
 const app = $('app');
 const pillCls = (s) => (s === '已結案' ? 'p-done' : s === '待回覆' ? 'p-wait' : 'p-go');
@@ -239,10 +242,11 @@ const App = {
   render() {
     if (!Vault.db) return;
     const v = S.view;
-    app.className = 'app' + ((v === 'cases' || v === 'refs') ? '' : ' single') + (S.showDetail ? ' showdetail' : '') + (MOCK ? ' test' : '');
+    app.className = 'app' + ((v === 'cases' || v === 'refs' || v === 'clients') ? '' : ' single') + (S.showDetail ? ' showdetail' : '') + (MOCK ? ' test' : '');
     let h = MOCK ? '<div class="testbar">測試模式：資料只存在這台裝置，不會上傳 OneDrive</div>' : '';
     h += railHTML();
-    if (v === 'cases') h += caseListHTML() + '<section class="detail split">' + caseDetailHTML() + '</section>';
+    if (v === 'clients') h += clientListHTML() + '<section class="detail split">' + clientDetailHTML() + '</section>';
+    else if (v === 'cases') h += caseListHTML() + '<section class="detail split">' + caseDetailHTML() + '</section>';
     else if (v === 'refs') h += refListHTML() + '<section class="detail split">' + refDetailHTML() + '</section>';
     else if (v === 'sop') h += '<section class="wide">' + notesHTML('sop') + '</section>';
     else if (v === 'quick') h += '<section class="wide">' + quickHTML() + '</section>';
@@ -262,7 +266,7 @@ function railHTML() {
   <button class="nav" data-act="lock">鎖定</button></nav>`;
 }
 function tabsHTML() {
-  const t = [NAV[0], NAV[1], ['scan', '掃描', 'scan'], NAV[2], NAV[3]];
+  const t = [NAV[0], NAV[1], ['scan', '掃描', 'scan'], NAV[2], NAV[3], NAV[4]];
   return `<nav class="tabs" aria-label="分頁">${t.map(([k, l, i]) => k === 'scan' ? `<button class="tab scan" data-act="scan"><span class="c">${ICON.scan}</span>${l}</button>` : `<button class="tab${S.view === k ? ' on' : ''}" data-nav="${k}">${ICON[i]}${l}</button>`).join('')}</nav>`;
 }
 function caseSummary(c) { const a = [c.cat]; if (c.items?.length) a.push(c.items.slice(0, 2).join('、')); if (c.causeType) a.push(c.causeType + (c.causeDetail ? '›' + c.causeDetail : '')); return a.join(' · '); }
@@ -286,7 +290,7 @@ function caseDetailHTML() {
   return `<button class="back" data-act="back">‹ 案件列表</button>
   <div class="dhead"><input class="title" id="f_title" data-f="title" value="${esc(c.title)}" placeholder="案件名稱" aria-label="案件名稱"><span class="pill ${pillCls(c.status)}">${c.status}</span></div>
   <div class="sec"><h2>基本資料</h2><div class="grid2">
-   <label class="f">客戶<input id="f_client" data-f="client" value="${esc(c.client)}"></label>
+   <label class="f">客戶${c.clientId && Vault.get('clients', c.clientId) ? ` <button class="linkbtn" data-goclient="${c.clientId}">看客戶資料 ›</button>` : ''}<input id="f_client" data-f="client" list="clientNames" autocomplete="off" value="${esc(c.client)}" placeholder="打名字，會自動帶出或建立客戶"><datalist id="clientNames">${clients().map((x) => `<option value="${esc(x.name)}">`).join('')}</datalist></label>
    <label class="f">類別<select id="f_cat" data-f="cat">${CATS.map((x) => `<option${x === c.cat ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
    <label class="f">狀態<select id="f_status" data-f="status">${STATUS.map((x) => `<option${x === c.status ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
    <label class="f">下一步<input id="f_next" data-f="next" value="${esc(c.next)}" placeholder="例如：補診斷書正本"></label></div></div>
@@ -306,6 +310,41 @@ function caseDetailHTML() {
    ${c.docs.length ? `<div class="actions"><button class="btn" data-act="pdf">原圖 PDF</button><button class="btn" data-act="share">匯出分享版</button></div>` : ''}</div>
   <div class="sec"><h2>備註</h2><textarea id="f_notes" data-f="notes" rows="4" aria-label="備註">${esc(c.notes)}</textarea></div>
   <div class="actions">${isClaim ? `<button class="btn${c.isRef ? ' on' : ''}" data-act="ref">${c.isRef ? '✓ 已在理賠參考' : '做成理賠參考'}</button>` : ''}<button class="btn danger" data-act="delcase">刪除案件</button></div>`;
+}
+function clientCases(cl) { return cases().filter((c) => c.clientId === cl.id).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')); }
+function clientListHTML() {
+  const q = S.q.trim();
+  const list = clients().filter((x) => !q || [x.name, x.phone, x.line, x.note].join(' ').includes(q)).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-Hant'));
+  return `<section class="col"><div class="colhead"><h1>客戶 <button class="btn" data-act="newclient">＋ 新增</button></h1>
+  <div class="mobsync">${syncHTML()}</div>
+  <input class="search" id="q" placeholder="搜尋姓名、電話、備註" value="${esc(S.q)}" autocomplete="off"></div>
+  <div class="list">${list.length ? list.map((x) => { const n = clientCases(x).length, open = clientCases(x).filter((c) => c.status !== '已結案').length; return `<button class="item${x.id === S.csel ? ' on' : ''}" data-csel="${x.id}"><span class="t"><span>${esc(x.name || '未填姓名')}</span>${open ? `<span class="pill p-wait">${open} 件進行中</span>` : ''}</span><span class="s">${n} 個案件 · 證件 ${(x.docs || []).length} 張</span></button>`; }).join('') : `<div class="empty">${clients().length ? '沒有符合的客戶。' : '還沒有客戶。按「＋ 新增」，或在案件裡填客戶名字就會自動建立。'}</div>`}</div></section>`;
+}
+function clientDetailHTML() {
+  const x = curClient();
+  if (!x) return '<div class="empty">從左邊選一位客戶，或按「＋ 新增」。</div>';
+  const f = (k, label, extra = '') => `<label class="f">${label}<input id="cf_${k}" data-cf="${k}" value="${esc(x[k])}" autocomplete="off" ${extra}></label>`;
+  const docs = x.docs || [], cs = clientCases(x);
+  return `<button class="back" data-act="back">‹ 客戶列表</button>
+  <div class="dhead"><input class="title" id="cf_name" data-cf="name" value="${esc(x.name)}" placeholder="客戶姓名" aria-label="客戶姓名"></div>
+  <div class="sec"><h2>基本資料</h2><div class="grid2">
+   <label class="f">性別<select id="cf_gender" data-cf="gender">${['', '女', '男'].map((g) => `<option${g === (x.gender || '') ? ' selected' : ''}>${g}</option>`).join('')}</select></label>
+   ${f('birthday', '生日', 'type="date"')}
+   <label class="f"><span style="display:flex;justify-content:space-between">身分證字號<button class="linkbtn" data-reveal="cf_idNo">顯示</button></span><input id="cf_idNo" data-cf="idNo" class="secret" value="${esc(x.idNo)}" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
+   ${f('phone', '手機', 'inputmode="tel"')}
+   ${f('line', 'LINE ID')}
+   ${f('email', 'Email', 'inputmode="email"')}
+   ${f('job', '職業')}
+   ${f('source', '來源／介紹人')}</div>
+   ${f('address', '地址')}
+   <label class="f">備註<textarea id="cf_note" data-cf="note" rows="3" placeholder="家庭狀況、保單重點、喜好…">${esc(x.note)}</textarea></label></div>
+  <div class="sec"><h2>證件與文件 <button class="btn" data-act="toggleids" style="padding:4px 10px;font-size:13px">${S.showIds ? '隱藏證件' : '顯示證件'}</button></h2>
+   <div class="docs${S.showIds ? '' : ' veiled'}">${docs.map((d, i) => `<div class="doc"><canvas data-cthumb="${i}" width="240" height="320"></canvas><div class="bar"><span>${esc(d.name)}${d.masks.length ? ' · 已遮 ' + d.masks.length : ''}</span><span><button data-cview="${i}">看</button><button data-cmask="${i}">遮罩</button><button data-cdeldoc="${i}" aria-label="刪除文件">刪</button></span></div></div>`).join('')}
+   <button class="adddoc" data-act="cscan">${ICON.scan}拍身分證、存摺<span style="font-size:11px">也可以拖曳圖片進來</span></button></div>
+   ${docs.length ? '<div class="actions"><button class="btn" data-act="cpdf">原圖 PDF</button><button class="btn" data-act="cshare">匯出遮罩版</button></div>' : ''}</div>
+  <div class="sec"><h2>案件 <button class="btn" data-act="ccase" style="padding:4px 10px;font-size:13px">＋ 新增案件</button></h2>
+   ${cs.length ? cs.map((c) => `<button class="item" data-gocase="${c.id}"><span class="t"><span>${esc(c.title || '未命名')}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${esc(caseSummary(c))}${c.next ? ' · 下一步：' + esc(c.next) : ''}</span></button>`).join('') : '<div class="sub">還沒有案件。</div>'}</div>
+  <div class="actions"><button class="btn danger" data-act="delclient">刪除客戶</button></div>`;
 }
 function refCases() { return cases().filter((c) => c.isRef && (S.refItem === '全部' || c.items.includes(S.refItem)) && (S.refCause === '全部' || c.causeType === S.refCause)); }
 const refTitle = (c) => c.diag || c.causeDetail || c.causeType || '未分類';
@@ -367,6 +406,7 @@ async function drawThumbTo(cv, d, solid) {
 }
 function nimgsHTML(n) { return n.images?.length ? `<div class="nimgs">${n.images.map((f) => `<button class="nimg" data-nimg="${f}" data-ntitle="${esc(n.title)}" aria-label="放大看圖"><img data-fid="${f}" alt=""></button>`).join('')}</div>` : ''; }
 function drawThumbs() {
+  const ccl = curClient(); document.querySelectorAll('[data-cthumb]').forEach((cv) => { const d = ccl?.docs[+cv.dataset.cthumb]; if (d) drawThumbTo(cv, d, false); });
   document.querySelectorAll('img[data-fid]').forEach(async (im) => { const u = await Files.url(im.dataset.fid).catch(() => null); if (u && im.isConnected) im.src = u; });
   const c = cur(); document.querySelectorAll('[data-thumb]').forEach((cv) => { const d = c?.docs[+cv.dataset.thumb]; if (d) drawThumbTo(cv, d, false); });
   const r = Vault.get('cases', S.refSel); document.querySelectorAll('[data-rthumb]').forEach((cv) => { const d = r?.docs[+cv.dataset.rthumb]; if (d) drawThumbTo(cv, d, true); });
@@ -384,6 +424,13 @@ app.addEventListener('click', async (e) => {
   if (d.ritem) { S.refItem = d.ritem; App.render(); return; }
   if (d.rcause) { S.refCause = d.rcause; App.render(); return; }
   if (d.sg) { S.sopGroup = d.sg; App.render(); return; }
+  if (d.goclient) { S.view = 'clients'; S.csel = d.goclient; S.showDetail = true; S.showIds = false; App.render(); return; }
+  if (d.csel) { S.csel = d.csel; S.showDetail = true; S.showIds = false; App.render(); return; }
+  if (d.reveal) { const el = $(d.reveal); if (el) { const on = el.classList.toggle('shown'); b.textContent = on ? '隱藏' : '顯示'; } return; }
+  const ccl = curClient();
+  if (d.cview && ccl) { openViewer(ccl.docs[+d.cview]); return; }
+  if (d.cmask && ccl) { openMask(ccl, +d.cmask, 'clients'); return; }
+  if (d.cdeldoc && ccl) { if (armConfirm(b, '確定？')) { const [doc] = ccl.docs.splice(+d.cdeldoc, 1); Vault.put('clients', ccl); if (doc) Files.remove(doc.fileId); App.render(); } return; }
   if (d.gocase) { S.view = 'cases'; S.sel = d.gocase; S.showDetail = true; App.render(); return; }
   if (d.item && c) { const i = c.items.indexOf(d.item); i < 0 ? c.items.push(d.item) : c.items.splice(i, 1); saveCase(c); App.render(); return; }
   if (d.ctype && c) { c.causeType = c.causeType === d.ctype ? '' : d.ctype; c.causeDetail = ''; saveCase(c); App.render(); return; }
@@ -403,7 +450,14 @@ app.addEventListener('click', async (e) => {
     App.render(); toast('已新增'); return;
   }
   switch (d.act) {
-    case 'scan': { let t = c; if (!t || S.view !== 'cases') { t = newCase('理賠'); S.view = 'cases'; } openScanner(t); break; }
+    case 'newclient': { const n = Vault.put('clients', { name: '', docs: [] }); S.csel = n.id; S.showDetail = true; S.showIds = false; S.view = 'clients'; App.render(); setTimeout(() => $('cf_name')?.focus(), 50); break; }
+    case 'cscan': scanForClient(ccl); break;
+    case 'toggleids': S.showIds = !S.showIds; App.render(); break;
+    case 'cpdf': makePDF(ccl.docs, false, (ccl.name || '客戶') + '-證件'); break;
+    case 'cshare': openShare(ccl, (ccl.name || '客戶') + '-證件'); break;
+    case 'ccase': { const c = newCase('理賠'); c.client = ccl.name; c.clientId = ccl.id; saveCase(c); S.view = 'cases'; App.render(); break; }
+    case 'delclient': if (armConfirm(b, '再按一次確定刪除（證件照片也會刪掉）')) { (ccl.docs || []).forEach((doc) => Files.remove(doc.fileId)); cases().filter((c) => c.clientId === ccl.id).forEach((c) => { c.clientId = ''; saveCase(c); }); Vault.del('clients', ccl.id); S.csel = null; S.showDetail = false; App.render(); } break;
+    case 'scan': { if (S.view === 'clients' && ccl) { scanForClient(ccl); break; } let t = c; if (!t || S.view !== 'cases') { t = newCase('理賠'); S.view = 'cases'; } openScanner(t); break; }
     case 'newcase': newCase(S.cat === '全部' ? '理賠' : S.cat); App.render(); break;
     case 'back': S.showDetail = false; App.render(); break;
     case 'ref': c.isRef = !c.isRef; saveCase(c); App.render(); toast(c.isRef ? '已加入理賠參考（不顯示客戶姓名）' : '已從理賠參考移除'); break;
@@ -418,13 +472,30 @@ app.addEventListener('click', async (e) => {
     case 'signout': await Vault.save(); Drive.signOut(); break;
   }
 });
-app.addEventListener('change', (e) => { if (e.target.id === 'nImgs') { const k = e.target.files.length; $('nImgsN').textContent = k ? `已選 ${k} 張` : ''; return; } const f = e.target.dataset?.f; const c = cur(); if (!f || !c) return; c[f] = e.target.value; saveCase(c); if (['cat', 'status', 'cost', 'ratio', 'client', 'title'].includes(f)) App.render(); });
+function linkClient(c) { // 案件填了客戶名字：找到同名客戶就連起來，沒有就自動建立
+  const name = (c.client || '').trim(); c.client = name;
+  if (!name) { c.clientId = ''; return null; }
+  let cl = clients().find((x) => x.name === name), made = false;
+  if (!cl) { cl = Vault.put('clients', { name, docs: [] }); made = true; }
+  c.clientId = cl.id; return made ? cl : null;
+}
+app.addEventListener('change', (e) => {
+  const cf = e.target.dataset?.cf; const cl = curClient();
+  if (cf && cl) {
+    cl[cf] = e.target.value; if (cf === 'name') cl.name = cl.name.trim();
+    Vault.put('clients', cl);
+    if (cf === 'name') { cases().filter((c) => c.clientId === cl.id).forEach((c) => { c.client = cl.name; saveCase(c); }); App.render(); }
+    return;
+  }
+});
+app.addEventListener('change', (e) => { if (e.target.dataset?.f === 'client') { const c = cur(); if (!c) return; c.client = e.target.value; const made = linkClient(c); saveCase(c); App.render(); if (made) toast(`已建立客戶「${made.name}」`); return; } if (e.target.id === 'nImgs') { const k = e.target.files.length; $('nImgsN').textContent = k ? `已選 ${k} 張` : ''; return; } const f = e.target.dataset?.f; const c = cur(); if (!f || !c) return; c[f] = e.target.value; saveCase(c); if (['cat', 'status', 'cost', 'ratio', 'client', 'title'].includes(f)) App.render(); });
 app.addEventListener('input', (e) => {
   if (e.target.id === 'q') { S.q = e.target.value; App.render(); }
   if (e.target.id === 'qq') {
     const q = e.target.value.trim(); const box = $('qres'); if (!q) { box.innerHTML = ''; return; }
+    const cls = clients().filter((x) => [x.name, x.phone, x.line, x.note].join(' ').includes(q)).slice(0, 6);
     const ns = notes().filter((n) => (n.title + n.body).includes(q)).slice(0, 6), cs = cases().filter((c) => [c.client, c.title, c.notes, c.next].join(' ').includes(q)).slice(0, 6);
-    box.innerHTML = `<div class="cards" style="margin-bottom:6px">${ns.map((n) => `<div class="card"><h3><span>${esc(n.title)}</span><span class="sub">${esc(n.group)}</span></h3><pre>${esc(n.body)}</pre></div>`).join('')}${cs.map((c) => `<button class="item" data-gocase="${c.id}"><span class="t">${esc(c.client)} · ${esc(c.title)}</span><span class="s">${esc(caseSummary(c))}</span></button>`).join('')}</div>${!ns.length && !cs.length ? '<div class="sub">找不到。</div>' : ''}`;
+    box.innerHTML = `<div class="cards" style="margin-bottom:6px">${cls.map((x) => `<button class="item" data-goclient="${x.id}"><span class="t">${esc(x.name || '未填姓名')}</span><span class="s">客戶</span></button>`).join('')}${ns.map((n) => `<div class="card"><h3><span>${esc(n.title)}</span><span class="sub">${esc(n.group)}</span></h3><pre>${esc(n.body)}</pre></div>`).join('')}${cs.map((c) => `<button class="item" data-gocase="${c.id}"><span class="t">${esc(c.client)} · ${esc(c.title)}</span><span class="s">${esc(caseSummary(c))}</span></button>`).join('')}</div>${!cls.length && !ns.length && !cs.length ? '<div class="sub">找不到。</div>' : ''}`;
   }
 });
 const ov = $('ovRoot');
@@ -509,13 +580,16 @@ function openImport() {
 /* ================= 掃描 ================= */
 const fileIn = $('fileIn'), fileLib = $('fileLib');
 let SC = null;
-function openScanner(c, opts = {}) { SC = { c, pages: [], img: null, corners: null, filter: 'gray', drag: -1, queue: [], onDone: opts.onDone, onCancel: opts.onCancel }; renderScanner(); }
+const CASE_DOC_NAMES = ['醫療收據', '診斷證明', '申請書', '其他'];
+const CLIENT_DOC_NAMES = ['身分證正面', '身分證反面', '存摺封面', '健保卡', '其他'];
+function openScanner(c, opts = {}) { SC = { c, coll: opts.coll || 'cases', names: opts.names || CASE_DOC_NAMES, pages: [], img: null, corners: null, filter: opts.filter || 'gray', drag: -1, queue: [], onDone: opts.onDone, onCancel: opts.onCancel }; renderScanner(); }
+function scanForClient(cl) { if (!cl) { toast('先選一位客戶'); return; } openScanner(cl, { coll: 'clients', names: CLIENT_DOC_NAMES, filter: 'color' }); }
 function renderScanner() {
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>掃描文件</h2><span class="sub">${SC.pages.length} 頁</span><button class="btn" id="scCancel">取消</button><button class="btn pri" id="scDone">完成（${SC.pages.length}）</button></div>
   <div class="ovbody">${SC.img ? `<div class="stage"><canvas id="scCv"></canvas></div>
   <div class="side"><div class="note">拖曳四個角對齊文件邊緣，再按「加入這頁」。</div>
    <div><div class="sub" style="margin-bottom:4px">效果</div><div class="seg">${[['color', '原色'], ['gray', '灰階增強'], ['bw', '黑白']].map(([k, l]) => `<button data-flt="${k}" class="${SC.filter === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>
-   <label class="f">文件名稱<input id="scName" value="${['醫療收據', '診斷證明', '申請書', '其他'][Math.min(SC.pages.length, 3)]}"></label>
+   <label class="f">文件名稱<input id="scName" value="${SC.names[Math.min(SC.pages.length, SC.names.length - 1)]}"></label>
    <div class="actions"><button class="btn pri" id="scAdd">加入這頁</button><button class="btn" id="scRetake">重拍</button><button class="btn" id="scFull">用整張圖</button></div>
    ${SC.pages.length ? `<div class="pages">${SC.pages.map((p) => `<img src="${p.url}" alt="${esc(p.name)}">`).join('')}</div>` : ''}</div>`
     : `<div class="pick">${ICON.scan}<div>拍一張文件、從相簿選照片，<br>或把圖片拖進來、按 Ctrl+V 貼上截圖</div><div class="actions" style="justify-content:center"><button class="btn pri" id="scCam">開相機</button><button class="btn" id="scLib">從相簿選</button></div>${SC.pages.length ? `<div class="pages">${SC.pages.map((p) => `<img src="${p.url}" alt="">`).join('')}</div>` : ''}</div>`}
@@ -526,7 +600,7 @@ function renderScanner() {
     if (s.onDone) { if (s.pages.length) toast('加入中…'); await s.onDone(s.pages); return; }
     if (s.pages.length) {
       for (const p of s.pages) { const fileId = await Files.add(p.blob, p.name); s.c.docs.push({ id: uid(), name: p.name, fileId, masks: [] }); }
-      saveCase(s.c); toast(`已加入 ${s.pages.length} 頁`);
+      Vault.put(s.coll, s.c); toast(`已加入 ${s.pages.length} 頁`);
     }
     App.render();
   };
@@ -542,6 +616,7 @@ function takeImages(files) {
   const imgs = [...files].filter((f) => /^image\//.test(f.type));
   if (!imgs.length) { if (files.length) toast('只能放圖片（JPG、PNG）。PDF 請先截圖或轉成圖片'); return; }
   if (NE) { toast('加入中…'); addNoteImages(NE, imgs).then(() => NE?.refresh?.()); return; }
+  if (!SC && S.view === 'clients') { const cl = curClient(); if (!cl) { toast('先選一位客戶，再把證件拖進來'); return; } scanForClient(cl); }
   if (!SC && (S.view === 'sop' || S.view === 'tpl')) { const n = Vault.put('notes', { kind: S.view, group: S.view === 'sop' ? (S.sopGroup === '全部' ? '壽險·其他' : S.sopGroup) : '其他', title: '', body: '', images: [] }); editNote(n.id, true); toast('加入中…'); addNoteImages(n, imgs).then(() => NE?.refresh?.()); return; }
   if (!SC) { let t = S.view === 'cases' ? cur() : null; if (!t) { t = newCase('理賠'); S.view = 'cases'; } openScanner(t); }
   if (SC.img) SC.queue.push(...imgs); else onFiles(imgs);
@@ -624,7 +699,7 @@ async function openViewer(d, overEdit) {
 
 /* ================= 遮罩 ================= */
 let MK = null;
-async function openMask(c, i) { const d = c.docs[i]; const im = await getImg(d.fileId); if (!im) { toast('圖片讀取失敗，請確認網路'); return; } MK = { c, d, im, masks: d.masks.map((m) => ({ ...m })), sel: -1, mode: null, start: null, preview: false }; renderMask(); }
+async function openMask(c, i, coll = 'cases') { const d = c.docs[i]; const im = await getImg(d.fileId); if (!im) { toast('圖片讀取失敗，請確認網路'); return; } MK = { c, coll, d, im, masks: d.masks.map((m) => ({ ...m })), sel: -1, mode: null, start: null, preview: false }; renderMask(); }
 function renderMask() {
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>遮罩 · ${esc(MK.d.name)}</h2><button class="btn" id="mkCancel">取消</button><button class="btn pri" id="mkSave">儲存遮罩</button></div>
   <div class="ovbody"><div class="stage"><canvas id="mkCv"></canvas></div>
@@ -633,7 +708,7 @@ function renderMask() {
   <div class="actions"><button class="btn danger" id="mkDel">刪除選取的框</button><button class="btn" id="mkClear">全部清除</button></div>
   <div class="sub">目前 ${MK.masks.length} 個框</div></div></div></div>`;
   $('mkCancel').onclick = () => { ov.innerHTML = ''; MK = null; };
-  $('mkSave').onclick = () => { MK.d.masks = MK.masks; saveCase(MK.c); ov.innerHTML = ''; MK = null; App.render(); toast('遮罩已儲存，原圖保留'); };
+  $('mkSave').onclick = () => { MK.d.masks = MK.masks; Vault.put(MK.coll, MK.c); ov.innerHTML = ''; MK = null; App.render(); toast('遮罩已儲存，原圖保留'); };
   $('mkPrev').onclick = () => { MK.preview = !MK.preview; renderMask(); };
   $('mkDel').onclick = () => { if (MK.sel >= 0) { MK.masks.splice(MK.sel, 1); MK.sel = -1; renderMask(); } else toast('先點選一個框'); };
   $('mkClear').onclick = () => { MK.masks = []; MK.sel = -1; renderMask(); };
@@ -659,7 +734,7 @@ async function shareOrSave(files) { // 有分享功能就跳分享（可以直�
   try { if (navigator.canShare && navigator.canShare({ files })) { await navigator.share({ files }); return; } } catch (e) { if (e.name === 'AbortError') return; }
   files.forEach((f) => { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000); });
 }
-async function openShare(c) {
+async function openShare(c, pdfName) {
   if (!c) return;
   let canvases; try { canvases = await Promise.all(c.docs.map((d) => renderDoc(d, true))); } catch (e) { toast('圖片讀取失敗，請確認網路'); return; }
   const unmasked = c.docs.filter((d) => !d.masks.length).length;
@@ -670,7 +745,7 @@ async function openShare(c) {
   <div class="shareimgs">${urls.map((s) => `<img src="${s}" alt="遮罩後的文件">`).join('')}</div></div></div>`;
   $('shClose').onclick = () => (ov.innerHTML = '');
   $('shAll').onclick = async () => { const files = await Promise.all(canvases.map(async (cv, i) => new File([await toBlob(cv)], `分享版-${c.docs[i].name}-${i + 1}.jpg`, { type: 'image/jpeg' }))); shareOrSave(files); };
-  $('shPdf').onclick = () => makePDF(c.docs, true, '理賠參考-' + refTitle(c));
+  $('shPdf').onclick = () => makePDF(c.docs, true, pdfName || '理賠參考-' + refTitle(c));
 }
 async function makePDF(docs, mask, name) {
   if (!window.jspdf) { toast('PDF 元件沒有載入，請重新整理'); return; }
@@ -738,13 +813,14 @@ function askUnlock() {
 let lastAct = Date.now();
 function enter() {
   gate.hidden = true; app.hidden = false;
+  cases().filter((c) => c.client && !c.clientId).forEach((c) => { linkClient(c); saveCase(c); }); // 舊案件補連客戶
   const first = cases().slice().sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))[0];
   S.sel = first?.id || null; S.refSel = cases().find((c) => c.isRef)?.id || null; S.showDetail = false;
   lastAct = Date.now(); App.render(); Files.retryUploads();
 }
 async function lock() {
   if (Vault.dirty) await Vault.save();
-  Vault.lock(); Files.clear(); imgCache.clear(); ov.innerHTML = ''; app.innerHTML = '';
+  S.showIds = false; Vault.lock(); Files.clear(); imgCache.clear(); ov.innerHTML = ''; app.innerHTML = '';
   askUnlock();
 }
 ['pointerdown', 'keydown'].forEach((t) => document.addEventListener(t, () => (lastAct = Date.now()), true));
