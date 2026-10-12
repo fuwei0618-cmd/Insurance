@@ -159,3 +159,5 @@ input[type=file]{display:none}
 @media (max-width:900px){.app.test{grid-template-rows:auto minmax(0,1fr) auto}}
 .mobsync{display:none}
 @media (max-width:900px){.mobsync{display:flex}}
+/* 拖曳圖片進來時的提示 */
+body.dropping::after{content:"放開就加入這個案件";position:fixed;inset:12px;border:3px dashed var(--accent);border-radius:16px;background:color-mix(in srgb,var(--accent-soft) 70%,transparent);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:500;color:var(--accent-ink);z-index:50;pointer-events:none}

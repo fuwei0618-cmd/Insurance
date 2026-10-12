@@ -1,5 +1,5 @@
 /* 工作手冊 service worker：只快取程式本身，不快取任何客戶資料 */
-const CACHE = 'crm-app-v3';
+const CACHE = 'crm-app-v4';
 const CORE = ['./', 'index.html', 'crm.css', 'crm.js', 'config.js', 'vendor/msal-browser.min.js', 'vendor/jspdf.umd.min.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-180.png'];
 self.addEventListener('install', (e) => e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting())));
 self.addEventListener('activate', (e) => e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith('crm-app') && k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())));

@@ -302,7 +302,7 @@ function caseDetailHTML() {
    <label class="f">實際理賠金額（有不同再填）<input id="f_payout" inputmode="numeric" data-f="payout" value="${esc(c.payout)}"></label></div>` : ''}
   <div class="sec"><h2>文件 <span class="sub">原圖永遠保留，遮罩可以隨時改</span></h2>
    <div class="docs">${c.docs.map((d, i) => `<div class="doc"><canvas data-thumb="${i}" width="240" height="320"></canvas><div class="bar"><span>${esc(d.name)}${d.masks.length ? ' · 已遮 ' + d.masks.length : ''}</span><span><button data-view="${i}">看</button><button data-mask="${i}">遮罩</button><button data-deldoc="${i}" aria-label="刪除文件">刪</button></span></div></div>`).join('')}
-   <button class="adddoc" data-act="scan">${ICON.scan}加入文件</button></div>
+   <button class="adddoc" data-act="scan">${ICON.scan}加入文件<span style="font-size:11px">也可以拖曳圖片進來</span></button></div>
    ${c.docs.length ? `<div class="actions"><button class="btn" data-act="pdf">原圖 PDF</button><button class="btn" data-act="share">匯出分享版</button></div>` : ''}</div>
   <div class="sec"><h2>備註</h2><textarea id="f_notes" data-f="notes" rows="4" aria-label="備註">${esc(c.notes)}</textarea></div>
   <div class="actions">${isClaim ? `<button class="btn${c.isRef ? ' on' : ''}" data-act="ref">${c.isRef ? '✓ 已在理賠參考' : '做成理賠參考'}</button>` : ''}<button class="btn danger" data-act="delcase">刪除案件</button></div>`;
@@ -437,7 +437,7 @@ function renderScanner() {
    <label class="f">文件名稱<input id="scName" value="${['醫療收據', '診斷證明', '申請書', '其他'][Math.min(SC.pages.length, 3)]}"></label>
    <div class="actions"><button class="btn pri" id="scAdd">加入這頁</button><button class="btn" id="scRetake">重拍</button></div>
    ${SC.pages.length ? `<div class="pages">${SC.pages.map((p) => `<img src="${p.url}" alt="${esc(p.name)}">`).join('')}</div>` : ''}</div>`
-    : `<div class="pick">${ICON.scan}<div>拍一張文件，或從相簿選照片</div><div class="actions" style="justify-content:center"><button class="btn pri" id="scCam">開相機</button><button class="btn" id="scLib">從相簿選</button></div>${SC.pages.length ? `<div class="pages">${SC.pages.map((p) => `<img src="${p.url}" alt="">`).join('')}</div>` : ''}</div>`}
+    : `<div class="pick">${ICON.scan}<div>拍一張文件、從相簿選照片，<br>或把圖片拖進來、按 Ctrl+V 貼上截圖</div><div class="actions" style="justify-content:center"><button class="btn pri" id="scCam">開相機</button><button class="btn" id="scLib">從相簿選</button></div>${SC.pages.length ? `<div class="pages">${SC.pages.map((p) => `<img src="${p.url}" alt="">`).join('')}</div>` : ''}</div>`}
   </div></div>`;
   $('scCancel').onclick = () => { SC.pages.forEach((p) => URL.revokeObjectURL(p.url)); ov.innerHTML = ''; SC = null; App.render(); };
   $('scDone').onclick = async () => {
@@ -454,6 +454,26 @@ function renderScanner() {
   $('scAdd').onclick = async () => { const blob = await warp(SC.img, SC.corners, SC.filter); SC.pages.push({ name: $('scName').value || '文件', blob, url: URL.createObjectURL(blob) }); SC.img = null; nextQueued(); };
   setupCornerCanvas();
 }
+/* 拖曳／貼上圖片：在任何畫面都可以，會加進目前的案件（沒有就新建一個） */
+function takeImages(files) {
+  const imgs = [...files].filter((f) => /^image\//.test(f.type));
+  if (!imgs.length) { if (files.length) toast('只能放圖片（JPG、PNG）。PDF 請先截圖或轉成圖片'); return; }
+  if (!SC) { let t = S.view === 'cases' ? cur() : null; if (!t) { t = newCase('理賠'); S.view = 'cases'; } openScanner(t); }
+  if (SC.img) SC.queue.push(...imgs); else onFiles(imgs);
+  if (imgs.length > 1) toast(`收到 ${imgs.length} 張，一張一張對齊後按「加入這頁」`);
+}
+const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
+let dragDepth = 0;
+document.addEventListener('dragenter', (e) => { if (!Vault.key || !hasFiles(e)) return; e.preventDefault(); dragDepth++; document.body.classList.add('dropping'); });
+document.addEventListener('dragover', (e) => { if (!Vault.key || !hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+document.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dropping'); } });
+document.addEventListener('drop', (e) => { if (!Vault.key || !hasFiles(e)) return; e.preventDefault(); dragDepth = 0; document.body.classList.remove('dropping'); if (MK) { toast('請先關閉遮罩畫面'); return; } takeImages(e.dataTransfer.files); });
+document.addEventListener('paste', (e) => {
+  if (!Vault.key || MK) return;
+  const files = [...(e.clipboardData?.items || [])].filter((i) => i.kind === 'file' && /^image\//.test(i.type)).map((i) => i.getAsFile()).filter(Boolean);
+  if (!files.length) return; // 一般文字照常貼上
+  e.preventDefault(); takeImages(files);
+});
 function nextQueued() { if (SC.queue.length) loadFile(SC.queue.shift()); else renderScanner(); }
 function onFiles(files) { if (!SC || !files.length) return; SC.queue.push(...[...files].slice(1)); loadFile(files[0]); }
 fileIn.onchange = () => { onFiles(fileIn.files); fileIn.value = ''; };
