@@ -247,3 +247,15 @@ svg.graph{width:100%;height:auto;display:block}
 .cichk{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted)}
 .ciin{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 8px;font-size:15px;min-width:0;color:var(--ink)}
 @media (max-width:600px){.cirow{grid-template-columns:1fr}}
+/* 告知資料 */
+.veilbox{background:var(--surface);border:1px dashed var(--line);border-radius:8px;padding:12px;color:var(--muted);font-size:14px}
+.disc{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:var(--card)}
+details.disc>summary{list-style:none;cursor:pointer}details.disc>summary::-webkit-details-marker{display:none}
+.dischead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.discdate{font-family:var(--f-num);font-size:14px;font-weight:500}
+.kvs{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px 14px}
+.kv{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dotted var(--line);padding:2px 0;font-size:14px}
+.kv span{color:var(--muted)}.kv b{font-weight:500;font-variant-numeric:tabular-nums;text-align:right}
+.discpre{margin:0;white-space:pre-wrap;font-family:var(--f-body);font-size:14px;background:var(--surface);border-radius:6px;padding:8px 10px}
+.unit{display:flex;align-items:center;gap:6px}.unit input{flex:1;min-width:0}.unit i{font-style:normal;color:var(--muted);font-size:13px}
+.nimg.pdfmini{display:flex;align-items:center;justify-content:center;background:var(--danger-soft);color:var(--danger);font-weight:700}

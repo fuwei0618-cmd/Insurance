@@ -229,7 +229,7 @@ const TPLGROUPS = ['LINE', '簡訊', '信件', '其他'];
 const SOPGROUPS = ['壽險·新契約', '壽險·保全', '壽險·保費', '壽險·保校', '壽險·理賠', '壽險·房貸', '壽險·服務', '壽險·其他', '產險'];
 
 /* ================= 狀態與畫面 ================= */
-const S = { view: 'cases', tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', sopGroup: '全部', showDetail: false };
+const S = { view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', sopGroup: '全部', showDetail: false };
 const cases = () => Vault.all('cases');
 const localDay = (d = new Date()) => { const t = new Date(d); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
 const caseDate = (c) => c.date || (c.createdAt ? localDay(c.createdAt) : '');
@@ -320,7 +320,7 @@ function caseDetailHTML() {
   ${linksHTML(c)}
   ${caseTplHTML(c)}
   <div class="sec"><h2>備註</h2><textarea id="f_notes" data-f="notes" rows="4" aria-label="備註">${esc(c.notes)}</textarea></div>
-  <div class="actions">${isClaim ? `<button class="btn${c.isRef ? ' on' : ''}" data-act="ref">${c.isRef ? '✓ 已在理賠參考' : '做成理賠參考'}</button>` : ''}<button class="btn danger" data-act="delcase">刪除案件</button></div>`;
+  <div class="actions">${isClaim ? `<button class="btn${c.isRef ? ' on' : ''}" data-act="ref">${c.isRef ? '✓ 已在理賠參考' : '做成理賠參考'}</button>` : ''}${c.clientId && ['新契約', '建議書', '保全', '產險'].includes(c.cat) ? '<button class="btn" data-act="casedisc">存成客戶告知資料</button>' : ''}<button class="btn danger" data-act="delcase">刪除案件</button></div>`;
 }
 /* ================= 電訪 ================= */
 const calls = () => Vault.all('calls');
@@ -470,6 +470,104 @@ function showCrmForm(data) {
     toast(`已${isNew ? '建立' : '更新'}「${saved.name || '客戶'}」`);
   };
 }
+/* ================= 告知資料（財務、體況） ================= */
+const FIN = [['workIncome', '工作年收入', '萬'], ['otherIncome', '其他年收入', '萬'], ['personalAssets', '個人資產', '萬'], ['familyIncome', '家庭年收入', '萬'], ['familyAssets', '家庭資產', '萬']];
+function parseFin(raw) {
+  const t = String(raw || '').replace(/[\uFF01-\uFF5E]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+  const lbl = (s) => s.split('').join('\\s*'); const out = {};
+  FIN.forEach(([k, l]) => { const m = t.match(new RegExp(lbl(l) + '[^0-9\\n]{0,8}([0-9][0-9,.]*)')); if (m) out[k] = m[1].replace(/,/g, ''); });
+  const rel = t.match(/關\s*係\s*為[\s:：]*\d?\s*[:：]?\s*([\u4e00-\u9fff]{1,4})/); if (rel) { out.mainEarner = '否'; out.relation = rel[1]; }
+  return out;
+}
+const bmi = (h, w) => { h = +h; w = +w; return h > 50 && w > 10 ? (w / (h / 100) ** 2).toFixed(1) : ''; };
+function discSummary(r) {
+  const f = r.fin || {}, h = r.health || {};
+  const fin = FIN.filter(([k]) => f[k] !== undefined && f[k] !== '').map(([k, l, u]) => `<div class="kv"><span>${l}</span><b>${esc(f[k])} ${u}</b></div>`).join('');
+  const b = bmi(h.height, h.weight);
+  return `${fin || f.mainEarner ? `<div class="sub">財務</div><div class="kvs">${fin}${f.mainEarner ? `<div class="kv"><span>主要經濟來源</span><b>${esc(f.mainEarner)}${f.mainEarner === '否' && f.relation ? '（主要經濟者是' + esc(f.relation) + '）' : ''}</b></div>` : ''}</div>${f.reason ? `<div class="sub">收入不一致原因：${esc(f.reason)}</div>` : ''}` : ''}
+   ${h.height || h.weight || h.smoke || h.drink || h.items ? `<div class="sub">體況</div><div class="kvs">${h.height ? `<div class="kv"><span>身高</span><b>${esc(h.height)} cm</b></div>` : ''}${h.weight ? `<div class="kv"><span>體重</span><b>${esc(h.weight)} kg${b ? '（BMI ' + b + '）' : ''}</b></div>` : ''}${h.smoke ? `<div class="kv"><span>吸菸</span><b>${esc(h.smoke)}</b></div>` : ''}${h.drink ? `<div class="kv"><span>飲酒</span><b>${esc(h.drink)}</b></div>` : ''}</div>${h.items ? `<pre class="discpre">${esc(h.items)}</pre>` : ''}` : ''}
+   ${r.note ? `<pre class="discpre">${esc(r.note)}</pre>` : ''}
+   ${(r.files || []).length ? `<div class="nimgs">${r.files.map((f, i) => f.type === 'pdf' ? `<button class="nimg pdfmini" data-discfile="${r.id}:${i}">PDF</button>` : `<button class="nimg" data-discfile="${r.id}:${i}"><img data-fid="${f.fileId}" alt=""></button>`).join('')}</div>` : ''}`;
+}
+function disclosureHTML(x) {
+  const list = (x.disclosures || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const head = `<h2>告知資料 <span style="display:flex;gap:6px">${list.length ? `<button class="btn" data-act="togglehealth" style="padding:4px 10px;font-size:13px">${S.showHealth ? '隱藏' : '顯示'}</button>` : ''}<button class="btn" data-act="adddisc" style="padding:4px 10px;font-size:13px">＋ 新增告知</button></span></h2>`;
+  if (!list.length) return `<div class="sec">${head}<div class="sub">送件後把財務告知、體況告知存在這裡，下次不用再問一次。</div></div>`;
+  if (!S.showHealth) return `<div class="sec">${head}<div class="veilbox">已存 ${list.length} 筆告知，最新是 ${fmtDay(list[0].date)}。按「顯示」查看。</div></div>`;
+  return `<div class="sec">${head}${list.map((r, i) => { const cs = r.caseId && Vault.get('cases', r.caseId); const top = `<span class="discdate">${fmtDay(r.date)}</span>${cs ? `<button class="linkbtn" data-gocase="${cs.id}">${esc(cs.cat)}・${esc(cs.title || '未命名')}</button>` : ''}${i === 0 ? '<span class="pill p-go">最新</span>' : ''}<span style="flex:1"></span><button class="linkbtn" data-editdisc="${r.id}">編輯</button><button class="tldel" data-deldisc="${r.id}">刪除</button>`;
+    return i === 0 ? `<div class="disc"><div class="dischead">${top}</div>${discSummary(r)}</div>` : `<details class="disc"><summary class="dischead">${top}</summary>${discSummary(r)}</details>`; }).join('')}</div>`;
+}
+let DSC = null;
+function openDisclosure(cl, id, caseId) {
+  const old = id ? (cl.disclosures || []).find((x) => x.id === id) : null;
+  let base = old ? JSON.parse(JSON.stringify(old)) : null;
+  if (!base) { const prev = (cl.disclosures || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]; base = { id: uid(), date: localDay(), caseId: caseId || '', fin: { ...(prev?.fin || {}) }, health: { ...(prev?.health || {}) }, note: '', files: [] }; }
+  DSC = { cl, r: base, isNew: !old };
+  const f = base.fin, h = base.health;
+  const inp = (k, v, l, u, extra = '') => `<label class="f">${l}<span class="unit"><input id="d_${k}" value="${esc(v ?? '')}" ${extra}>${u ? `<i>${u}</i>` : ''}</span></label>`;
+  const cases2 = clientCases(cl);
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${old ? '編輯' : '新增'}告知資料 · ${esc(cl.name || '')}</h2><button class="btn" id="dX">取消</button><button class="btn pri" id="dSave">儲存</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:780px;margin:0 auto;width:100%">
+   ${!old && (cl.disclosures || []).length ? '<div class="note">已先帶入上一次的內容，只要改有變動的地方。</div>' : ''}
+   <div class="grid2"><label class="f">日期<input type="date" id="d_date" value="${esc(base.date)}"></label><label class="f">來自案件<select id="d_case"><option value="">（不指定）</option>${cases2.map((c) => `<option value="${c.id}"${c.id === base.caseId ? ' selected' : ''}>${esc(fmtDay(caseDate(c)) + ' ' + c.cat + '・' + (c.title || '未命名'))}</option>`).join('')}</select></label></div>
+   <div class="sec"><h2>財務告知 <span class="sub">單位：萬</span></h2>
+    <div class="actions"><label class="btn">截圖帶入<input type="file" id="dShot" accept="image/*"></label><button class="btn" id="dPasteShot">📋 貼上截圖</button><span class="sub" id="dOcr">也可以在這個畫面按 Ctrl+V</span></div>
+    <div class="grid2">${FIN.map(([k, l, u]) => inp(k, f[k], l, u, 'inputmode="decimal"')).join('')}
+     <label class="f">是否為家中主要經濟來源<select id="d_mainEarner">${['', '是', '否'].map((o) => `<option${o === (f.mainEarner || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></label>
+     ${inp('relation', f.relation, '與主要經濟者關係', '', 'placeholder="例如：配偶"')}</div>
+    ${inp('reason', f.reason, '收入不一致原因', '')}</div>
+   <div class="sec"><h2>體況告知</h2><div class="grid2">
+    ${inp('height', h.height, '身高', 'cm', 'inputmode="decimal"')}${inp('weight', h.weight, '體重', 'kg', 'inputmode="decimal"')}
+    <label class="f">吸菸<select id="d_smoke">${['', '無', '有', '已戒'].map((o) => `<option${o === (h.smoke || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></label>
+    <label class="f">飲酒<select id="d_drink">${['', '無', '偶爾', '經常'].map((o) => `<option${o === (h.drink || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></label></div>
+    <label class="f">告知事項（病史、住院、手術、用藥、體檢異常…）<textarea id="d_items" rows="4">${esc(h.items)}</textarea></label></div>
+   <label class="f">其他備註<textarea id="d_note" rows="2">${esc(base.note)}</textarea></label>
+   <div class="sec"><h2>附件 <span class="sub">要保書、告知書、財務狀況告知書的照片或 PDF</span></h2>
+    <div class="nimgs edit" id="dFiles"></div>
+    <div class="actions"><label class="btn">＋ 加照片或 PDF<input type="file" id="dAdd" accept="image/*,application/pdf,.pdf" multiple></label><button class="btn" id="dPaste">📋 貼上</button></div></div>
+  </div></div>`;
+  drawDiscFiles();
+  $('dX').onclick = () => { if (DSC.isNew) (DSC.r.files || []).forEach((x) => Files.remove(x.fileId)); DSC = null; ov.innerHTML = ''; };
+  $('dSave').onclick = () => {
+    const r = DSC.r, g = (k) => $('d_' + k)?.value.trim() ?? '';
+    r.date = g('date') || localDay(); r.caseId = $('d_case').value; r.note = g('note');
+    r.fin = Object.fromEntries([...FIN.map(([k]) => [k, g(k)]), ['mainEarner', g('mainEarner')], ['relation', g('relation')], ['reason', g('reason')]].filter(([, v]) => v !== ''));
+    r.health = Object.fromEntries([['height', g('height')], ['weight', g('weight')], ['smoke', g('smoke')], ['drink', g('drink')], ['items', $('d_items').value.trim()]].filter(([, v]) => v !== ''));
+    const c2 = DSC.cl; c2.disclosures = [...(c2.disclosures || []).filter((x) => x.id !== r.id), r]; Vault.put('clients', c2);
+    DSC = null; ov.innerHTML = ''; S.view = 'clients'; S.csel = c2.id; S.showDetail = true; S.showHealth = true; App.render(); toast('告知資料已儲存');
+  };
+  $('dAdd').onchange = (e) => { const fs = [...e.target.files]; e.target.value = ''; discAddFiles(fs, false); };
+  $('dPaste').onclick = async () => { const fs = await clipFiles(); if (fs.length) discAddFiles(fs, false); };
+  $('dShot').onchange = (e) => { const fl = e.target.files[0]; e.target.value = ''; if (fl) discAddFiles([fl], true); };
+  $('dPasteShot').onclick = async () => { const fs = await clipFiles(); if (fs.length) discAddFiles(fs, true); };
+}
+async function clipFiles() {
+  try { const out = []; for (const it of await navigator.clipboard.read()) { const t = it.types.find((y) => y.startsWith('image/')); if (t) out.push(new File([await it.getType(t)], 'shot.png', { type: t })); } if (!out.length) toast('剪貼簿裡沒有圖片'); return out; }
+  catch (e) { toast('這裡不能讀剪貼簿，請直接按 Ctrl+V'); return []; }
+}
+function drawDiscFiles() {
+  const box = $('dFiles'); if (!box || !DSC) return;
+  box.innerHTML = (DSC.r.files || []).map((f, i) => `<div class="nimgwrap">${f.type === 'pdf' ? `<button class="nimg pdfmini" data-dv="${i}">PDF</button>` : `<button class="nimg" data-dv="${i}"><img data-fid="${f.fileId}" alt=""></button>`}<button class="nimgdel" data-dd="${i}" aria-label="移除">✕</button></div>`).join('') || '<span class="sub">還沒有附件</span>';
+  box.querySelectorAll('img[data-fid]').forEach(async (im) => { const u = await Files.url(im.dataset.fid).catch(() => null); if (u && im.isConnected) im.src = u; });
+  box.querySelectorAll('[data-dv]').forEach((b) => (b.onclick = () => { const f = DSC.r.files[+b.dataset.dv]; Files.url(f.fileId).then((u) => { if (!u) return; const v = document.createElement('div'); v.innerHTML = `<div class="ov" style="z-index:30"><div class="ovhead"><h2>${esc(f.name)}</h2><button class="btn pri">關閉</button></div>${f.type === 'pdf' ? `<iframe src="${u}" style="flex:1;width:100%;border:0;background:#fff"></iframe>` : `<div class="ovbody" style="justify-content:center"><img src="${u}" alt="" style="max-width:100%;height:auto;align-self:flex-start"></div>`}</div>`; v.querySelector('button').onclick = () => v.remove(); document.body.appendChild(v); }); }));
+  box.querySelectorAll('[data-dd]').forEach((b) => (b.onclick = () => { const [f] = DSC.r.files.splice(+b.dataset.dd, 1); if (f) Files.remove(f.fileId); drawDiscFiles(); }));
+}
+async function discAddFiles(files, readFin) {
+  if (!DSC) return; const r = DSC.r; r.files = r.files || [];
+  for (const f of files) {
+    const pdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name || '');
+    if (!pdf && !/^image\//.test(f.type)) continue;
+    const blob = pdf ? new Blob([await f.arrayBuffer()], { type: 'application/pdf' }) : await shrink(f); if (!blob) continue;
+    const fileId = await Files.add(blob, f.name || '告知');
+    r.files.push({ fileId, name: pdf ? (f.name || '').replace(/\.pdf$/i, '') || 'PDF' : '告知截圖', type: pdf ? 'pdf' : 'img', date: localDay() });
+    if (readFin && !pdf) {
+      $('dOcr').textContent = OCR ? '辨識中…' : '第一次使用要先下載辨識元件，請稍等…';
+      try { const fin = parseFin(await ocrImage(f)); const ks = Object.keys(fin); ks.forEach((k) => { const el = $('d_' + k); if (el) el.value = fin[k]; }); if ($('dOcr')) $('dOcr').textContent = ks.length ? `已帶入 ${ks.length} 個欄位，請核對數字` : '沒有讀到數字，請手動填'; }
+      catch (e) { if ($('dOcr')) $('dOcr').textContent = '辨識失敗，請手動填'; }
+    }
+  }
+  drawDiscFiles();
+}
 /* ================= 關係圖 ================= */
 const rels = () => Vault.all('rels').filter((r) => Vault.get('clients', r.a) && Vault.get('clients', r.b));
 const FAMILY = ['parent', 'spouse', 'sibling', 'relative'];
@@ -602,6 +700,7 @@ function clientDetailHTML() {
    ${f('address', '地址')}
    ${x.billAddress || x.workAddress ? `<div class="grid2">${f('billAddress', '收費地址')}${f('workAddress', '公司地址')}</div>` : ''}
    <label class="f">備註<textarea id="cf_note" data-cf="note" rows="3" placeholder="家庭狀況、保單重點、喜好…">${esc(x.note)}</textarea></label></div>
+  ${disclosureHTML(x)}
   ${relsHTML(x)}
   <div class="sec"><h2>證件與文件 <button class="btn" data-act="toggleids" style="padding:4px 10px;font-size:13px">${S.showIds ? '隱藏證件' : '顯示證件'}</button></h2>
    <div class="docs${S.showIds ? '' : ' veiled'}">${docs.map((d, i) => [d, i]).sort(([a], [b]) => (b.date || '').localeCompare(a.date || '')).map(([d, i]) => docTile(d, i, 'c', null)).join('')}
@@ -786,6 +885,9 @@ app.addEventListener('click', async (e) => {
   if (d.ritem) { S.refItem = d.ritem; App.render(); return; }
   if (d.rcause) { S.refCause = d.rcause; App.render(); return; }
   if (d.sg) { S.sopGroup = d.sg; App.render(); return; }
+  if (d.editdisc && ccl) { openDisclosure(ccl, d.editdisc, ''); return; }
+  if (d.deldisc && ccl) { if (armConfirm(b, '再按一次刪除')) { const r = (ccl.disclosures || []).find((x) => x.id === d.deldisc); (r?.files || []).forEach((f) => Files.remove(f.fileId)); ccl.disclosures = (ccl.disclosures || []).filter((x) => x.id !== d.deldisc); Vault.put('clients', ccl); App.render(); } return; }
+  if (d.discfile) { const [rid, i] = d.discfile.split(':'); const r = (curClient()?.disclosures || []).find((x) => x.id === rid); const f = r?.files?.[+i]; if (f) openViewer({ ...f, masks: [] }); return; }
   if (d.delrel) { if (armConfirm(b, '移除？')) { Vault.del('rels', d.delrel); App.render(); } return; }
   if (d.rename != null || d.crename != null) {
     const isC = d.crename != null, rec = isC ? curClient() : c, doc = rec?.docs[+(isC ? d.crename : d.rename)]; if (!doc) return;
@@ -858,6 +960,9 @@ app.addEventListener('click', async (e) => {
     case 'tocliient': { const k = curCall(); if (!k) break; let cl = clients().find((x) => x.name === k.name && k.name); if (!cl) cl = Vault.put('clients', { name: k.name, phone: k.phone, note: [k.source, k.note].filter(Boolean).join('\n'), docs: [] }); k.clientId = cl.id; Vault.put('calls', k); App.render(); toast(`已轉成客戶「${cl.name || '未填姓名'}」`); break; }
     case 'delcall': if (armConfirm(b, '再按一次確定刪除')) { Vault.del('calls', S.ksel); S.ksel = null; S.showDetail = false; App.render(); } break;
     case 'tplfor': S.view = 'tpl'; S.tplCat = c.cat; S.tplGroup = '全部'; S.q = ''; S.showDetail = false; App.render(); break;
+    case 'adddisc': if (ccl) openDisclosure(ccl, null, ''); break;
+    case 'togglehealth': S.showHealth = !S.showHealth; App.render(); break;
+    case 'casedisc': { const cl2 = Vault.get('clients', c.clientId); if (cl2) openDisclosure(cl2, null, c.id); break; }
     case 'crmimport': if (ccl) openCrmImport(ccl); break;
     case 'crmimportnew': openCrmImport(null); break;
     case 'addrel': if (ccl) openRelPicker(ccl); break;
@@ -1073,12 +1178,12 @@ let dragDepth = 0;
 document.addEventListener('dragenter', (e) => { if (!Vault.key || !hasFiles(e)) return; e.preventDefault(); dragDepth++; document.body.classList.add('dropping'); });
 document.addEventListener('dragover', (e) => { if (!Vault.key || !hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
 document.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dropping'); } });
-document.addEventListener('drop', (e) => { if (!Vault.key || !hasFiles(e)) return; e.preventDefault(); dragDepth = 0; document.body.classList.remove('dropping'); if (MK) { toast('請先關閉遮罩畫面'); return; } takeImages(e.dataTransfer.files); });
+document.addEventListener('drop', (e) => { if (!Vault.key || !hasFiles(e)) return; e.preventDefault(); dragDepth = 0; document.body.classList.remove('dropping'); if (MK) { toast('請先關閉遮罩畫面'); return; } if (DSC) { discAddFiles([...e.dataTransfer.files], false); return; } takeImages(e.dataTransfer.files); });
 document.addEventListener('paste', (e) => {
   if (!Vault.key || MK) return;
   const files = [...(e.clipboardData?.items || [])].filter((i) => i.kind === 'file' && /^image\//.test(i.type)).map((i) => i.getAsFile()).filter(Boolean);
   if (!files.length) return; // 一般文字照常貼上
-  e.preventDefault(); if (CRMI) { crmFromImage(files[0]); return; } takeImages(files);
+  e.preventDefault(); if (DSC) { discAddFiles(files, true); return; } if (CRMI) { crmFromImage(files[0]); return; } takeImages(files);
 });
 function nextQueued() { if (SC.queue.length) loadFile(SC.queue.shift()); else renderScanner(); }
 function onFiles(files) { if (!SC || !files.length) return; SC.queue.push(...[...files].slice(1)); loadFile(files[0]); }
@@ -1274,7 +1379,7 @@ function enter() {
 }
 async function lock() {
   if (Vault.dirty) await Vault.save();
-  S.showIds = false; Vault.lock(); Files.clear(); imgCache.clear(); ov.innerHTML = ''; app.innerHTML = '';
+  S.showIds = false; S.showHealth = false; Vault.lock(); Files.clear(); imgCache.clear(); ov.innerHTML = ''; app.innerHTML = '';
   askUnlock();
 }
 ['pointerdown', 'keydown'].forEach((t) => document.addEventListener(t, () => (lastAct = Date.now()), true));
