@@ -104,7 +104,7 @@ const Mock = {
 };
 
 /* ================= 資料庫（記憶體中明文，存檔時加密） ================= */
-const COLLS = ['cases', 'notes', 'files', 'clients'];
+const COLLS = ['cases', 'notes', 'files', 'clients', 'settings'];
 const emptyDb = () => Object.fromEntries([['v', 1], ...COLLS.map((c) => [c, {}])]);
 const SYNC_LABEL = { synced: '已同步 OneDrive', saving: '同步中…', pending: '待同步…', offline: '離線中，連上網路會自動同步', idle: '—' };
 const Vault = {
@@ -368,13 +368,28 @@ const STEPS = {
   保全: ['收件', '送件', '補件', '完成'],
   產險: ['報價', '投保', '送件', '保單'],
 };
+const DEFAULT_STEPS = ['聯絡', '送件', '補件', '完成'];
+function getSteps(cat) { const m = Vault.get('settings', 'steps')?.map || {}; return m[cat] || STEPS[cat] || DEFAULT_STEPS; }
+function setSteps(cat, arr) { const st = Vault.get('settings', 'steps') || { id: 'steps', map: {} }; st.map = { ...(st.map || {}), [cat]: arr }; Vault.put('settings', st); }
+function openStepEditor(cat) {
+  const arr = getSteps(cat);
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>「${esc(cat)}」的常用步驟</h2><button class="btn" id="stCancel">取消</button><button class="btn pri" id="stSave">儲存</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:560px;margin:0 auto;width:100%">
+   <div class="note">一行一個步驟，照你想要的順序排。不常用的不用放，記錄時按「＋ 其他」打字就好。</div>
+   <label class="f">常用步驟<textarea id="stText" rows="12">${esc(arr.join('\n'))}</textarea></label>
+   <div class="actions"><button class="btn" id="stReset">恢復預設</button></div></div></div>`;
+  $('stCancel').onclick = () => (ov.innerHTML = '');
+  $('stReset').onclick = () => { $('stText').value = (STEPS[cat] || DEFAULT_STEPS).join('\n'); };
+  $('stSave').onclick = () => { const list = [...new Set($('stText').value.split('\n').map((x) => x.trim()).filter(Boolean))]; setSteps(cat, list); ov.innerHTML = ''; App.render(); toast('常用步驟已更新'); };
+  setTimeout(() => $('stText')?.focus(), 50);
+}
 const tlSorted = (c) => (c.timeline || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.at || '').localeCompare(a.at || ''));
 const latestStep = (c) => tlSorted(c)[0];
 function timelineHTML(c) {
-  const tl = tlSorted(c), done = new Set(tl.map((e) => e.title)), steps = STEPS[c.cat] || ['聯絡', '送件', '補件', '完成'];
-  return `<div class="sec"><h2>進度 <span class="sub">${tl.length ? tl.length + ' 筆，新的在上面' : '每個時間點記一筆'}</span></h2>
+  const tl = tlSorted(c), done = new Set(tl.map((e) => e.title)), steps = getSteps(c.cat);
+  return `<div class="sec"><h2><span>進度 <span class="sub" style="letter-spacing:0">${tl.length ? tl.length + ' 筆，新的在上面' : '每個時間點記一筆'}</span></span><button class="linkbtn" data-act="editsteps">編輯常用步驟</button></h2>
    <div class="tags">${steps.map((x) => `<button class="tag${done.has(x) ? ' did' : ''}" data-addstep="${esc(x)}">${done.has(x) ? '✓' : '＋'} ${esc(x)}</button>`).join('')}<button class="tag" data-addstep="">＋ 其他</button></div>
-   ${tl.length ? `<div class="tl">${tl.map((e) => `<div class="tli"><span class="tldot"></span><div class="tlrow"><input type="date" class="tldate" data-tldate="${e.id}" value="${esc(e.date)}" aria-label="日期"><input class="tltitle" data-tltitle="${e.id}" id="tlt_${e.id}" value="${esc(e.title)}" placeholder="做了什麼" aria-label="項目"><button class="tldel" data-tldel="${e.id}" aria-label="刪除這筆">✕</button></div><input class="tlnote" data-tlnote="${e.id}" id="tln_${e.id}" value="${esc(e.note)}" placeholder="備註（可不填）" aria-label="備註"></div>`).join('')}</div>` : ''}</div>`;
+   ${tl.length ? `<div class="tl">${tl.map((e) => `<div class="tli"><span class="tldot"></span><div class="tlrow"><input type="date" class="tldate" data-tldate="${e.id}" value="${esc(e.date)}" aria-label="日期"><input class="tltitle" data-tltitle="${e.id}" id="tlt_${e.id}" value="${esc(e.title)}" placeholder="做了什麼" aria-label="項目">${e.title && !steps.includes(e.title) ? `<button class="linkbtn" data-favstep="${esc(e.title)}" style="flex:none">＋ 常用</button>` : ''}<button class="tldel" data-tldel="${e.id}" aria-label="刪除這筆">✕</button></div><input class="tlnote" data-tlnote="${e.id}" id="tln_${e.id}" value="${esc(e.note)}" placeholder="備註（可不填）" aria-label="備註"></div>`).join('')}</div>` : ''}</div>`;
 }
 function linksHTML(c) {
   const linked = (c.links || []).map((id) => Vault.get('cases', id)).filter(Boolean).sort(byDate);
@@ -514,6 +529,7 @@ app.addEventListener('click', async (e) => {
     c.timeline = [...(c.timeline || []), e]; saveCase(c); App.render();
     setTimeout(() => (d.addstep ? $('tln_' + e.id) : $('tlt_' + e.id))?.focus(), 30); return;
   }
+  if (d.favstep && c) { setSteps(c.cat, [...getSteps(c.cat), d.favstep]); App.render(); toast(`「${d.favstep}」已加到常用`); return; }
   if (d.tldel && c) { if (armConfirm(b, '刪？')) { c.timeline = (c.timeline || []).filter((x) => x.id !== d.tldel); saveCase(c); App.render(); } return; }
   if (d.unlink && c) { const o = Vault.get('cases', d.unlink); c.links = (c.links || []).filter((x) => x !== d.unlink); saveCase(c); if (o) { o.links = (o.links || []).filter((x) => x !== c.id); saveCase(o); } App.render(); toast('已取消連結'); return; }
   if (d.gocase) { S.folder = '全部'; S.view = 'cases'; S.sel = d.gocase; S.showDetail = true; App.render(); return; }
@@ -542,6 +558,7 @@ app.addEventListener('click', async (e) => {
     case 'cshare': openShare(ccl, (ccl.name || '客戶') + '-證件'); break;
     case 'ccase': { const c = newCase(S.ccat !== '全部' ? S.ccat : '理賠'); c.client = ccl.name; c.clientId = ccl.id; saveCase(c); S.view = 'cases'; App.render(); break; }
     case 'delclient': if (armConfirm(b, '再按一次確定刪除（證件照片也會刪掉）')) { (ccl.docs || []).forEach((doc) => Files.remove(doc.fileId)); cases().filter((c) => c.clientId === ccl.id).forEach((c) => { c.clientId = ''; saveCase(c); }); Vault.del('clients', ccl.id); S.csel = null; S.showDetail = false; App.render(); } break;
+    case 'editsteps': openStepEditor(c.cat); break;
     case 'linkcase': openLinkPicker(c); break;
     case 'convert': { const t = new Date(); const day = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; c.cat = '新契約'; c.status = '進行中'; c.convertedAt = day; saveCase(c); S.cat = S.cat === '建議書' ? '新契約' : S.cat; App.render(); toast('已轉成新契約'); break; }
     case 'newfolder': { const name = (prompt('資料夾名稱（例如：體檢報告、基本資料、收據）') || '').trim(); if (!name) break; c.folders = c.folders || []; if (!c.folders.includes(name)) c.folders.push(name); saveCase(c); S.folder = name; App.render(); break; }
