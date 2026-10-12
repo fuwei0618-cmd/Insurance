@@ -218,3 +218,4 @@ details.tplrow>summary{display:flex;align-items:center;gap:8px;padding:8px 10px;
 details.tplrow>summary::-webkit-details-marker{display:none}
 details.tplrow .tpltitle{flex:1;font-weight:500;min-width:0}
 details.tplrow pre{margin:0;padding:0 12px 12px;white-space:pre-wrap;font-family:var(--f-body);font-size:14px;line-height:1.7}
+.doc .bar button.docname{color:var(--ink);text-align:left;padding:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
