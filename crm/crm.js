@@ -221,7 +221,48 @@ const ICON = {
   msg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>',
 };
 const NAV = [['quick', '快查', 'bolt'], ['clients', '客戶', 'user'], ['cases', '案件', 'folder'], ['calls', '電訪', 'phone'], ['refs', '理賠參考', 'book'], ['sop', 'SOP', 'list'], ['tpl', '範本', 'msg']];
-const CATS = ['理賠', '建議書', '新契約', '保全', '保費', '保校', '房貸', '服務', '其他', '產險'];
+const DEFAULT_CATS = ['理賠', '建議書', '新契約', '保全', '保費', '保校', '房貸', '服務', '其他', '產險'];
+const CATS = [...DEFAULT_CATS]; // 可以在 App 裡自己改，存在設定裡
+function syncCats() { const list = Vault.get('settings', 'cats')?.list; const next = list?.length ? list : DEFAULT_CATS; if (next.join('|') !== CATS.join('|')) CATS.splice(0, CATS.length, ...next); }
+function openCatEditor() {
+  let rows = CATS.map((n) => ({ old: n, name: n }));
+  const used = (n) => cases().filter((c) => c.cat === n).length;
+  const draw = () => {
+    $('ceList').innerHTML = rows.map((r, i) => `<div class="cerow"><input data-ci="${i}" value="${esc(r.name)}" aria-label="類別名稱"><span class="sub">${r.old ? used(r.old) + ' 件' : '新的'}</span><button class="btn" data-cu="${i}" aria-label="上移" ${i ? '' : 'disabled'}>↑</button><button class="btn" data-cd="${i}" aria-label="下移" ${i < rows.length - 1 ? '' : 'disabled'}>↓</button><button class="tldel" data-cx="${i}" aria-label="刪除">✕</button></div>`).join('');
+  };
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>編輯案件類別</h2><button class="btn" id="ceX">取消</button><button class="btn pri" id="ceSave">儲存</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:560px;margin:0 auto;width:100%">
+   <div class="note">改名字，舊案件會一起改過去。有案件在用的類別不能刪，要先把那些案件改到別的類別。<br>「理賠」有理賠分類和理賠參考，「新契約」「建議書」有轉換和要保人功能，這幾個建議保留原名。</div>
+   <div id="ceList"></div>
+   <div class="actions"><input class="search" id="ceNew" placeholder="新類別名稱，例如：轉介紹" style="flex:1"><button class="btn" id="ceAdd">＋ 新增</button><button class="btn" id="ceReset">恢復預設</button></div></div></div>`;
+  draw();
+  $('ceList').oninput = (e) => { const i = e.target.dataset.ci; if (i != null) rows[+i].name = e.target.value; };
+  $('ceList').onclick = (e) => {
+    const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
+    if (d.cu) { const i = +d.cu; [rows[i - 1], rows[i]] = [rows[i], rows[i - 1]]; }
+    if (d.cd) { const i = +d.cd; [rows[i + 1], rows[i]] = [rows[i], rows[i + 1]]; }
+    if (d.cx) { const r = rows[+d.cx]; if (r.old && used(r.old)) { toast(`「${r.old}」還有 ${used(r.old)} 件案件，先把它們改到別的類別`); return; } rows.splice(+d.cx, 1); }
+    draw();
+  };
+  const add = () => { const v = $('ceNew').value.trim(); if (!v) return; if (rows.some((r) => r.name.trim() === v)) { toast('已經有這個類別'); return; } rows.push({ old: '', name: v }); $('ceNew').value = ''; draw(); };
+  $('ceAdd').onclick = add; $('ceNew').onkeydown = (e) => { if (e.key === 'Enter') add(); };
+  $('ceReset').onclick = () => { const keep = rows.filter((r) => r.old && used(r.old) && !DEFAULT_CATS.includes(r.name.trim())); rows = [...DEFAULT_CATS.map((n) => ({ old: rows.find((r) => r.old === n)?.old || '', name: n })), ...keep]; draw(); };
+  $('ceX').onclick = () => (ov.innerHTML = '');
+  $('ceSave').onclick = () => {
+    const names = rows.map((r) => r.name.trim());
+    if (names.some((n) => !n)) { toast('類別名稱不能空白'); return; }
+    if (new Set(names).size !== names.length) { toast('有重複的類別名稱'); return; }
+    const ren = rows.filter((r) => r.old && r.old !== r.name.trim()).map((r) => [r.old, r.name.trim()]);
+    if (ren.length) {
+      const m = new Map(ren);
+      cases().forEach((c) => { if (m.has(c.cat)) { c.cat = m.get(c.cat); saveCase(c); } });
+      notes().forEach((n) => { if (n.cat && m.has(n.cat)) { n.cat = m.get(n.cat); Vault.put('notes', n); } });
+      const st = Vault.get('settings', 'steps'); if (st?.map) { ren.forEach(([a, b]) => { if (st.map[a]) { st.map[b] = st.map[a]; delete st.map[a]; } else if (STEPS[a] && !st.map[b]) st.map[b] = STEPS[a]; }); Vault.put('settings', st); }
+      if (m.has(S.cat)) S.cat = m.get(S.cat);
+    }
+    Vault.put('settings', { id: 'cats', list: names }); syncCats(); ov.innerHTML = ''; App.render(); toast('案件類別已更新');
+  };
+}
 const STATUS = ['進行中', '待回覆', '已結案'];
 const ITEMS = ['住院醫療', '實支實付', '住院日額', '手術', '意外醫療', '意外失能', '骨折', '重大傷病', '癌症', '長照失能', '門診', '產險-車險', '產險-住火', '產險-旅平'];
 const CAUSE = { '疾病': ['消化系統', '呼吸系統', '心血管', '骨科', '婦科', '腫瘤', '眼耳鼻喉', '其他疾病'], '意外': ['交通事故', '跌倒', '運動傷害', '職業傷害', '燒燙傷', '其他意外'] };
@@ -247,6 +288,7 @@ const syncHTML = (cls = '') => `<span class="sync ${cls}" data-s="${Vault.state}
 const App = {
   render() {
     if (!Vault.db) return;
+    syncCats(); if (S.cat !== '全部' && !CATS.includes(S.cat)) S.cat = '全部';
     const v = S.view;
     app.className = 'app' + ((v === 'cases' || v === 'refs' || v === 'clients' || v === 'calls') ? '' : ' single') + (S.showDetail ? ' showdetail' : '') + (MOCK ? ' test' : '');
     let h = MOCK ? '<div class="testbar">測試模式：資料只存在這台裝置，不會上傳 OneDrive</div>' : '';
@@ -287,7 +329,7 @@ function caseListHTML() {
   return `<section class="col"><div class="colhead"><h1>案件 <button class="btn" data-act="newcase">＋ 新增</button></h1>
   <div class="mobsync">${syncHTML()}</div>
   <input class="search" id="q" placeholder="搜尋客戶、案件、備註" value="${esc(S.q)}" autocomplete="off">
-  <div class="chips">${['全部', ...CATS].map((c) => `<button class="chip${S.cat === c ? ' on' : ''}" data-cat="${c}">${c}</button>`).join('')}</div></div>
+  <div class="chips">${['全部', ...CATS].map((c) => `<button class="chip${S.cat === c ? ' on' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}<button class="chip chipedit" data-act="editcats" aria-label="編輯案件類別">⚙ 編輯</button></div></div>
   <div class="list">${list.length ? list.map((c) => `<button class="item${c.id === S.sel ? ' on' : ''}" data-sel="${c.id}"><span class="t"><span>${esc(c.client || '未填客戶')} · ${esc(c.title || '未命名')}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${fmtDay(caseDate(c))} · ${esc(caseSummary(c))}${latestStep(c) ? ' · 最新：' + esc(latestStep(c).title) : ''}</span></button>`).join('') : `<div class="empty">${cases().length ? '沒有符合的案件。' : '還沒有案件。按「＋ 新增」，或按「掃描」直接拍文件建案。'}</div>`}</div></section>`;
 }
 function caseDetailHTML() {
@@ -302,7 +344,7 @@ function caseDetailHTML() {
   <div class="sec"><h2>基本資料</h2><div class="grid2">
    <label class="f">客戶${c.clientId && Vault.get('clients', c.clientId) ? ` <button class="linkbtn" data-goclient="${c.clientId}">看客戶資料 ›</button>` : ''}<input id="f_client" data-f="client" list="clientNames" autocomplete="off" value="${esc(c.client)}" placeholder="打名字，會自動帶出或建立客戶"><datalist id="clientNames">${clients().map((x) => `<option value="${esc(x.name)}">`).join('')}</datalist></label>
    <label class="f">日期<input type="date" id="f_date" data-f="date" value="${esc(caseDate(c))}"></label>
-   <label class="f">類別<select id="f_cat" data-f="cat">${CATS.map((x) => `<option${x === c.cat ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
+   <label class="f">類別<select id="f_cat" data-f="cat">${(CATS.includes(c.cat) ? CATS : [c.cat, ...CATS]).map((x) => `<option${x === c.cat ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
    <label class="f">狀態<select id="f_status" data-f="status">${STATUS.map((x) => `<option${x === c.status ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
    <label class="f">下一步<input id="f_next" data-f="next" value="${esc(c.next)}" placeholder="例如：補診斷書正本"></label></div></div>
   ${peopleHTML(c)}
@@ -1021,6 +1063,7 @@ app.addEventListener('click', async (e) => {
     case 'crmimportnew': openCrmImport(null); break;
     case 'addrel': if (ccl) openRelPicker(ccl); break;
     case 'relgraph': openRelGraph(); break;
+    case 'editcats': openCatEditor(); break;
     case 'pasteimg': pasteFromClipboard(); break;
     case 'editsteps': openStepEditor(c.cat); break;
     case 'linkcase': openLinkPicker(c); break;

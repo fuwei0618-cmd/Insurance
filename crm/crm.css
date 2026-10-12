@@ -264,3 +264,8 @@ details.disc>summary{list-style:none;cursor:pointer}details.disc>summary::-webki
 .tag.sm{padding:3px 8px;font-size:12px}
 .pprod{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:5px 8px;font-size:14px;min-width:0;color:var(--ink)}
 @media (max-width:600px){.prow{grid-template-columns:1fr auto}.prow .tags{grid-column:1/-1}.prow .pprod{grid-column:1/2}}
+.chip.chipedit{border-style:dashed}
+.cerow{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto auto;gap:6px;align-items:center;padding:4px 0}
+.cerow input{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 10px;font-size:15px;min-width:0;color:var(--ink)}
+.cerow .btn{padding:5px 10px}
+.cerow .btn:disabled{opacity:.35}
