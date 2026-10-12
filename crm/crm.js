@@ -380,6 +380,96 @@ function openCallImport() {
   setTimeout(() => $('ciText')?.focus(), 50);
 }
 function clientCases(cl) { return cases().filter((c) => c.clientId === cl.id).sort(byDate); }
+/* ================= 從 CRM 帶入（截圖在這台裝置上辨識，不會傳出去） ================= */
+function parseCRM(raw) {
+  let t = String(raw || '').replace(/\r/g, '')
+    .replace(/[！-～]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/　/g, ' ');
+  const tight = (s) => s.replace(/\s+/g, '');
+  const LABELS = '姓名|性別|手機|生日|出生|住家電話|公司電話|LINE ?ID|現居地址|公司地址|收費地址|通訊地址|戶籍地址|Email|E-mail|ID|身分證|年齡|編輯';
+  const lbl = (s) => s.split('').join('\\s*');
+  const LBL_RE = new RegExp('(' + ['姓名', '性別', '手機', '生日', '出生日期', '住家電話', '公司電話', '現居地址', '公司地址', '收費地址', '通訊地址', '戶籍地址', '年齡', '編輯資料'].map(lbl).join('|') + '|LINE\\s*ID|E-?mail)', 'gi');
+  t = t.replace(LBL_RE, '\n$1'); // 每個欄位名稱前斷行，避免黏到上一個值
+  const out = {};
+  const nm = t.match(new RegExp(lbl('姓名') + '[\\s:：]*((?:[\\u4e00-\\u9fff][ \\t]?){2,4})'));
+  if (nm) out.name = tight(nm[1]).replace(new RegExp('(' + LABELS + ').*$'), '').slice(0, 4);
+  const g = t.match(new RegExp(lbl('性別') + '[\\s:：]*([男女])')); if (g) out.gender = g[1];
+  const id = t.match(/\b([A-Z][12]\d{8})\b/); if (id) out.idNo = id[1];
+  const bd = t.match(new RegExp('(?:' + lbl('生日') + '|' + lbl('出生日期') + ')[\\s:：]*(\\d{2,4})\\s*[\\/.\\-年]\\s*(\\d{1,2})\\s*[\\/.\\-月]\\s*(\\d{1,2})'));
+  if (bd) { let y = +bd[1]; if (y < 1911) y += 1911; out.birthday = `${y}-${String(bd[2]).padStart(2, '0')}-${String(bd[3]).padStart(2, '0')}`; }
+  const ph = t.match(/(09\d{2})[\s-]?(\d{3})[\s-]?(\d{3})/); if (ph) out.phone = ph[1] + ph[2] + ph[3];
+  const tel = (label) => { const m = t.match(new RegExp(lbl(label) + '[\\s:：]*(\\(?0\\d{1,2}\\)?[\\s-]?\\d{3,4}[\\s-]?\\d{3,4}(?:\\s*#\\s*\\d+)?)')); return m ? m[1].replace(/\s/g, '') : ''; };
+  out.homeTel = tel('住家電話'); out.workTel = tel('公司電話');
+  const em = t.match(/([A-Za-z0-9._%+-]+)\s*@\s*([A-Za-z0-9.-]+)/);
+  if (em) { let dom = em[2].replace(/(com)(tw)$/i, '$1.$2'); if (!/\./.test(dom)) dom = dom.replace(/[Ll1I]?(com|net|org)$/, '.$1'); out.email = em[1] + '@' + dom.replace(/\.$/, ''); }
+  const line = t.match(/LINE\s*ID[\s:：]*([A-Za-z0-9._\-]{3,})/i); if (line) out.line = line[1];
+  const addr = (label) => { const m = t.match(new RegExp(lbl(label) + '[\\s:：]*(\\d{3,6}\\s*[\\u4e00-\\u9fff][^\\n]*)')); if (!m) return ''; let a = tight(m[1]); const end = a.search(/(號|樓|室)(?!.*(號|樓|室))/); if (end >= 0) a = a.slice(0, end + 1).replace(/(之\d+)?$/, (x) => x); return a; };
+  out.address = addr('現居地址') || addr('通訊地址') || addr('收費地址') || addr('戶籍地址');
+  out.billAddress = addr('收費地址'); out.workAddress = addr('公司地址');
+  Object.keys(out).forEach((k) => { if (!out[k]) delete out[k]; });
+  return out;
+}
+
+const CRM_FIELDS = [['name', '姓名'], ['gender', '性別'], ['birthday', '生日'], ['idNo', '身分證字號'], ['phone', '手機'], ['homeTel', '住家電話'], ['workTel', '公司電話'], ['line', 'LINE ID'], ['email', 'Email'], ['address', '地址'], ['billAddress', '收費地址'], ['workAddress', '公司地址']];
+let OCR = null, CRMI = null;
+function loadScript(src) { return new Promise((ok, bad) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => bad(new Error('載入失敗')); document.head.appendChild(s); }); }
+async function ocrWorker() {
+  if (OCR) return OCR;
+  const abs = (p) => new URL(p, location.href).href;
+  if (!window.Tesseract) await loadScript('vendor/ocr/tesseract.min.js');
+  OCR = await Tesseract.createWorker(['chi_tra', 'eng'], 1, { workerPath: abs('vendor/ocr/worker.min.js'), corePath: abs('vendor/ocr'), langPath: abs('vendor/ocr/lang'), gzip: true, workerBlobURL: false });
+  return OCR;
+}
+async function ocrImage(file) {
+  const bmp = await createImageBitmap(file);
+  const k = Math.min(2, 3600 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.filter = 'grayscale(1)'; x.drawImage(bmp, 0, 0, c.width, c.height);
+  const w = await ocrWorker(); const { data } = await w.recognize(c); return data.text;
+}
+function openCrmImport(target) {
+  CRMI = { target, shot: null };
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>從 CRM 帶入${target ? '「' + esc(target.name || '這位客戶') + '」' : ''}</h2><button class="btn" id="ciX">取消</button><button class="btn pri" id="ciRead">讀取</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:760px;margin:0 auto;width:100%">
+   <div class="note">兩種都可以：<br>・在公司 CRM 截圖後，<b>在這裡按 Ctrl+V</b>（或「選擇截圖」「📋 貼上」）。會在這台裝置上辨識，不會傳到外面。<br>・或在 CRM 頁面把那一區的文字選起來複製，貼到下面，最準。</div>
+   <div class="actions"><label class="btn">選擇截圖<input type="file" id="ciFile" accept="image/*"></label><button class="btn" id="ciPaste">📋 貼上</button><span class="sub" id="ciStatus"></span></div>
+   <img id="ciShot" alt="" hidden style="max-width:100%;border:1px solid var(--line);border-radius:6px">
+   <label class="f">文字（辨識結果會出現在這裡，可以直接修改）<textarea id="ciText" rows="7" placeholder="貼上文字或截圖"></textarea></label>
+   <div id="ciForm"></div></div></div>`;
+  $('ciX').onclick = closeCrmImport;
+  $('ciRead').onclick = () => showCrmForm(parseCRM($('ciText').value));
+  $('ciFile').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) crmFromImage(f); };
+  $('ciPaste').onclick = async () => { try { const items = await navigator.clipboard.read(); for (const it of items) { const t = it.types.find((y) => y.startsWith('image/')); if (t) { crmFromImage(new File([await it.getType(t)], 'shot.png', { type: t })); return; } if (it.types.includes('text/plain')) { $('ciText').value = await (await it.getType('text/plain')).text(); showCrmForm(parseCRM($('ciText').value)); return; } } toast('剪貼簿是空的'); } catch (err) { toast('這裡不能讀剪貼簿，請直接按 Ctrl+V'); } };
+  $('ciText').addEventListener('paste', () => setTimeout(() => showCrmForm(parseCRM($('ciText').value)), 30));
+  setTimeout(() => $('ciText')?.focus(), 50);
+}
+function closeCrmImport() { CRMI = null; ov.innerHTML = ''; }
+async function crmFromImage(f) {
+  if (!CRMI) return; CRMI.shot = f;
+  const im = $('ciShot'); im.src = URL.createObjectURL(f); im.hidden = false;
+  $('ciStatus').textContent = OCR ? '辨識中…' : '第一次使用要先下載辨識元件（約 13MB），請稍等…';
+  try { const txt = await ocrImage(f); if (!CRMI) return; $('ciText').value = txt; $('ciStatus').textContent = '辨識完成，請檢查下面的欄位'; showCrmForm(parseCRM(txt)); }
+  catch (e) { console.warn(e); $('ciStatus').textContent = '辨識失敗：' + (e.message || e); }
+}
+function showCrmForm(data) {
+  if (!CRMI) return;
+  let tgt = CRMI.target; if (!tgt) tgt = clients().find((c) => (data.idNo && c.idNo === data.idNo) || (data.name && c.name === data.name)) || null;
+  CRMI.resolved = tgt;
+  const keys = CRM_FIELDS.filter(([k]) => data[k]);
+  if (!keys.length) { $('ciForm').innerHTML = '<div class="note" style="color:var(--warn);background:var(--warn-soft)">沒有讀到資料。截圖請包含「姓名」「ID」「手機」那一區，或改用複製文字。</div>'; return; }
+  $('ciForm').innerHTML = `<div class="sec"><h2>確認要帶入的資料 <span class="sub">${tgt ? `會更新「${esc(tgt.name)}」` : '會建立新客戶'}</span></h2>
+   ${keys.map(([k, l]) => { const old = tgt?.[k]; return `<div class="cirow"><label class="cichk"><input type="checkbox" data-cik="${k}" ${!old || old !== data[k] ? 'checked' : ''}> ${l}</label><input class="ciin" id="ci_${k}" value="${esc(data[k])}">${old && old !== data[k] ? `<span class="sub">目前：${esc(k === 'idNo' ? old.slice(0, 3) + '…' : old)}</span>` : old ? '<span class="sub">相同</span>' : ''}</div>`; }).join('')}
+   ${CRMI.shot ? '<label class="cichk" style="margin-top:6px"><input type="checkbox" id="ciKeep"> 把這張截圖也存進「證件與文件」</label>' : ''}
+   <div class="note">地址、姓名請特別看一下，辨識偶爾會錯一兩個字。</div>
+   <div class="actions"><button class="btn pri" id="ciApply">${tgt ? '更新資料' : '建立客戶'}</button></div></div>`;
+  $('ciApply').onclick = async () => {
+    const isNew = !CRMI.resolved, rec = CRMI.resolved || { name: '', docs: [] };
+    ov.querySelectorAll('[data-cik]').forEach((cb) => { if (cb.checked) rec[cb.dataset.cik] = $('ci_' + cb.dataset.cik).value.trim(); });
+    const saved = Vault.put('clients', rec); const keep = $('ciKeep')?.checked, shot = CRMI.shot;
+    closeCrmImport(); S.view = 'clients'; S.csel = saved.id; S.showDetail = true; S.showIds = false; App.render();
+    if (keep && shot) addImagesDirect(saved, 'clients', [shot], '');
+    toast(`已${isNew ? '建立' : '更新'}「${saved.name || '客戶'}」`);
+  };
+}
 /* ================= 關係圖 ================= */
 const rels = () => Vault.all('rels').filter((r) => Vault.get('clients', r.a) && Vault.get('clients', r.b));
 const FAMILY = ['parent', 'spouse', 'sibling', 'relative'];
@@ -485,7 +575,7 @@ function openRelGraph() {
 function clientListHTML() {
   const q = S.q.trim();
   const list = clients().filter((x) => !q || [x.name, x.phone, x.line, x.note].join(' ').includes(q)).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-Hant'));
-  return `<section class="col"><div class="colhead"><h1>客戶 <span style="display:flex;gap:6px"><button class="btn" data-act="relgraph">關係圖</button><button class="btn" data-act="newclient">＋ 新增</button></span></h1>
+  return `<section class="col"><div class="colhead"><h1>客戶 <span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="btn" data-act="relgraph">關係圖</button><button class="btn" data-act="crmimportnew">從 CRM 帶入</button><button class="btn" data-act="newclient">＋ 新增</button></span></h1>
   <div class="mobsync">${syncHTML()}</div>
   <input class="search" id="q" placeholder="搜尋姓名、電話、備註" value="${esc(S.q)}" autocomplete="off"></div>
   <div class="list">${list.length ? list.map((x) => { const n = clientCases(x).length, open = clientCases(x).filter((c) => c.status !== '已結案').length; return `<button class="item${x.id === S.csel ? ' on' : ''}" data-csel="${x.id}"><span class="t"><span>${esc(x.name || '未填姓名')}</span>${open ? `<span class="pill p-wait">${open} 件進行中</span>` : ''}</span><span class="s">${n} 個案件 · 證件 ${(x.docs || []).length} 張</span></button>`; }).join('') : `<div class="empty">${clients().length ? '沒有符合的客戶。' : '還沒有客戶。按「＋ 新增」，或在案件裡填客戶名字就會自動建立。'}</div>`}</div></section>`;
@@ -498,16 +588,19 @@ function clientDetailHTML() {
   if (S.ccat !== '全部' && !cs.some((c) => c.cat === S.ccat)) S.ccat = '全部';
   return `<button class="back" data-act="back">‹ 客戶列表</button>
   <div class="dhead"><input class="title" id="cf_name" data-cf="name" value="${esc(x.name)}" placeholder="客戶姓名" aria-label="客戶姓名"></div>
-  <div class="sec"><h2>基本資料</h2><div class="grid2">
+  <div class="sec"><h2>基本資料 <button class="btn" data-act="crmimport" style="padding:4px 10px;font-size:13px">從 CRM 帶入</button></h2><div class="grid2">
    <label class="f">性別<select id="cf_gender" data-cf="gender">${['', '女', '男'].map((g) => `<option${g === (x.gender || '') ? ' selected' : ''}>${g}</option>`).join('')}</select></label>
    ${f('birthday', '生日', 'type="date"')}
    <label class="f"><span style="display:flex;justify-content:space-between">身分證字號<button class="linkbtn" data-reveal="cf_idNo">顯示</button></span><input id="cf_idNo" data-cf="idNo" class="secret" value="${esc(x.idNo)}" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
    ${f('phone', '手機', 'inputmode="tel"')}
+   ${f('homeTel', '住家電話', 'inputmode="tel"')}
+   ${f('workTel', '公司電話', 'inputmode="tel"')}
    ${f('line', 'LINE ID')}
    ${f('email', 'Email', 'inputmode="email"')}
    ${f('job', '職業')}
    ${f('source', '來源／介紹人')}</div>
    ${f('address', '地址')}
+   ${x.billAddress || x.workAddress ? `<div class="grid2">${f('billAddress', '收費地址')}${f('workAddress', '公司地址')}</div>` : ''}
    <label class="f">備註<textarea id="cf_note" data-cf="note" rows="3" placeholder="家庭狀況、保單重點、喜好…">${esc(x.note)}</textarea></label></div>
   ${relsHTML(x)}
   <div class="sec"><h2>證件與文件 <button class="btn" data-act="toggleids" style="padding:4px 10px;font-size:13px">${S.showIds ? '隱藏證件' : '顯示證件'}</button></h2>
@@ -765,6 +858,8 @@ app.addEventListener('click', async (e) => {
     case 'tocliient': { const k = curCall(); if (!k) break; let cl = clients().find((x) => x.name === k.name && k.name); if (!cl) cl = Vault.put('clients', { name: k.name, phone: k.phone, note: [k.source, k.note].filter(Boolean).join('\n'), docs: [] }); k.clientId = cl.id; Vault.put('calls', k); App.render(); toast(`已轉成客戶「${cl.name || '未填姓名'}」`); break; }
     case 'delcall': if (armConfirm(b, '再按一次確定刪除')) { Vault.del('calls', S.ksel); S.ksel = null; S.showDetail = false; App.render(); } break;
     case 'tplfor': S.view = 'tpl'; S.tplCat = c.cat; S.tplGroup = '全部'; S.q = ''; S.showDetail = false; App.render(); break;
+    case 'crmimport': if (ccl) openCrmImport(ccl); break;
+    case 'crmimportnew': openCrmImport(null); break;
     case 'addrel': if (ccl) openRelPicker(ccl); break;
     case 'relgraph': openRelGraph(); break;
     case 'pasteimg': pasteFromClipboard(); break;
@@ -983,7 +1078,7 @@ document.addEventListener('paste', (e) => {
   if (!Vault.key || MK) return;
   const files = [...(e.clipboardData?.items || [])].filter((i) => i.kind === 'file' && /^image\//.test(i.type)).map((i) => i.getAsFile()).filter(Boolean);
   if (!files.length) return; // 一般文字照常貼上
-  e.preventDefault(); takeImages(files);
+  e.preventDefault(); if (CRMI) { crmFromImage(files[0]); return; } takeImages(files);
 });
 function nextQueued() { if (SC.queue.length) loadFile(SC.queue.shift()); else renderScanner(); }
 function onFiles(files) { if (!SC || !files.length) return; SC.queue.push(...[...files].slice(1)); loadFile(files[0]); }

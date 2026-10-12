@@ -242,3 +242,8 @@ svg.graph{width:100%;height:auto;display:block}
 .lg.friend{border-top:2px dashed var(--warn)}.lg.colleague{border-top:2px dotted var(--muted)}.lg.referral{border-top:2px dashed var(--danger)}
 .gel,.gnl{paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round}
 .ov .gel,.ov .gnl{stroke:var(--bg)}
+/* 從 CRM 帶入 */
+.cirow{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:8px;align-items:center;padding:3px 0}
+.cichk{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted)}
+.ciin{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 8px;font-size:15px;min-width:0;color:var(--ink)}
+@media (max-width:600px){.cirow{grid-template-columns:1fr}}
