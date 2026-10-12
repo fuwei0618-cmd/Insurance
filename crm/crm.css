@@ -259,3 +259,8 @@ details.disc>summary{list-style:none;cursor:pointer}details.disc>summary::-webki
 .discpre{margin:0;white-space:pre-wrap;font-family:var(--f-body);font-size:14px;background:var(--surface);border-radius:6px;padding:8px 10px}
 .unit{display:flex;align-items:center;gap:6px}.unit input{flex:1;min-width:0}.unit i{font-style:normal;color:var(--muted);font-size:13px}
 .nimg.pdfmini{display:flex;align-items:center;justify-content:center;background:var(--danger-soft);color:var(--danger);font-weight:700}
+/* 要保人／被保險人 */
+.prow{display:grid;grid-template-columns:minmax(70px,auto) auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:5px 0;border-bottom:1px dotted var(--line)}
+.tag.sm{padding:3px 8px;font-size:12px}
+.pprod{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:5px 8px;font-size:14px;min-width:0;color:var(--ink)}
+@media (max-width:600px){.prow{grid-template-columns:1fr auto}.prow .tags{grid-column:1/-1}.prow .pprod{grid-column:1/2}}

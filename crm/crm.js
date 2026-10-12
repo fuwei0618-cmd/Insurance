@@ -277,10 +277,10 @@ function tabsHTML() {
   const t = [NAV[0], NAV[1], NAV[2], ['scan', '掃描', 'scan'], NAV[3], ['refs', '參考', 'book'], NAV[5]];
   return `<nav class="tabs" aria-label="分頁">${t.map(([k, l, i]) => k === 'scan' ? `<button class="tab scan" data-act="scan"><span class="c">${ICON.scan}</span>${l}</button>` : `<button class="tab${S.view === k ? ' on' : ''}" data-nav="${k}">${ICON[i]}${l}</button>`).join('')}</nav>`;
 }
-function caseSummary(c) { const a = [c.cat]; if (c.items?.length) a.push(c.items.slice(0, 2).join('、')); if (c.causeType) a.push(c.causeType + (c.causeDetail ? '›' + c.causeDetail : '')); return a.join(' · '); }
+function caseSummary(c) { const a = [c.cat]; if ((c.people || []).length > 1) a.push(c.people.length + ' 人'); if (c.items?.length) a.push(c.items.slice(0, 2).join('、')); if (c.causeType) a.push(c.causeType + (c.causeDetail ? '›' + c.causeDetail : '')); return a.join(' · '); }
 function filteredCases() {
   const q = S.q.trim();
-  return cases().filter((c) => (S.cat === '全部' || c.cat === S.cat) && (!q || [c.client, c.title, c.notes, c.diag, c.next].join(' ').includes(q))).sort(byDate);
+  return cases().filter((c) => (S.cat === '全部' || c.cat === S.cat) && (!q || [c.client, c.title, c.notes, c.diag, c.next, ...(c.people || []).map((p) => Vault.get('clients', p.clientId)?.name || '')].join(' ').includes(q))).sort(byDate);
 }
 function caseListHTML() {
   const list = filteredCases();
@@ -305,6 +305,7 @@ function caseDetailHTML() {
    <label class="f">類別<select id="f_cat" data-f="cat">${CATS.map((x) => `<option${x === c.cat ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
    <label class="f">狀態<select id="f_status" data-f="status">${STATUS.map((x) => `<option${x === c.status ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
    <label class="f">下一步<input id="f_next" data-f="next" value="${esc(c.next)}" placeholder="例如：補診斷書正本"></label></div></div>
+  ${peopleHTML(c)}
   ${timelineHTML(c)}
   ${isClaim ? `<div class="sec"><h2>理賠分類</h2>
    <div class="sub">險種項目（可複選）</div><div class="tags">${ITEMS.map((x) => `<button class="tag${c.items.includes(x) ? ' on' : ''}" data-item="${x}">${x}</button>`).join('')}</div>
@@ -379,7 +380,57 @@ function openCallImport() {
   $('ciGo').onclick = () => { const rows = parse(); if (!rows.length) { toast('先貼上名單'); return; } const src = $('ciSrc').value.trim(); rows.forEach((r) => Vault.put('calls', { ...r, source: src, status: '待撥', nextDate: '', logs: [] })); ov.innerHTML = ''; S.kst = '全部'; App.render(); toast(`已匯入 ${rows.length} 位`); };
   setTimeout(() => $('ciText')?.focus(), 50);
 }
-function clientCases(cl) { return cases().filter((c) => c.clientId === cl.id).sort(byDate); }
+/* 一個案件多位要保人／被保險人 */
+const ROLES = ['要保人', '被保險人', '受益人'];
+function casePeople(c) { // 包含主要客戶
+  const ppl = (c.people || []).filter((p) => Vault.get('clients', p.clientId));
+  if (c.clientId && Vault.get('clients', c.clientId) && !ppl.some((p) => p.clientId === c.clientId)) ppl.unshift({ clientId: c.clientId, roles: [], primary: true });
+  return ppl;
+}
+function peopleHTML(c) {
+  if (!['新契約', '建議書', '保全', '產險'].includes(c.cat) && !(c.people || []).length) return '';
+  const ppl = c.people || [];
+  const main = c.clientId && !ppl.some((p) => p.clientId === c.clientId) ? Vault.get('clients', c.clientId) : null;
+  return `<div class="sec"><h2>要保人／被保險人 <button class="btn" data-act="addperson" style="padding:4px 10px;font-size:13px">＋ 加人</button></h2>
+   ${main ? `<div class="sub">主要客戶「${esc(main.name)}」也可以按「＋ 加人」加進來標角色。</div>` : ''}
+   ${ppl.length ? ppl.map((p, i) => { const x = Vault.get('clients', p.clientId); if (!x) return ''; return `<div class="prow"><button class="linkbtn relname" data-goclient="${x.id}">${esc(x.name || '未填姓名')}</button><span class="tags">${ROLES.map((r) => `<button class="tag sm${p.roles.includes(r) ? ' on' : ''}" data-prole="${i}:${r}">${r}</button>`).join('')}</span><input class="pprod" data-pprod="${i}" value="${esc(p.product)}" placeholder="險種／商品"><button class="tldel" data-pdel="${i}" aria-label="移除">✕</button></div>`; }).join('')
+    : '<div class="sub">一個家庭一起投保時，把每個人加進來，標出誰是要保人、誰是被保險人。案件會出現在每個人的客戶頁。</div>'}</div>`;
+}
+function openPersonPicker(c) {
+  const fam = new Set(); const main = c.clientId;
+  if (main) rels().forEach((r) => { if (FAMILY.includes(r.type)) { if (r.a === main) fam.add(r.b); if (r.b === main) fam.add(r.a); } });
+  const inCase = new Set((c.people || []).map((p) => p.clientId));
+  const draw = () => {
+    const q = ($('ppQ')?.value || '').trim();
+    const pool = clients().filter((x) => !inCase.has(x.id) && (!q || (x.name || '').includes(q))).sort((a, b) => (b.id === main) - (a.id === main) || fam.has(b.id) - fam.has(a.id) || (a.name || '').localeCompare(b.name || '', 'zh-Hant')).slice(0, 40);
+    $('ppList').innerHTML = (q && !clients().some((x) => x.name === q) ? `<button class="item" data-newp="1"><span class="t">＋ 新增「${esc(q)}」</span></button>` : '') + pool.map((x) => `<button class="item" data-pp="${x.id}"><span class="t"><span>${esc(x.name || '未填姓名')}</span>${x.id === main ? '<span class="pill p-go">主要客戶</span>' : fam.has(x.id) ? '<span class="pill p-go">家人</span>' : ''}</span></button>`).join('');
+  };
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>加入要保人／被保險人</h2><button class="btn pri" id="ppX">完成</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:640px;margin:0 auto;width:100%">
+   <div class="sub">先選角色，再點人（可以連續加好幾位）</div>
+   <div class="tags" id="ppRoles">${ROLES.map((r, i) => `<button class="tag${i === 1 ? ' on' : ''}" data-r="${r}">${r}</button>`).join('')}</div>
+   <input class="search" id="ppQ" placeholder="搜尋或輸入名字" autocomplete="off"><div class="list" id="ppList" style="padding:0"></div></div></div>`;
+  let roles = ['被保險人'];
+  $('ppRoles').onclick = (e) => { const b = e.target.closest('[data-r]'); if (!b) return; b.classList.toggle('on'); roles = [...$('ppRoles').querySelectorAll('.tag.on')].map((x) => x.dataset.r); };
+  $('ppX').onclick = () => { ov.innerHTML = ''; App.render(); };
+  $('ppQ').oninput = draw;
+  $('ppList').onclick = (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    let x = b.dataset.pp ? Vault.get('clients', b.dataset.pp) : null;
+    if (b.dataset.newp) x = Vault.put('clients', { name: $('ppQ').value.trim(), docs: [] });
+    if (!x) return;
+    c.people = [...(c.people || []), { clientId: x.id, roles: [...roles], product: '' }]; inCase.add(x.id); saveCase(c);
+    $('ppQ').value = ''; draw(); toast(`已加入 ${x.name}（${roles.join('、') || '未標角色'}）`);
+  };
+  draw();
+}
+function openWhoPicker(c, ppl) {
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>存誰的告知資料？</h2><button class="btn" id="wpX">取消</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:520px;margin:0 auto;width:100%"><div class="list" style="padding:0">${ppl.map((p) => { const x = Vault.get('clients', p.clientId); return `<button class="item" data-who="${x.id}"><span class="t"><span>${esc(x.name || '未填姓名')}</span><span class="sub">${esc((p.roles || []).join('、'))}</span></span></button>`; }).join('')}</div></div></div>`;
+  $('wpX').onclick = () => (ov.innerHTML = '');
+  ov.querySelectorAll('[data-who]').forEach((b) => (b.onclick = () => openDisclosure(Vault.get('clients', b.dataset.who), null, c.id)));
+}
+function clientCases(cl) { return cases().filter((c) => c.clientId === cl.id || (c.people || []).some((p) => p.clientId === cl.id)).sort(byDate); }
 /* ================= 從 CRM 帶入（截圖在這台裝置上辨識，不會傳出去） ================= */
 function parseCRM(raw) {
   let t = String(raw || '').replace(/\r/g, '')
@@ -708,7 +759,7 @@ function clientDetailHTML() {
    ${docs.some((d) => !isPdf(d)) ? '<div class="actions"><button class="btn" data-act="cpdf">圖片合成 PDF</button><button class="btn" data-act="cshare">匯出遮罩版</button></div>' : ''}</div>
   <div class="sec"><h2>案件 <button class="btn" data-act="ccase" style="padding:4px 10px;font-size:13px">＋ 新增${S.ccat !== '全部' ? esc(S.ccat) : '案件'}</button></h2>
    ${cs.length ? `<div class="chips">${['全部', ...CATS.filter((k) => cs.some((c) => c.cat === k))].map((k) => `<button class="chip${S.ccat === k ? ' on' : ''}" data-ccat="${k}">${k} <span class="cnt">${k === '全部' ? cs.length : cs.filter((c) => c.cat === k).length}</span></button>`).join('')}</div>` : ''}
-   ${cs.length ? cs.filter((c) => S.ccat === '全部' || c.cat === S.ccat).map((c) => `<button class="item" data-gocase="${c.id}"><span class="t"><span>${esc(c.title || '未命名')}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${fmtDay(caseDate(c))} · ${esc(caseSummary(c))}${c.next ? ' · 下一步：' + esc(c.next) : ''}</span></button>`).join('') : '<div class="sub">還沒有案件。</div>'}</div>
+   ${cs.length ? cs.filter((c) => S.ccat === '全部' || c.cat === S.ccat).map((c) => `<button class="item" data-gocase="${c.id}"><span class="t"><span>${esc(c.title || '未命名')}${(() => { const p = (c.people || []).find((y) => y.clientId === x.id); return p && p.roles.length ? ' <span class="sub">（' + esc(p.roles.join('、')) + '）</span>' : c.clientId !== x.id ? ' <span class="sub">（' + esc(c.client) + ' 的案件）</span>' : ''; })()}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${fmtDay(caseDate(c))} · ${esc(caseSummary(c))}${c.next ? ' · 下一步：' + esc(c.next) : ''}</span></button>`).join('') : '<div class="sub">還沒有案件。</div>'}</div>
   <div class="actions"><button class="btn danger" data-act="delclient">刪除客戶</button></div>`;
 }
 const isPdf = (d) => d.type === 'pdf';
@@ -888,6 +939,8 @@ app.addEventListener('click', async (e) => {
   if (d.editdisc && ccl) { openDisclosure(ccl, d.editdisc, ''); return; }
   if (d.deldisc && ccl) { if (armConfirm(b, '再按一次刪除')) { const r = (ccl.disclosures || []).find((x) => x.id === d.deldisc); (r?.files || []).forEach((f) => Files.remove(f.fileId)); ccl.disclosures = (ccl.disclosures || []).filter((x) => x.id !== d.deldisc); Vault.put('clients', ccl); App.render(); } return; }
   if (d.discfile) { const [rid, i] = d.discfile.split(':'); const r = (curClient()?.disclosures || []).find((x) => x.id === rid); const f = r?.files?.[+i]; if (f) openViewer({ ...f, masks: [] }); return; }
+  if (d.prole && c) { const [i, r] = d.prole.split(':'); const p = c.people[+i]; p.roles = p.roles.includes(r) ? p.roles.filter((x) => x !== r) : [...p.roles, r]; saveCase(c); App.render(); return; }
+  if (d.pdel && c) { if (armConfirm(b, '移除？')) { c.people.splice(+d.pdel, 1); saveCase(c); App.render(); } return; }
   if (d.delrel) { if (armConfirm(b, '移除？')) { Vault.del('rels', d.delrel); App.render(); } return; }
   if (d.rename != null || d.crename != null) {
     const isC = d.crename != null, rec = isC ? curClient() : c, doc = rec?.docs[+(isC ? d.crename : d.rename)]; if (!doc) return;
@@ -962,7 +1015,8 @@ app.addEventListener('click', async (e) => {
     case 'tplfor': S.view = 'tpl'; S.tplCat = c.cat; S.tplGroup = '全部'; S.q = ''; S.showDetail = false; App.render(); break;
     case 'adddisc': if (ccl) openDisclosure(ccl, null, ''); break;
     case 'togglehealth': S.showHealth = !S.showHealth; App.render(); break;
-    case 'casedisc': { const cl2 = Vault.get('clients', c.clientId); if (cl2) openDisclosure(cl2, null, c.id); break; }
+    case 'casedisc': { const ppl = casePeople(c); if (ppl.length > 1) openWhoPicker(c, ppl); else { const cl2 = Vault.get('clients', c.clientId); if (cl2) openDisclosure(cl2, null, c.id); } break; }
+    case 'addperson': openPersonPicker(c); break;
     case 'crmimport': if (ccl) openCrmImport(ccl); break;
     case 'crmimportnew': openCrmImport(null); break;
     case 'addrel': if (ccl) openRelPicker(ccl); break;
@@ -1010,6 +1064,7 @@ app.addEventListener('change', (e) => {
 app.addEventListener('change', (e) => {
   const tk = ['tldate', 'tltitle', 'tlnote'].find((k) => e.target.dataset?.[k] != null);
   if (tk) { const c = cur(); const it = c?.timeline?.find((x) => x.id === e.target.dataset[tk]); if (!it) return; it[{ tldate: 'date', tltitle: 'title', tlnote: 'note' }[tk]] = e.target.value; saveCase(c); if (tk !== 'tlnote') App.render(); return; }
+  if (e.target.dataset?.pprod != null) { const c = cur(); if (!c) return; c.people[+e.target.dataset.pprod].product = e.target.value; saveCase(c); return; }
   if (e.target.dataset?.docdate != null) { const c = cur(); if (!c) return; c.docs[+e.target.dataset.docdate].date = e.target.value; saveCase(c); App.render(); return; }
   if (e.target.dataset?.cdocdate != null) { const cl = curClient(); if (!cl) return; cl.docs[+e.target.dataset.cdocdate].date = e.target.value; Vault.put('clients', cl); App.render(); return; }
   if (e.target.dataset?.movedoc != null) { const c = cur(); if (!c) return; c.docs[+e.target.dataset.movedoc].folder = e.target.value; saveCase(c); App.render(); return; }
