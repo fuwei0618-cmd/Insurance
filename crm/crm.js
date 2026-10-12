@@ -304,7 +304,7 @@ const App = {
     const keep = document.activeElement?.id, pos = document.activeElement?.selectionStart;
     app.innerHTML = h;
     if (keep && (keep === 'q')) { const el = $(keep); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) { } } }
-    drawThumbs();
+    drawThumbs(); fitNotes();
     if (v === 'clients' && curClient()) drawEgo(curClient());
   },
 };
@@ -839,13 +839,15 @@ function openStepEditor(cat) {
   $('stSave').onclick = () => { const list = [...new Set($('stText').value.split('\n').map((x) => x.trim()).filter(Boolean))]; setSteps(cat, list); ov.innerHTML = ''; App.render(); toast('常用步驟已更新'); };
   setTimeout(() => $('stText')?.focus(), 50);
 }
+function fitNote(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 2 + 'px'; }
+function fitNotes() { document.querySelectorAll('textarea.tlnote').forEach(fitNote); }
 const tlSorted = (c) => (c.timeline || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.at || '').localeCompare(a.at || ''));
 const latestStep = (c) => tlSorted(c)[0];
 function timelineHTML(c) {
   const tl = tlSorted(c), done = new Set(tl.map((e) => e.title)), steps = getSteps(c.cat);
   return `<div class="sec"><h2>進度 <span class="sub">${tl.length ? tl.length + ' 筆，新的在上面' : '每個時間點記一筆'}</span></h2>
    <div class="tags">${steps.map((x) => `<button class="tag${done.has(x) ? ' did' : ''}" data-addstep="${esc(x)}">${done.has(x) ? '✓' : '＋'} ${esc(x)}</button>`).join('')}<button class="tag" data-addstep="">＋ 其他</button><button class="tag tagedit" data-act="editsteps">⚙ 編輯常用步驟</button></div>
-   ${tl.length ? `<div class="tl">${tl.map((e) => `<div class="tli"><span class="tldot"></span><div class="tlrow"><input type="date" class="tldate" data-tldate="${e.id}" value="${esc(e.date)}" aria-label="日期"><input class="tltitle" data-tltitle="${e.id}" id="tlt_${e.id}" value="${esc(e.title)}" placeholder="做了什麼" aria-label="項目">${e.title && !steps.includes(e.title) ? `<button class="linkbtn" data-favstep="${esc(e.title)}" style="flex:none">＋ 常用</button>` : ''}<button class="tldel" data-tldel="${e.id}" aria-label="刪除這筆">✕</button></div><input class="tlnote" data-tlnote="${e.id}" id="tln_${e.id}" value="${esc(e.note)}" placeholder="備註（可不填）" aria-label="備註"></div>`).join('')}</div>` : ''}</div>`;
+   ${tl.length ? `<div class="tl">${tl.map((e) => `<div class="tli"><span class="tldot"></span><div class="tlrow"><input type="date" class="tldate" data-tldate="${e.id}" value="${esc(e.date)}" aria-label="日期"><input class="tltitle" data-tltitle="${e.id}" id="tlt_${e.id}" value="${esc(e.title)}" placeholder="做了什麼" aria-label="項目">${e.title && !steps.includes(e.title) ? `<button class="linkbtn" data-favstep="${esc(e.title)}" style="flex:none">＋ 常用</button>` : ''}<button class="tldel" data-tldel="${e.id}" aria-label="刪除這筆">✕</button></div><textarea class="tlnote" data-tlnote="${e.id}" id="tln_${e.id}" rows="1" placeholder="備註（可不填，Enter 換行）" aria-label="備註">${esc(e.note)}</textarea></div>`).join('')}</div>` : ''}</div>`;
 }
 function linksHTML(c) {
   const linked = (c.links || []).map((id) => Vault.get('cases', id)).filter(Boolean).sort(byDate);
@@ -1115,6 +1117,7 @@ app.addEventListener('change', (e) => {
 });
 app.addEventListener('change', (e) => { if (e.target.dataset?.f === 'client') { const c = cur(); if (!c) return; c.client = e.target.value; const made = linkClient(c); saveCase(c); App.render(); if (made) toast(`已建立客戶「${made.name}」`); return; } if (e.target.id === 'nImgs') { const k = e.target.files.length; $('nImgsN').textContent = k ? `已選 ${k} 張` : ''; return; } const f = e.target.dataset?.f; const c = cur(); if (!f || !c) return; c[f] = e.target.value; saveCase(c); if (['cat', 'status', 'cost', 'ratio', 'client', 'title', 'date'].includes(f)) App.render(); });
 app.addEventListener('input', (e) => {
+  if (e.target.classList?.contains('tlnote')) { fitNote(e.target); return; }
   if (e.target.id === 'q') { S.q = e.target.value; App.render(); }
   if (e.target.id === 'qq') {
     const q = e.target.value.trim(); const box = $('qres'); if (!q) { box.innerHTML = ''; return; }
