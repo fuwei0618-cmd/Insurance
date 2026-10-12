@@ -161,3 +161,11 @@ input[type=file]{display:none}
 @media (max-width:900px){.mobsync{display:flex}}
 /* 拖曳圖片進來時的提示 */
 body.dropping::after{content:"放開就加入這個案件";position:fixed;inset:12px;border:3px dashed var(--accent);border-radius:16px;background:color-mix(in srgb,var(--accent-soft) 70%,transparent);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:500;color:var(--accent-ink);z-index:50;pointer-events:none}
+/* SOP／範本附圖 */
+.nimgs{display:flex;gap:8px;flex-wrap:wrap}
+.nimg{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:0;width:92px;height:92px;overflow:hidden;display:block}
+.nimg img{width:100%;height:100%;object-fit:cover;display:block}
+.nimgs.edit .nimg,.nimgs.edit .nimgadd{width:120px;height:120px;aspect-ratio:auto}
+.nimgwrap{position:relative}
+.nimgdel{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;border:0;background:var(--ink);color:var(--bg);font-size:12px;line-height:26px;padding:0}
+#eImgs{display:none}

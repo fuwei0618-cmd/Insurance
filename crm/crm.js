@@ -335,10 +335,11 @@ function notesHTML(kind) {
   return `<h1 style="display:flex;justify-content:space-between;align-items:center;gap:8px">${kind === 'sop' ? 'SOP 作業流程' : '話術範本'}<button class="btn" data-act="import">批次匯入</button></h1>
   <input class="search" id="q" placeholder="搜尋" value="${esc(S.q)}" style="max-width:420px" autocomplete="off">
   ${kind === 'sop' ? `<div class="chips">${['全部', ...groups].map((g) => `<button class="chip${S.sopGroup === g ? ' on' : ''}" data-sg="${g}">${g}</button>`).join('')}</div>` : ''}
-  <div class="cards">${shown.map((n) => `<div class="card"><h3><span>${esc(n.title)}</span><span class="sub">${esc(n.group)}</span></h3><pre>${esc(n.body)}</pre><div class="mini">${kind === 'tpl' ? `<button data-copy="${n.id}">複製</button>` : ''}<button data-editnote="${n.id}">編輯</button><button data-delnote="${n.id}">刪除</button></div></div>`).join('') || `<div class="empty">${kind === 'sop' ? '還沒有流程。用下面的表單把 Notion、LINE 記事本裡的步驟加進來。' : '還沒有範本。'}</div>`}</div>
+  <div class="cards">${shown.map((n) => `<div class="card"><h3><span>${esc(n.title)}</span><span class="sub">${esc(n.group)}</span></h3><pre>${esc(n.body)}</pre>${nimgsHTML(n)}<div class="mini">${kind === 'tpl' ? `<button data-copy="${n.id}">複製</button>` : ''}<button data-editnote="${n.id}">編輯</button><button data-delnote="${n.id}">刪除</button></div></div>`).join('') || `<div class="empty">${kind === 'sop' ? '還沒有流程。用下面的表單把 Notion、LINE 記事本裡的步驟加進來。' : '還沒有範本。'}</div>`}</div>
   <div class="sec" style="max-width:620px"><h2>新增${kind === 'sop' ? '流程' : '範本'}</h2>
    <div class="grid2"><label class="f">分類<select id="nGroup">${groups.map((g) => `<option${S.sopGroup === g ? ' selected' : ''}>${g}</option>`).join('')}</select></label><label class="f">標題<input id="nTitle"></label></div>
    <label class="f">內容<textarea id="nBody" rows="4"></textarea></label>
+   <div class="f" style="font-size:13px;color:var(--muted)">附圖（可多張；要拍照拉正，新增後按「編輯 › 拍照／掃描」）<div class="actions" style="align-items:center"><label class="btn">＋ 選圖片<input type="file" id="nImgs" accept="image/*" multiple></label><span class="sub" id="nImgsN"></span></div></div>
    <div class="actions"><button class="btn pri" data-addnote="${kind}">新增</button></div></div>`;
 }
 function quickHTML() {
@@ -364,7 +365,9 @@ async function drawThumbTo(cv, d, solid) {
   x.fillStyle = solid ? '#111' : 'rgba(17,17,17,.82)';
   d.masks.forEach((m) => x.fillRect((cv.width - w) / 2 + m.x * w, (cv.height - h) / 2 + m.y * h, m.w * w, m.h * h));
 }
+function nimgsHTML(n) { return n.images?.length ? `<div class="nimgs">${n.images.map((f) => `<button class="nimg" data-nimg="${f}" data-ntitle="${esc(n.title)}" aria-label="放大看圖"><img data-fid="${f}" alt=""></button>`).join('')}</div>` : ''; }
 function drawThumbs() {
+  document.querySelectorAll('img[data-fid]').forEach(async (im) => { const u = await Files.url(im.dataset.fid).catch(() => null); if (u && im.isConnected) im.src = u; });
   const c = cur(); document.querySelectorAll('[data-thumb]').forEach((cv) => { const d = c?.docs[+cv.dataset.thumb]; if (d) drawThumbTo(cv, d, false); });
   const r = Vault.get('cases', S.refSel); document.querySelectorAll('[data-rthumb]').forEach((cv) => { const d = r?.docs[+cv.dataset.rthumb]; if (d) drawThumbTo(cv, d, true); });
 }
@@ -389,9 +392,16 @@ app.addEventListener('click', async (e) => {
   if (d.view && c) { openViewer(c.docs[+d.view]); return; }
   if (d.deldoc && c) { if (armConfirm(b, '確定？')) { const [doc] = c.docs.splice(+d.deldoc, 1); saveCase(c); if (doc) Files.remove(doc.fileId); App.render(); } return; }
   if (d.copy) { const n = Vault.get('notes', d.copy); try { await navigator.clipboard.writeText(n.body); toast('已複製'); } catch (err) { toast('無法自動複製，請長按文字選取'); } return; }
-  if (d.delnote) { if (armConfirm(b, '確定刪除？')) { Vault.del('notes', d.delnote); App.render(); } return; }
+  if (d.nimg) { openViewer({ fileId: d.nimg, name: d.ntitle || '附圖' }); return; }
+  if (d.delnote) { if (armConfirm(b, '確定刪除？')) { (Vault.get('notes', d.delnote)?.images || []).forEach((f) => Files.remove(f)); Vault.del('notes', d.delnote); App.render(); } return; }
   if (d.editnote) { editNote(d.editnote); return; }
-  if (d.addnote) { const t = $('nTitle').value.trim(), bd = $('nBody').value.trim(); if (!t && !bd) { toast('先填標題或內容'); return; } Vault.put('notes', { kind: d.addnote, group: $('nGroup').value, title: t || '未命名', body: bd }); App.render(); toast('已新增'); return; }
+  if (d.addnote) {
+    const t = $('nTitle').value.trim(), bd = $('nBody').value.trim(), imgs = [...($('nImgs')?.files || [])];
+    if (!t && !bd && !imgs.length) { toast('先填標題、內容或附圖'); return; }
+    const n = Vault.put('notes', { kind: d.addnote, group: $('nGroup').value, title: t || '未命名', body: bd, images: [] });
+    if (imgs.length) { b.disabled = true; await addNoteImages(n, imgs); }
+    App.render(); toast('已新增'); return;
+  }
   switch (d.act) {
     case 'scan': { let t = c; if (!t || S.view !== 'cases') { t = newCase('理賠'); S.view = 'cases'; } openScanner(t); break; }
     case 'newcase': newCase(S.cat === '全部' ? '理賠' : S.cat); App.render(); break;
@@ -408,7 +418,7 @@ app.addEventListener('click', async (e) => {
     case 'signout': await Vault.save(); Drive.signOut(); break;
   }
 });
-app.addEventListener('change', (e) => { const f = e.target.dataset?.f; const c = cur(); if (!f || !c) return; c[f] = e.target.value; saveCase(c); if (['cat', 'status', 'cost', 'ratio', 'client', 'title'].includes(f)) App.render(); });
+app.addEventListener('change', (e) => { if (e.target.id === 'nImgs') { const k = e.target.files.length; $('nImgsN').textContent = k ? `已選 ${k} 張` : ''; return; } const f = e.target.dataset?.f; const c = cur(); if (!f || !c) return; c[f] = e.target.value; saveCase(c); if (['cat', 'status', 'cost', 'ratio', 'client', 'title'].includes(f)) App.render(); });
 app.addEventListener('input', (e) => {
   if (e.target.id === 'q') { S.q = e.target.value; App.render(); }
   if (e.target.id === 'qq') {
@@ -418,12 +428,48 @@ app.addEventListener('input', (e) => {
   }
 });
 const ov = $('ovRoot');
+let NE = null; // 正在編輯的筆記（拖曳／貼上圖片會加到這裡）
+async function shrink(file, max = 2400, q = 0.85) { // 截圖縮到合理大小，文字仍清楚
+  const bmp = await createImageBitmap(file).catch(() => null); if (!bmp) return null;
+  const r = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas'); c.width = Math.round(bmp.width * r); c.height = Math.round(bmp.height * r);
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(bmp, 0, 0, c.width, c.height);
+  return await new Promise((ok) => c.toBlob((b) => ok(b), 'image/jpeg', q));
+}
+async function addNoteImages(n, files) {
+  const imgs = [...files].filter((f) => /^image\//.test(f.type)); let added = 0;
+  for (const f of imgs) { const blob = await shrink(f); if (!blob) continue; const id = await Files.add(blob, n.title || '附圖'); n.images = [...(n.images || []), id]; added++; }
+  if (added) Vault.put('notes', n);
+  if (imgs.length > added) toast('有圖片打不開，換一張試試');
+  return added;
+}
 function editNote(id, isNew) {
-  const n = Vault.get('notes', id);
-  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${n.kind === 'quick' ? '電話' : '編輯'}</h2><button class="btn" id="eCancel">取消</button><button class="btn pri" id="eSave">儲存</button></div><div class="ovbody" style="flex-direction:column;max-width:640px;margin:0 auto;width:100%"><label class="f">${n.kind === 'quick' ? '名稱' : '標題'}<input id="eT" value="${esc(n.title)}"></label>${n.kind === 'quick' ? `<label class="f">電話<input id="eB" inputmode="tel" value="${esc(n.body)}"></label>` : `<label class="f">內容<textarea id="eB" rows="10">${esc(n.body)}</textarea></label>`}${n.kind === 'quick' && !isNew ? '<div class="actions"><button class="btn danger" id="eDel">刪除這支電話</button></div>' : ''}</div></div>`;
-  $('eCancel').onclick = () => { if (isNew) Vault.del('notes', id); ov.innerHTML = ''; App.render(); };
-  $('eSave').onclick = () => { n.title = $('eT').value.trim() || '未命名'; n.body = $('eB').value; Vault.put('notes', n); ov.innerHTML = ''; App.render(); };
-  if ($('eDel')) $('eDel').onclick = () => { Vault.del('notes', id); ov.innerHTML = ''; App.render(); };
+  const n = Vault.get('notes', id); const withImgs = n.kind !== 'quick';
+  NE = withImgs ? n : null;
+  const imgsBlock = () => `<div class="sub">附圖 · 可以把圖片拖進來，或按 Ctrl+V 貼上截圖</div><div class="nimgs edit">${(n.images || []).map((f, i) => `<div class="nimgwrap"><button class="nimg" data-vimg="${f}" aria-label="放大看圖"><img data-fid="${f}" alt=""></button><button class="nimgdel" data-delimg="${i}" aria-label="移除這張圖">✕</button></div>`).join('')}<button class="adddoc nimgadd" id="eCam">${ICON.scan}拍照／掃描</button><button class="adddoc nimgadd" id="eAddImg">＋ 選圖片</button></div><input type="file" id="eImgs" accept="image/*" multiple>`;
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${n.kind === 'quick' ? '電話' : '編輯'}</h2><button class="btn" id="eCancel">取消</button><button class="btn pri" id="eSave">儲存</button></div><div class="ovbody" style="flex-direction:column;max-width:720px;margin:0 auto;width:100%">${n.kind === 'sop' || n.kind === 'tpl' ? `<label class="f">分類<select id="eG">${(n.kind === 'sop' ? SOPGROUPS : ['簡訊', '信件', '其他']).map((g) => `<option${g === n.group ? ' selected' : ''}>${g}</option>`).join('')}</select></label>` : ''}<label class="f">${n.kind === 'quick' ? '名稱' : '標題'}<input id="eT" value="${esc(n.title)}"></label>${n.kind === 'quick' ? `<label class="f">電話<input id="eB" inputmode="tel" value="${esc(n.body)}"></label>` : `<label class="f">內容<textarea id="eB" rows="10">${esc(n.body)}</textarea></label><div id="eImgBox">${imgsBlock()}</div>`}${n.kind === 'quick' && !isNew ? '<div class="actions"><button class="btn danger" id="eDel">刪除這支電話</button></div>' : ''}</div></div>`;
+  const close = () => { NE = null; ov.innerHTML = ''; App.render(); };
+  const wireImgs = () => {
+    if (!withImgs) return;
+    $('eImgBox').innerHTML = imgsBlock(); drawThumbs();
+    $('eAddImg').onclick = () => $('eImgs').click();
+    $('eCam').onclick = () => { // 先把正在打的字存起來，掃描完再回到編輯
+      n.title = $('eT').value.trim(); n.body = $('eB').value; if ($('eG')) n.group = $('eG').value; delete n.refresh; Vault.put('notes', n);
+      NE = null;
+      openScanner(n, {
+        onDone: async (pages) => { for (const p of pages) { n.images = [...(n.images || []), await Files.add(p.blob, n.title || p.name)]; URL.revokeObjectURL(p.url); } if (pages.length) Vault.put('notes', n); editNote(id, isNew); },
+        onCancel: () => editNote(id, isNew),
+      });
+    };
+    $('eImgs').onchange = async (e) => { const fs = [...e.target.files]; e.target.value = ''; toast('加入中…'); await addNoteImages(n, fs); wireImgs(); };
+    $('eImgBox').querySelectorAll('[data-vimg]').forEach((b) => (b.onclick = () => openViewer({ fileId: b.dataset.vimg, name: n.title || '附圖' }, true)));
+    $('eImgBox').querySelectorAll('[data-delimg]').forEach((b) => (b.onclick = () => { const [f] = n.images.splice(+b.dataset.delimg, 1); Files.remove(f); Vault.put('notes', n); wireImgs(); }));
+  };
+  NE && (NE.refresh = wireImgs);
+  wireImgs();
+  $('eCancel').onclick = () => { if (isNew) { (n.images || []).forEach((f) => Files.remove(f)); Vault.del('notes', id); } close(); };
+  $('eSave').onclick = () => { n.title = $('eT').value.trim() || '未命名'; n.body = $('eB').value; if ($('eG')) n.group = $('eG').value; delete n.refresh; Vault.put('notes', n); close(); };
+  if ($('eDel')) $('eDel').onclick = () => { Vault.del('notes', id); close(); };
 }
 
 /* ================= 批次匯入（Claude 整理好的匯入碼） ================= */
@@ -463,20 +509,21 @@ function openImport() {
 /* ================= 掃描 ================= */
 const fileIn = $('fileIn'), fileLib = $('fileLib');
 let SC = null;
-function openScanner(c) { SC = { c, pages: [], img: null, corners: null, filter: 'gray', drag: -1, queue: [] }; renderScanner(); }
+function openScanner(c, opts = {}) { SC = { c, pages: [], img: null, corners: null, filter: 'gray', drag: -1, queue: [], onDone: opts.onDone, onCancel: opts.onCancel }; renderScanner(); }
 function renderScanner() {
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>掃描文件</h2><span class="sub">${SC.pages.length} 頁</span><button class="btn" id="scCancel">取消</button><button class="btn pri" id="scDone">完成（${SC.pages.length}）</button></div>
   <div class="ovbody">${SC.img ? `<div class="stage"><canvas id="scCv"></canvas></div>
   <div class="side"><div class="note">拖曳四個角對齊文件邊緣，再按「加入這頁」。</div>
    <div><div class="sub" style="margin-bottom:4px">效果</div><div class="seg">${[['color', '原色'], ['gray', '灰階增強'], ['bw', '黑白']].map(([k, l]) => `<button data-flt="${k}" class="${SC.filter === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>
    <label class="f">文件名稱<input id="scName" value="${['醫療收據', '診斷證明', '申請書', '其他'][Math.min(SC.pages.length, 3)]}"></label>
-   <div class="actions"><button class="btn pri" id="scAdd">加入這頁</button><button class="btn" id="scRetake">重拍</button></div>
+   <div class="actions"><button class="btn pri" id="scAdd">加入這頁</button><button class="btn" id="scRetake">重拍</button><button class="btn" id="scFull">用整張圖</button></div>
    ${SC.pages.length ? `<div class="pages">${SC.pages.map((p) => `<img src="${p.url}" alt="${esc(p.name)}">`).join('')}</div>` : ''}</div>`
     : `<div class="pick">${ICON.scan}<div>拍一張文件、從相簿選照片，<br>或把圖片拖進來、按 Ctrl+V 貼上截圖</div><div class="actions" style="justify-content:center"><button class="btn pri" id="scCam">開相機</button><button class="btn" id="scLib">從相簿選</button></div>${SC.pages.length ? `<div class="pages">${SC.pages.map((p) => `<img src="${p.url}" alt="">`).join('')}</div>` : ''}</div>`}
   </div></div>`;
-  $('scCancel').onclick = () => { SC.pages.forEach((p) => URL.revokeObjectURL(p.url)); ov.innerHTML = ''; SC = null; App.render(); };
+  $('scCancel').onclick = () => { const s = SC; s.pages.forEach((p) => URL.revokeObjectURL(p.url)); ov.innerHTML = ''; SC = null; if (s.onCancel) s.onCancel(); else App.render(); };
   $('scDone').onclick = async () => {
     const s = SC; ov.innerHTML = ''; SC = null;
+    if (s.onDone) { if (s.pages.length) toast('加入中…'); await s.onDone(s.pages); return; }
     if (s.pages.length) {
       for (const p of s.pages) { const fileId = await Files.add(p.blob, p.name); s.c.docs.push({ id: uid(), name: p.name, fileId, masks: [] }); }
       saveCase(s.c); toast(`已加入 ${s.pages.length} 頁`);
@@ -486,6 +533,7 @@ function renderScanner() {
   if (!SC.img) { $('scCam').onclick = () => fileIn.click(); $('scLib').onclick = () => fileLib.click(); return; }
   ov.querySelectorAll('[data-flt]').forEach((b) => (b.onclick = () => { SC.filter = b.dataset.flt; renderScanner(); }));
   $('scRetake').onclick = () => { SC.img = null; nextQueued(); };
+  $('scFull').onclick = () => { const w = SC.img.width, h = SC.img.height; SC.corners = [[0, 0], [w, 0], [w, h], [0, h]]; renderScanner(); };
   $('scAdd').onclick = async () => { const blob = await warp(SC.img, SC.corners, SC.filter); SC.pages.push({ name: $('scName').value || '文件', blob, url: URL.createObjectURL(blob) }); SC.img = null; nextQueued(); };
   setupCornerCanvas();
 }
@@ -493,6 +541,8 @@ function renderScanner() {
 function takeImages(files) {
   const imgs = [...files].filter((f) => /^image\//.test(f.type));
   if (!imgs.length) { if (files.length) toast('只能放圖片（JPG、PNG）。PDF 請先截圖或轉成圖片'); return; }
+  if (NE) { toast('加入中…'); addNoteImages(NE, imgs).then(() => NE?.refresh?.()); return; }
+  if (!SC && (S.view === 'sop' || S.view === 'tpl')) { const n = Vault.put('notes', { kind: S.view, group: S.view === 'sop' ? (S.sopGroup === '全部' ? '壽險·其他' : S.sopGroup) : '其他', title: '', body: '', images: [] }); editNote(n.id, true); toast('加入中…'); addNoteImages(n, imgs).then(() => NE?.refresh?.()); return; }
   if (!SC) { let t = S.view === 'cases' ? cur() : null; if (!t) { t = newCase('理賠'); S.view = 'cases'; } openScanner(t); }
   if (SC.img) SC.queue.push(...imgs); else onFiles(imgs);
   if (imgs.length > 1) toast(`收到 ${imgs.length} 張，一張一張對齊後按「加入這頁」`);
@@ -565,8 +615,9 @@ function warp(img, k, filter) {
 }
 
 /* ================= 看原圖 ================= */
-async function openViewer(d) {
+async function openViewer(d, overEdit) {
   const url = await Files.url(d.fileId); if (!url) { toast('圖片讀取失敗，請確認網路'); return; }
+  if (overEdit) { const v = document.createElement('div'); v.innerHTML = `<div class="ov" style="z-index:30"><div class="ovhead"><h2>${esc(d.name)}</h2><button class="btn pri">關閉</button></div><div class="ovbody" style="justify-content:center"><img src="${url}" alt="" style="max-width:100%;height:auto;align-self:flex-start;border-radius:6px"></div></div>`; v.querySelector('button').onclick = () => v.remove(); document.body.appendChild(v); return; }
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${esc(d.name)}（原圖）</h2><button class="btn pri" id="vClose">關閉</button></div><div class="ovbody" style="justify-content:center"><img src="${url}" alt="${esc(d.name)}" style="max-width:100%;height:auto;align-self:flex-start;border-radius:6px"></div></div>`;
   $('vClose').onclick = () => (ov.innerHTML = '');
 }
