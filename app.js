@@ -468,19 +468,30 @@
   /* ---------- 講稿（密碼解密） ---------- */
   const Notes = {
     plain: null, open: false,
-    async unlock(pw) {
-      const n = H.notes, d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+    async decrypt(n, pw) {
+      const d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
       const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
       const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: d(n.salt), iterations: n.iter, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
       const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: d(n.iv) }, key, d(n.data));
-      this.plain = JSON.parse(new TextDecoder().decode(pt));
+      return JSON.parse(new TextDecoder().decode(pt));
     },
+    async unlock(pw) {
+      this.plain = await this.decrypt(H.notes, pw);
+      if (H.study) { try { Study.data = await this.decrypt(H.study, pw); } catch (e) { } }
+      $('btnStudy').classList.toggle('hidden', !Study.data);
+    },
+    mode: 'notes',
     update() {
       if (!this.open || !this.plain) return;
-      const k = keyOf(cur.c, cur.s);
-      $('npTitle').textContent = `講稿｜${CH[cur.c].short} P${cur.s + 1}`;
-      $('npBody').textContent = this.plain[k] || '（這一頁沒有講稿）';
-      $('npBody').scrollTop = 0;
+      const k = keyOf(cur.c, cur.s), qs = Study.forPage(k);
+      $('npTitle').textContent = `${CH[cur.c].short} P${cur.s + 1}`;
+      $('npTabQa').textContent = `這頁常被問（${qs.length}）`;
+      $('npTabQa').classList.toggle('hidden', !Study.data);
+      $('npTabNotes').classList.toggle('on', this.mode === 'notes'); $('npTabQa').classList.toggle('on', this.mode === 'qa');
+      const b = $('npBody');
+      if (this.mode === 'qa') { b.classList.add('qa'); b.innerHTML = qs.length ? qs.map(Study.qaItem).join('') : '<p class="np-empty">這一頁還沒有 Q&A。收集到客戶的問題後，交給 Claude 加進來。</p>'; }
+      else { b.classList.remove('qa'); b.textContent = this.plain[k] || '（這一頁沒有講稿）'; }
+      b.scrollTop = 0;
     },
     show() { this.open = true; $('notesPanel').classList.remove('hidden'); $('btnNotes').classList.add('on'); this.update(); },
     hide() { this.open = false; $('notesPanel').classList.add('hidden'); $('btnNotes').classList.remove('on'); },
@@ -687,6 +698,111 @@
   docBody.addEventListener('touchmove', (e) => { if (dg || Tool.finger) e.preventDefault(); }, { passive: false });
   window.addEventListener('resize', () => { if (Doc.isOpen()) Doc.pages.forEach((P) => P.surface && P.surface.resize()); });
 
+
+  /* ---------- 講者區：Q&A 話術庫・商品考題・今日複習 ---------- */
+  const Study = {
+    data: null, tab: 'today', cat: '全部', q: '',
+    forPage(k) { return this.data ? this.data.qa.filter((x) => x.page === k) : []; },
+    qaItem(x) {
+      return `<details class="qa-item"><summary><b>Q</b><span>${esc(x.q)}</span></summary><div class="qa-a"><p class="qa-short">${esc(x.short)}</p><p class="qa-full">${esc(x.full)}</p></div></details>`;
+    },
+    pageLabel(k) { const p = locate(k); return p ? `${CH[p.c].short} P${p.s + 1}` : ''; },
+    allQuiz() { const out = []; Object.entries(this.data.quiz).forEach(([c, arr]) => arr.forEach((_, i) => out.push(c + ':' + i))); return out; },
+    getQ(id) { const [c, i] = id.split(':'); const q = (this.data.quiz[c] || [])[+i]; return q && { ...q, code: c, id }; },
+    wrong() { return new Set(LS.get('study:wrong', [])); },
+    setWrong(set) { LS.set('study:wrong', [...set]); },
+    rng(seedStr) { let h = 1779033703 ^ seedStr.length; for (let i = 0; i < seedStr.length; i++) { h = Math.imul(h ^ seedStr.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); } return () => { h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; }; },
+    pick(arr, n, r) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a.slice(0, n); },
+    today() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); },
+    streak() { const days = LS.get('study:days', {}); let n = 0; const d = new Date(); if (!days[this.today()]) d.setDate(d.getDate() - 1); for (;;) { const k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); if (!days[k]) break; n++; d.setDate(d.getDate() - 1); } return n; },
+    open(tab) { if (!this.data) return; if (tab) this.tab = tab; $('study').classList.remove('hidden'); $('btnStudy').classList.add('on'); this.render(); },
+    close() { $('study').classList.add('hidden'); $('btnStudy').classList.remove('on'); },
+    render() {
+      document.querySelectorAll('#studyTabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === this.tab));
+      const w = this.wrong(); $('studyWrongN').textContent = w.size ? `（${w.size}）` : '';
+      const body = $('studyBody'); body.scrollTop = 0;
+      if (this.tab === 'today') return this.renderToday(body);
+      if (this.tab === 'qa') return this.renderQa(body);
+      if (this.tab === 'quiz') return this.renderQuizHome(body);
+      if (this.tab === 'wrong') return this.renderWrong(body);
+    },
+    renderToday(body) {
+      const day = this.today(), r = this.rng(day);
+      const slides = []; CH.forEach((ch) => ch.slides.forEach((sl) => slides.push(ch.n + '/' + sl.id)));
+      const pages = this.pick(slides, 3, r), qas = this.pick(this.data.qa, 5, r), qz = this.pick(this.allQuiz(), 5, r);
+      const done = LS.get('study:days', {})[day];
+      body.innerHTML = `<div class="st-wrap"><div class="st-hero"><div><h2>今日複習</h2><p>${day.replace(/-/g, '/')}・大約 10 分鐘</p></div><div class="st-streak"><b>${this.streak()}</b><span>連續天數</span></div></div>
+        <h3>① 翻 3 頁手冊</h3><div class="st-pages">${pages.map((k) => { const p = locate(k); return `<button class="st-page" data-go="${k}"><b>${esc(CH[p.c].short)} P${p.s + 1}</b><span>${esc(CH[p.c].slides[p.s].title)}</span></button>`; }).join('')}</div>
+        <h3>② 5 題 Q&A：先自己講一遍，再點開看答案</h3><div class="st-qa">${qas.map((x) => this.qaItem(x)).join('')}</div>
+        <h3>③ 5 題商品小考</h3><div id="todayQuiz"></div>
+        <div class="st-done">${done ? '<p>✓ 今天已完成複習</p>' : '<button class="btn" id="stDone">完成今日複習</button>'}</div></div>`;
+      this.runQuiz(body.querySelector('#todayQuiz'), qz, true);
+      const b = body.querySelector('#stDone'); if (b) b.onclick = () => { const d = LS.get('study:days', {}); d[day] = 1; LS.set('study:days', d); toast('今天複習完成！連續 ' + this.streak() + ' 天'); this.render(); };
+    },
+    renderQa(body) {
+      const cats = ['全部', ...new Set(this.data.qa.map((x) => x.cat))];
+      const q = this.q.trim();
+      const list = this.data.qa.filter((x) => (this.cat === '全部' || x.cat === this.cat) && (!q || (x.q + x.short + x.full).includes(q)));
+      body.innerHTML = `<div class="st-wrap"><div class="st-tools"><input class="field" id="qaSearch" placeholder="搜尋問題或關鍵字，例如：副本、等待期" value="${esc(this.q)}"></div>
+        <div class="chips">${cats.map((c) => `<button class="chip ${c === this.cat ? 'on' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+        <p class="note">${list.length} 題。點題目展開答案；「到手冊這頁」會直接翻到對應頁面。</p>
+        ${list.map((x) => `<details class="qa-item"><summary><b>Q</b><span>${esc(x.q)}</span><em>${esc(x.cat)}</em></summary><div class="qa-a"><p class="qa-short">${esc(x.short)}</p><p class="qa-full">${esc(x.full)}</p><button class="btn sm ghost" data-go="${esc(x.page)}">到手冊這頁（${esc(this.pageLabel(x.page))}）→</button></div></details>`).join('')}</div>`;
+      const inp = body.querySelector('#qaSearch');
+      inp.oninput = () => { this.q = inp.value; const pos = inp.selectionStart; this.renderQa(body); const n = body.querySelector('#qaSearch'); n.focus(); n.setSelectionRange(pos, pos); };
+    },
+    renderQuizHome(body) {
+      const st = LS.get('study:stats', { n: 0, ok: 0 });
+      const prods = Object.keys(this.data.quiz);
+      body.innerHTML = `<div class="st-wrap"><div class="st-hero"><div><h2>商品考題</h2><p>題目來自條款重點，每題都附條款頁碼</p></div><div class="st-streak"><b>${st.n ? Math.round(st.ok / st.n * 100) : 0}%</b><span>答對率（共 ${st.n} 題）</span></div></div>
+        <button class="btn" id="qzRandom">隨機 10 題</button>
+        <h3>依商品練習</h3><div class="st-prods">${prods.map((c) => `<button class="st-prod" data-code="${c}"><b>${esc((Doc.name(c) || c).replace(/^國泰人壽/, ''))}</b><span>${c}・${this.data.quiz[c].length} 題</span></button>`).join('')}</div><div id="qzRun"></div></div>`;
+      const run = (ids) => { body.querySelector('.st-prods').classList.add('hidden'); body.querySelector('#qzRandom').classList.add('hidden'); body.querySelector('h3').classList.add('hidden'); this.runQuiz(body.querySelector('#qzRun'), ids); };
+      body.querySelector('#qzRandom').onclick = () => run(this.pick(this.allQuiz(), 10, Math.random));
+      body.querySelectorAll('.st-prod').forEach((b) => b.onclick = () => run(this.data.quiz[b.dataset.code].map((_, i) => b.dataset.code + ':' + i)));
+    },
+    renderWrong(body) {
+      const ids = [...this.wrong()].filter((id) => this.getQ(id));
+      if (!ids.length) { body.innerHTML = '<div class="st-wrap"><div class="st-hero"><div><h2>錯題本</h2><p>答錯的題目會自動收在這裡，答對後自動移除。</p></div></div><p class="note">目前沒有錯題，太棒了！</p></div>'; return; }
+      body.innerHTML = `<div class="st-wrap"><div class="st-hero"><div><h2>錯題本</h2><p>${ids.length} 題・答對就會從錯題本移除</p></div></div><div id="wrRun"></div></div>`;
+      this.runQuiz(body.querySelector('#wrRun'), ids);
+    },
+    runQuiz(el, ids, inline) {
+      let i = 0, ok = 0; const wrongNow = [];
+      const show = () => {
+        if (i >= ids.length) {
+          el.innerHTML = `<div class="qz-end"><b>${ok} / ${ids.length}</b><span>答對</span>${wrongNow.length ? '<button class="btn sm" id="qzRetry">再做一次答錯的題目</button>' : ''}${inline ? '' : '<button class="btn sm ghost" id="qzBack">回到題庫</button>'}</div>`;
+          const r = el.querySelector('#qzRetry'); if (r) r.onclick = () => this.runQuiz(el, wrongNow.slice(), inline);
+          const bk = el.querySelector('#qzBack'); if (bk) bk.onclick = () => this.render();
+          return;
+        }
+        const q = this.getQ(ids[i]);
+        el.innerHTML = `<div class="qz"><div class="qz-top"><span>${i + 1} / ${ids.length}</span><span>${esc((Doc.name(q.code) || q.code).replace(/^國泰人壽/, ''))}</span></div><p class="qz-q">${esc(q.q)}</p><div class="qz-opts">${q.o.map((o, k) => `<button class="qz-o" data-k="${k}"><b>${'ABCD'[k]}</b>${esc(o)}</button>`).join('')}</div><div class="qz-exp hidden"></div></div>`;
+        el.querySelectorAll('.qz-o').forEach((b) => b.onclick = () => {
+          if (el.querySelector('.qz-o.done')) return;
+          const k = +b.dataset.k, right = k === q.a;
+          el.querySelectorAll('.qz-o').forEach((x) => { x.classList.add('done'); if (+x.dataset.k === q.a) x.classList.add('right'); });
+          if (!right) b.classList.add('bad');
+          const st = LS.get('study:stats', { n: 0, ok: 0 }); st.n++; if (right) st.ok++; LS.set('study:stats', st);
+          const w = this.wrong(); if (right) { ok++; w.delete(q.id); } else { w.add(q.id); wrongNow.push(q.id); } this.setWrong(w); $('studyWrongN').textContent = w.size ? `（${w.size}）` : '';
+          const ex = el.querySelector('.qz-exp'); ex.classList.remove('hidden');
+          ex.innerHTML = `<p><b>${right ? '答對了！' : '答案是 ' + 'ABCD'[q.a]}</b>　${esc(q.exp)}</p><div class="row">${Doc.has(q.code, 'terms') ? `<button class="btn sm ghost" data-terms="${q.code}:${q.p}">看條款第 ${q.p} 頁</button>` : ''}<button class="btn sm" data-next>${i + 1 < ids.length ? '下一題' : '看結果'}</button></div>`;
+          ex.querySelector('[data-next]').onclick = () => { i++; show(); };
+          const t = ex.querySelector('[data-terms]'); if (t) t.onclick = () => { const [c, p] = t.dataset.terms.split(':'); Doc.open(c, 'terms', +p); };
+        });
+      };
+      show();
+    },
+  };
+  $('btnStudy').onclick = () => (Study.data ? ($('study').classList.contains('hidden') ? Study.open() : Study.close()) : null);
+  $('studyClose').onclick = () => Study.close();
+  $('studyTabs').onclick = (e) => { const b = e.target.closest('button'); if (b) { Study.tab = b.dataset.t; Study.render(); } };
+  $('studyBody').addEventListener('click', (e) => {
+    const g = e.target.closest('[data-go]'); if (g) { Study.close(); go(g.dataset.go, true); return; }
+    const c = e.target.closest('[data-cat]'); if (c) { Study.cat = c.dataset.cat; Study.render(); }
+  });
+  $('npTabNotes').onclick = () => { Notes.mode = 'notes'; Notes.update(); };
+  $('npTabQa').onclick = () => { Notes.mode = 'qa'; Notes.update(); };
+
   /* ---------- 更多 ---------- */
   $('btnMore').onclick = () => {
     const editing = app.classList.contains('edit-hs');
@@ -709,7 +825,7 @@
       try { Object.keys(localStorage).filter((k) => k.startsWith('ink:') || k.startsWith('ink:doc:')).forEach((k) => localStorage.removeItem(k)); } catch (e) { }
       Ink.load(keyOf(cur.c, cur.s)); toast('已清除所有畫記');
     }, true);
-    b.querySelector('#mLock').onclick = () => { LS.del('npw'); try { sessionStorage.removeItem('npw'); } catch (e) { } Notes.plain = null; Notes.hide(); Sheet.close(); toast('講稿已鎖上'); };
+    b.querySelector('#mLock').onclick = () => { LS.del('npw'); try { sessionStorage.removeItem('npw'); } catch (e) { } Notes.plain = null; Study.data = null; Study.close(); $('btnStudy').classList.add('hidden'); Notes.hide(); Sheet.close(); toast('講稿已鎖上'); };
     b.querySelector('#mUpdate').onclick = async () => {
       Sheet.close();
       if (!('serviceWorker' in navigator)) { location.reload(); return; }
@@ -727,6 +843,7 @@
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => Ink.redraw());
   }
   start();
+  tryRemembered().then((ok) => { if (ok) $('btnStudy').classList.toggle('hidden', !Study.data); });
   window.addEventListener('hashchange', () => { const h = decodeURIComponent(location.hash.slice(1)); if (h.startsWith('catalog/')) { Catalog.open(h.slice(8)); return; } const p = locate(h); if (p && (p.c !== cur.c || p.s !== cur.s)) show(p.c, p.s); });
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then((reg) => {

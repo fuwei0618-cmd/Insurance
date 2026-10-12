@@ -28,6 +28,7 @@
     <div id="where"><span id="whereCh"></span><span id="whereTitle"></span></div>
     <button class="tb label" id="btnCatalog">商品庫</button>
     <button class="tb label" id="btnBoard">白板</button>
+    <button class="tb label hidden" id="btnStudy">複習</button>
     <button class="tb label" id="btnNotes">講稿</button>
     <button class="tb" id="btnMore" aria-label="更多">⋯</button>
   </header>
@@ -68,7 +69,7 @@
 </div>
 
 <div id="notesPanel" class="hidden">
-  <div class="np-head"><b id="npTitle">講稿</b><button class="tb" id="npSmaller">A−</button><button class="tb" id="npBigger">A＋</button><button class="tb" id="npClose" aria-label="收起講稿">✕</button></div>
+  <div class="np-head"><b id="npTitle">講稿</b><button class="tb npt on" id="npTabNotes">講稿</button><button class="tb npt hidden" id="npTabQa">這頁常被問</button><span class="spacer"></span><button class="tb" id="npSmaller">A−</button><button class="tb" id="npBigger">A＋</button><button class="tb" id="npClose" aria-label="收起講稿">✕</button></div>
   <div id="npBody"></div>
 </div>
 
@@ -95,6 +96,16 @@
     <button class="tb" id="docClose">✕ 關閉</button>
   </div>
   <div id="docBody"></div>
+</div>
+
+<div id="study" class="hidden">
+  <div id="studyBar">
+    <b>講者區</b>
+    <div id="studyTabs" class="chips"><button class="chip on" data-t="today">今日複習</button><button class="chip" data-t="qa">Q&amp;A 話術庫</button><button class="chip" data-t="quiz">商品考題</button><button class="chip" data-t="wrong">錯題本<span id="studyWrongN"></span></button></div>
+    <div class="spacer"></div>
+    <button class="tb" id="studyClose">✕ 關閉</button>
+  </div>
+  <div id="studyBody"></div>
 </div>
 
 <div id="toast" class="hidden"></div>

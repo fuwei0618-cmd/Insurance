@@ -112,6 +112,8 @@ def main():
     ap.add_argument('--out', required=True)
     ap.add_argument('--docs-manifest', help='DM／條款頁面清單 manifest.json')
     ap.add_argument('--summaries', help='條款重點 JSON 資料夾')
+    ap.add_argument('--qa', help='Q&A 話術庫 JSON（只放在 Claude 專案，不進 GitHub）')
+    ap.add_argument('--quiz', help='商品考題 JSON（只放在 Claude 專案，不進 GitHub）')
     a = ap.parse_args()
     pw = os.environ.get('HANDBOOK_PASSWORD')
     if not pw:
@@ -151,7 +153,8 @@ def main():
     if a.summaries:
         for f in sorted(Path(a.summaries).glob('*.json')):
             d = json.load(open(f)); docs['summaries'][d['code']] = d
-    data = {'version': version, 'chapters': chapters, 'notes': encrypt(notes, pw), 'selection': selection, 'docs': docs}
+    study = {'qa': json.load(open(a.qa)) if a.qa else [], 'quiz': json.load(open(a.quiz)) if a.quiz else {}}
+    data = {'version': version, 'chapters': chapters, 'notes': encrypt(notes, pw), 'study': encrypt(study, pw), 'selection': selection, 'docs': docs}
     (out / 'data').mkdir(exist_ok=True)
     (out / 'data' / 'handbook.js').write_text('window.HANDBOOK=' + json.dumps(data, ensure_ascii=False) + ';\n')
     (out / 'data' / 'catalog.json').write_text(json.dumps(catalog, ensure_ascii=False))
