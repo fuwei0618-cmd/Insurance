@@ -1,676 +1,652 @@
-/* 客戶管理 CRM：資料加密後存在使用者自己的 OneDrive（應用程式資料夾），iPad 上只暫存加密檔 */
+/* 工作手冊：案件、掃描、遮罩、理賠參考、SOP、快查、範本
+ * 資料加密後存在使用者自己的 OneDrive（應用程式 › Work › Cathay），裝置上只暫存加密檔。
+ * 原圖永遠保留；遮罩是另外存的框，分享時才畫進新圖。
+ */
 (() => {
-  'use strict';
-  const CFG = window.CRM_CONFIG || {};
-  const $ = (id) => document.getElementById(id);
-  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-  const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
-  const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
-  const fmtDate = (iso) => (iso ? iso.replace(/^(\d{4})-(\d{2})-(\d{2}).*/, '$1/$2/$3') : '');
-  const MOCK = (() => { try { return localStorage.getItem('crm:mock') === '1'; } catch (e) { return false; } })();
+'use strict';
+const CFG = window.CRM_CONFIG || {};
+const FOLDER = (CFG.FOLDER || 'Cathay').replace(/^\/+|\/+$/g, '');
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const MOCK = (() => { try { if (/[?&]test\b/.test(location.search)) localStorage.setItem('crm:mock', '1'); if (/[?&]real\b/.test(location.search)) localStorage.removeItem('crm:mock'); return localStorage.getItem('crm:mock') === '1'; } catch (e) { return false; } })();
+let toastT;
+function toast(m, ms = 2600) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), ms); }
 
-  function toast(msg, ms = 2000) { const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.add('hidden'), ms); }
+/* ================= 加密 ================= */
+const enc = new TextEncoder(), dec = new TextDecoder();
+const b64 = (u8) => { let s = ''; const a = new Uint8Array(u8); for (let i = 0; i < a.length; i += 0x8000) s += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(s); };
+const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+async function deriveKey(pw, salt) {
+  const base = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 310000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function seal(key, bytes) { const iv = crypto.getRandomValues(new Uint8Array(12)); const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, bytes)); const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12); return out; }
+async function unseal(key, bytes) { const u = new Uint8Array(bytes); return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.slice(0, 12) }, key, u.slice(12))); }
 
-  /* ================= 加密 ================= */
-  const enc = new TextEncoder(), dec = new TextDecoder();
-  const b64 = (u8) => { let s = ''; const a = new Uint8Array(u8); for (let i = 0; i < a.length; i += 0x8000) s += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(s); };
-  const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
-  async function deriveKey(pw, salt) {
-    const base = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveKey']);
-    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 310000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-  }
-  async function seal(key, bytes) { const iv = crypto.getRandomValues(new Uint8Array(12)); const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, bytes)); const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12); return out; }
-  async function open(key, bytes) { const u = new Uint8Array(bytes); return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.slice(0, 12) }, key, u.slice(12))); }
+/* ================= 本機暫存（IndexedDB，只放加密檔） ================= */
+const Cache = {
+  db: null,
+  async init() {
+    if (this.db) return this.db;
+    this.db = await new Promise((ok, bad) => { const r = indexedDB.open('work-cache', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => ok(r.result); r.onerror = () => bad(r.error); });
+    return this.db;
+  },
+  async get(k) { try { const db = await this.init(); return await new Promise((ok) => { const r = db.transaction('kv').objectStore('kv').get(k); r.onsuccess = () => ok(r.result); r.onerror = () => ok(undefined); }); } catch (e) { return undefined; } },
+  async set(k, v) { try { const db = await this.init(); await new Promise((ok) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = ok; t.onerror = ok; }); } catch (e) { } },
+  async del(k) { try { const db = await this.init(); await new Promise((ok) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').delete(k); t.oncomplete = ok; t.onerror = ok; }); } catch (e) { } },
+};
 
-  /* ================= 本機暫存（IndexedDB，只放加密檔） ================= */
-  const Cache = {
-    db: null,
-    async init() {
-      if (this.db) return this.db;
-      this.db = await new Promise((ok, bad) => { const r = indexedDB.open('crm-cache', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => ok(r.result); r.onerror = () => bad(r.error); });
-      return this.db;
-    },
-    async get(k) { try { const db = await this.init(); return await new Promise((ok) => { const r = db.transaction('kv').objectStore('kv').get(k); r.onsuccess = () => ok(r.result); r.onerror = () => ok(undefined); }); } catch (e) { return undefined; } },
-    async set(k, v) { try { const db = await this.init(); await new Promise((ok) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = ok; t.onerror = ok; }); } catch (e) { } },
-    async del(k) { try { const db = await this.init(); await new Promise((ok) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').delete(k); t.oncomplete = ok; t.onerror = ok; }); } catch (e) { } },
-    async clear() { try { const db = await this.init(); await new Promise((ok) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').clear(); t.oncomplete = ok; t.onerror = ok; }); } catch (e) { } },
-  };
+/* ================= OneDrive（Microsoft Graph，應用程式資料夾） ================= */
+const SCOPES = ['Files.ReadWrite.AppFolder', 'User.Read'];
+const Drive = {
+  msal: null, account: null,
+  async init() {
+    if (MOCK) { this.account = { username: '測試模式（資料只在這台裝置）' }; return; }
+    this.msal = new msal.PublicClientApplication({
+      auth: { clientId: CFG.CLIENT_ID, authority: 'https://login.microsoftonline.com/consumers', redirectUri: location.origin + location.pathname.replace(/index\.html$/, '') },
+      cache: { cacheLocation: 'localStorage' },
+    });
+    await this.msal.initialize();
+    const r = await this.msal.handleRedirectPromise().catch((e) => { console.warn(e); return null; });
+    this.account = (r && r.account) || this.msal.getAllAccounts()[0] || null;
+  },
+  signIn() { return this.msal.loginRedirect({ scopes: SCOPES, prompt: 'select_account' }); },
+  async signOut() { if (MOCK) { try { localStorage.removeItem('crm:mock'); } catch (e) { } location.reload(); return; } const a = this.account; this.account = null; await this.msal.logoutRedirect({ account: a }); },
+  async token() {
+    try { return (await this.msal.acquireTokenSilent({ scopes: SCOPES, account: this.account })).accessToken; }
+    catch (e) { if (e instanceof msal.InteractionRequiredAuthError) { await this.msal.acquireTokenRedirect({ scopes: SCOPES, account: this.account }); } throw e; }
+  },
+  async api(path, opts = {}) { const t = await this.token(); return fetch('https://graph.microsoft.com/v1.0' + path, { ...opts, headers: { Authorization: 'Bearer ' + t, ...(opts.headers || {}) } }); },
+  item: (p) => '/me/drive/special/approot:/' + (FOLDER + '/' + p).split('/').map(encodeURIComponent).join('/') + ':',
+  async getMeta(p) {
+    if (MOCK) return Mock.getMeta(p);
+    const r = await this.api(this.item(p) + '?select=id,eTag,size,@microsoft.graph.downloadUrl');
+    if (r.status === 404) return null;
+    if (!r.ok) throw new Error('OneDrive ' + r.status);
+    const j = await r.json(); return { eTag: j.eTag, size: j.size, url: j['@microsoft.graph.downloadUrl'] };
+  },
+  async download(p) {
+    if (MOCK) return Mock.download(p);
+    const m = await this.getMeta(p); if (!m) return null;
+    const r = await fetch(m.url); if (!r.ok) throw new Error('下載失敗 ' + r.status);
+    return { bytes: new Uint8Array(await r.arrayBuffer()), eTag: m.eTag };
+  },
+  async upload(p, bytes, eTag) { // eTag：只有在雲端版本沒被別台改過時才覆蓋
+    if (MOCK) return Mock.upload(p, bytes, eTag);
+    const headers = { 'Content-Type': 'application/octet-stream' };
+    if (eTag) headers['If-Match'] = eTag;
+    if (bytes.length <= 3.8 * 1024 * 1024) {
+      const r = await this.api(this.item(p) + '/content', { method: 'PUT', body: bytes, headers });
+      if (r.status === 412) { const e = new Error('conflict'); e.conflict = true; throw e; }
+      if (!r.ok) throw new Error('上傳失敗 ' + r.status);
+      return (await r.json()).eTag;
+    }
+    const s = await this.api(this.item(p) + '/createUploadSession', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(eTag ? { 'If-Match': eTag } : {}) }, body: JSON.stringify({ item: { '@microsoft.graph.conflictBehavior': 'replace' } }) });
+    if (s.status === 412) { const e = new Error('conflict'); e.conflict = true; throw e; }
+    if (!s.ok) throw new Error('上傳失敗 ' + s.status);
+    const url = (await s.json()).uploadUrl, CH = 3276800; let last;
+    for (let i = 0; i < bytes.length; i += CH) {
+      const part = bytes.subarray(i, Math.min(i + CH, bytes.length));
+      last = await fetch(url, { method: 'PUT', body: part, headers: { 'Content-Range': `bytes ${i}-${i + part.length - 1}/${bytes.length}` } });
+      if (!last.ok && last.status !== 202) throw new Error('上傳失敗 ' + last.status);
+    }
+    return (await last.json()).eTag;
+  },
+  async remove(p) { if (MOCK) return Mock.remove(p); const r = await this.api(this.item(p), { method: 'DELETE' }); return r.ok || r.status === 404; },
+};
+/* 測試模式：假雲端，資料只存在這台裝置的瀏覽器（網址加 ?test 開啟，?real 關閉） */
+const Mock = {
+  async getMeta(p) { const v = await Cache.get('mock:' + p); return v ? { eTag: v.eTag, size: v.bytes.length } : null; },
+  async download(p) { const v = await Cache.get('mock:' + p); return v ? { bytes: v.bytes, eTag: v.eTag } : null; },
+  async upload(p, bytes, eTag) { const v = await Cache.get('mock:' + p); if (eTag && v && v.eTag !== eTag) { const e = new Error('conflict'); e.conflict = true; throw e; } const t = uid(); await Cache.set('mock:' + p, { bytes, eTag: t }); return t; },
+  async remove(p) { await Cache.del('mock:' + p); return true; },
+};
 
-  /* ================= OneDrive（Microsoft Graph，應用程式資料夾） ================= */
-  const SCOPES = ['Files.ReadWrite.AppFolder', 'User.Read'];
-  const Drive = {
-    msal: null, account: null,
-    async init() {
-      if (MOCK) { this.account = { username: '測試帳號' }; return; }
-      this.msal = new msal.PublicClientApplication({
-        auth: { clientId: CFG.CLIENT_ID, authority: 'https://login.microsoftonline.com/consumers', redirectUri: location.origin + location.pathname.replace(/index\.html$/, '') },
-        cache: { cacheLocation: 'localStorage' },
-      });
-      await this.msal.initialize();
-      const r = await this.msal.handleRedirectPromise().catch((e) => { console.warn(e); return null; });
-      this.account = (r && r.account) || this.msal.getAllAccounts()[0] || null;
-    },
-    signIn() { return this.msal.loginRedirect({ scopes: SCOPES, prompt: 'select_account' }); },
-    async signOut() { if (MOCK) return; const a = this.account; this.account = null; await this.msal.logoutRedirect({ account: a }); },
-    async token() {
-      try { return (await this.msal.acquireTokenSilent({ scopes: SCOPES, account: this.account })).accessToken; }
-      catch (e) { if (e instanceof msal.InteractionRequiredAuthError) { await this.msal.acquireTokenRedirect({ scopes: SCOPES, account: this.account }); } throw e; }
-    },
-    async api(path, opts = {}) {
-      const t = await this.token();
-      const r = await fetch('https://graph.microsoft.com/v1.0' + path, { ...opts, headers: { Authorization: 'Bearer ' + t, ...(opts.headers || {}) } });
-      return r;
-    },
-    item: (p) => '/me/drive/special/approot:/' + p.split('/').map(encodeURIComponent).join('/') + ':',
-    async getMeta(p) {
-      if (MOCK) return Mock.getMeta(p);
-      const r = await this.api(this.item(p) + '?select=id,eTag,size,@microsoft.graph.downloadUrl');
-      if (r.status === 404) return null;
-      if (!r.ok) throw new Error('OneDrive ' + r.status);
-      const j = await r.json(); return { eTag: j.eTag, size: j.size, url: j['@microsoft.graph.downloadUrl'] };
-    },
-    async download(p) {
-      if (MOCK) return Mock.download(p);
-      const m = await this.getMeta(p); if (!m) return null;
-      const r = await fetch(m.url); if (!r.ok) throw new Error('下載失敗 ' + r.status);
-      return { bytes: new Uint8Array(await r.arrayBuffer()), eTag: m.eTag };
-    },
-    async upload(p, bytes, eTag) { // eTag：只有在雲端版本沒被別台改過時才覆蓋
-      if (MOCK) return Mock.upload(p, bytes, eTag);
-      const headers = { 'Content-Type': 'application/octet-stream' };
-      if (eTag) headers['If-Match'] = eTag;
-      if (bytes.length <= 3.8 * 1024 * 1024) {
-        const r = await this.api(this.item(p) + '/content', { method: 'PUT', body: bytes, headers });
-        if (r.status === 412) { const e = new Error('conflict'); e.conflict = true; throw e; }
-        if (!r.ok) throw new Error('上傳失敗 ' + r.status);
-        return (await r.json()).eTag;
-      }
-      const s = await this.api(this.item(p) + '/createUploadSession', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(eTag ? { 'If-Match': eTag } : {}) }, body: JSON.stringify({ item: { '@microsoft.graph.conflictBehavior': 'replace' } }) });
-      if (s.status === 412) { const e = new Error('conflict'); e.conflict = true; throw e; }
-      if (!s.ok) throw new Error('上傳失敗 ' + s.status);
-      const url = (await s.json()).uploadUrl, CH = 3276800; let last;
-      for (let i = 0; i < bytes.length; i += CH) {
-        const part = bytes.subarray(i, Math.min(i + CH, bytes.length));
-        last = await fetch(url, { method: 'PUT', body: part, headers: { 'Content-Range': `bytes ${i}-${i + part.length - 1}/${bytes.length}` } });
-        if (!last.ok && last.status !== 202) throw new Error('上傳失敗 ' + last.status);
-      }
-      return (await last.json()).eTag;
-    },
-    async remove(p) { if (MOCK) return Mock.remove(p); const r = await this.api(this.item(p), { method: 'DELETE' }); return r.ok || r.status === 404; },
-  };
-  /* 測試用假雲端（localStorage crm:mock=1 時啟用，資料存在瀏覽器裡） */
-  const Mock = {
-    async getMeta(p) { const v = await Cache.get('mock:' + p); return v ? { eTag: v.eTag, size: v.bytes.length } : null; },
-    async download(p) { const v = await Cache.get('mock:' + p); return v ? { bytes: v.bytes, eTag: v.eTag } : null; },
-    async upload(p, bytes, eTag) { const v = await Cache.get('mock:' + p); if (eTag && v && v.eTag !== eTag) { const e = new Error('conflict'); e.conflict = true; throw e; } const t = uid(); await Cache.set('mock:' + p, { bytes, eTag: t }); return t; },
-    async remove(p) { await Cache.del('mock:' + p); return true; },
-  };
-
-  /* ================= 資料庫（記憶體中明文，存檔時加密） ================= */
-  const COLLS = ['clients', 'policies', 'deals', 'services', 'claims', 'tasks', 'logs', 'files'];
-  const emptyDb = () => Object.fromEntries([['v', 1], ...COLLS.map((c) => [c, {}])]);
-  const Vault = {
-    key: null, salt: null, db: null, eTag: null, dirty: false, saving: false, state: 'idle',
-    async load(pw) { // 回傳 'new' | 'ok'，密碼錯誤時丟出錯誤
-      let raw = null, fromCache = false;
-      try { raw = await Drive.download('data.enc'); } catch (e) { const c = await Cache.get('data'); if (c) { raw = c; fromCache = true; } else throw e; }
-      if (!raw) return 'new';
-      const env = JSON.parse(dec.decode(raw.bytes));
-      const salt = unb64(env.salt), key = await deriveKey(pw, salt);
-      let plain;
-      try { plain = await open(key, unb64(env.data)); } catch (e) { const err = new Error('密碼不正確'); err.badPassword = true; throw err; }
-      this.key = key; this.salt = salt; this.db = { ...emptyDb(), ...JSON.parse(dec.decode(plain)) }; this.eTag = raw.eTag;
-      if (!fromCache) await Cache.set('data', raw);
-      const pend = await Cache.get('pending');
-      if (pend) { try { const local = JSON.parse(dec.decode(await open(key, pend))); this.db = merge(this.db, local); this.markDirty(); } catch (e) { } }
-      this.setState(fromCache ? 'offline' : 'synced');
-      return 'ok';
-    },
-    async create(pw) {
-      this.salt = crypto.getRandomValues(new Uint8Array(16)); this.key = await deriveKey(pw, this.salt); this.db = emptyDb(); this.eTag = null;
-      await this.save(true);
-    },
-    async envelope() { const data = await seal(this.key, enc.encode(JSON.stringify(this.db))); return enc.encode(JSON.stringify({ v: 1, salt: b64(this.salt), data: b64(data), at: new Date().toISOString() })); },
-    markDirty() { this.dirty = true; this.setState('pending'); clearTimeout(this.t); this.t = setTimeout(() => this.save(), 1200); seal(this.key, enc.encode(JSON.stringify(this.db))).then((b) => Cache.set('pending', b)); },
-    async save(force) {
-      if (!this.key || (this.saving && !force)) return;
-      if (!this.dirty && !force) return;
-      this.saving = true; this.setState('saving');
-      try {
-        for (let tries = 0; tries < 4; tries++) {
-          const bytes = await this.envelope();
-          try {
-            this.eTag = await Drive.upload('data.enc', bytes, this.eTag);
-            this.dirty = false; await Cache.set('data', { bytes, eTag: this.eTag }); await Cache.del('pending');
-            this.setState('synced'); break;
-          } catch (e) {
-            if (!e.conflict) throw e;
-            const remote = await Drive.download('data.enc'); // 別台裝置改過：合併後再存
-            const env = JSON.parse(dec.decode(remote.bytes));
-            const other = JSON.parse(dec.decode(await open(this.key, unb64(env.data))));
-            this.db = merge(other, this.db); this.eTag = remote.eTag; App.refresh();
-          }
+/* ================= 資料庫（記憶體中明文，存檔時加密） ================= */
+const COLLS = ['cases', 'notes', 'files'];
+const emptyDb = () => Object.fromEntries([['v', 1], ...COLLS.map((c) => [c, {}])]);
+const SYNC_LABEL = { synced: '已同步 OneDrive', saving: '同步中…', pending: '待同步…', offline: '離線中，連上網路會自動同步', idle: '—' };
+const Vault = {
+  key: null, salt: null, db: null, eTag: null, dirty: false, saving: false, state: 'idle',
+  async load(pw) { // 'ok'，密碼錯誤時丟出錯誤
+    let raw = null, fromCache = false;
+    try { raw = await Drive.download('data.enc'); } catch (e) { const c = await Cache.get('data'); if (c) { raw = c; fromCache = true; } else throw e; }
+    if (!raw) { const c = await Cache.get('data'); if (c) { raw = c; fromCache = true; } else return 'new'; }
+    const env = JSON.parse(dec.decode(raw.bytes));
+    const salt = unb64(env.salt), key = await deriveKey(pw, salt);
+    let plain;
+    try { plain = await unseal(key, unb64(env.data)); } catch (e) { const err = new Error('密碼不正確'); err.badPassword = true; throw err; }
+    this.key = key; this.salt = salt; this.db = { ...emptyDb(), ...JSON.parse(dec.decode(plain)) }; this.eTag = raw.eTag;
+    if (!fromCache) await Cache.set('data', raw);
+    const pend = await Cache.get('pending');
+    if (pend) { try { const local = JSON.parse(dec.decode(await unseal(key, pend))); this.db = merge(this.db, local); this.markDirty(); } catch (e) { } }
+    this.setState(fromCache ? 'offline' : 'synced');
+    return 'ok';
+  },
+  async create(pw) {
+    this.salt = crypto.getRandomValues(new Uint8Array(16)); this.key = await deriveKey(pw, this.salt); this.db = emptyDb(); this.eTag = null;
+    this.dirty = true; await this.save(true);
+  },
+  async envelope() { const data = await seal(this.key, enc.encode(JSON.stringify(this.db))); return enc.encode(JSON.stringify({ v: 1, salt: b64(this.salt), data: b64(data), at: new Date().toISOString() })); },
+  markDirty() { this.dirty = true; this.setState('pending'); clearTimeout(this.t); this.t = setTimeout(() => this.save(), 1200); const k = this.key; seal(k, enc.encode(JSON.stringify(this.db))).then((b) => { if (this.key === k) Cache.set('pending', b); }); },
+  async save(force) {
+    if (!this.key || (this.saving && !force)) return;
+    if (!this.dirty && !force) return;
+    this.saving = true; this.setState('saving');
+    try {
+      for (let tries = 0; tries < 4; tries++) {
+        const bytes = await this.envelope();
+        try {
+          this.eTag = await Drive.upload('data.enc', bytes, this.eTag);
+          this.dirty = false; await Cache.set('data', { bytes, eTag: this.eTag }); await Cache.del('pending');
+          this.setState('synced'); break;
+        } catch (e) {
+          if (!e.conflict) throw e;
+          await this.pull(true); // 別台裝置改過：合併後再存
         }
-      } catch (e) { console.warn(e); this.setState('offline'); clearTimeout(this.retry); this.retry = setTimeout(() => this.save(), 30000); }
-      finally { this.saving = false; if (this.dirty && this.state === 'synced') this.save(); }
-    },
-    setState(s) {
-      this.state = s;
-      const L = { synced: '✓ 已同步 OneDrive', saving: '同步中…', pending: '待同步…', offline: '⚠ 離線，連上網路會自動同步', idle: '—' };
-      const el = $('sync'); if (el) { el.textContent = L[s] || s; el.dataset.s = s; }
-    },
-    lock() { this.key = null; this.db = null; this.salt = null; },
-    put(coll, rec) { const now = new Date().toISOString(); if (!rec.id) { rec.id = uid(); rec.createdAt = now; } rec.updatedAt = now; this.db[coll][rec.id] = rec; this.markDirty(); return rec; },
-    del(coll, id) { const r = this.db[coll][id]; if (!r) return; this.db[coll][id] = { id, deleted: true, updatedAt: new Date().toISOString() }; this.markDirty(); },
-    all(coll) { return Object.values(this.db[coll] || {}).filter((r) => !r.deleted); },
-    get(coll, id) { const r = this.db[coll][id]; return r && !r.deleted ? r : null; },
-  };
-  function merge(a, b) { // 依每筆資料的 updatedAt 取較新的
-    const out = emptyDb();
-    COLLS.forEach((c) => { const A = a[c] || {}, B = b[c] || {}; new Set([...Object.keys(A), ...Object.keys(B)]).forEach((id) => { const x = A[id], y = B[id]; out[c][id] = !x ? y : !y ? x : ((x.updatedAt || '') >= (y.updatedAt || '') ? x : y); }); });
-    return out;
-  }
-
-  /* ================= 照片（加密後存 OneDrive files/） ================= */
-  const fpath = (f) => 'files/' + f.id + (f.kv ? '.k' + f.kv : '') + '.enc';
-  const Files = {
-    mem: new Map(),
-    async add(file, ref) {
-      const blob = await compress(file);
-      const id = uid(), bytes = new Uint8Array(await blob.arrayBuffer());
-      const sealed = await seal(Vault.key, bytes);
-      await Cache.set('file:' + id, sealed);
-      Vault.put('files', { id, type: blob.type, size: bytes.length, ref, name: file.name || '照片' });
-      this.mem.set(id, URL.createObjectURL(blob));
-      Drive.upload(fpath({ id }), sealed).then(() => Cache.set('file-up:' + id, 1)).catch(() => toast('照片已存在 iPad，連上網路後會再上傳'));
-      return id;
-    },
-    async url(id) {
-      if (this.mem.has(id)) return this.mem.get(id);
-      let sealed = await Cache.get('file:' + id);
-      const meta = Vault.get('files', id) || { id };
-      if (!sealed) { const r = await Drive.download(fpath(meta)); if (!r) return null; sealed = r.bytes; Cache.set('file:' + id, sealed); }
-      const u = URL.createObjectURL(new Blob([await open(Vault.key, sealed)], { type: meta.type || 'image/jpeg' }));
-      this.mem.set(id, u); return u;
-    },
-    async remove(id) { const f = Vault.get('files', id) || { id }; Vault.del('files', id); await Cache.del('file:' + id); Drive.remove(fpath(f)).catch(() => { }); },
-    async retryUploads() {
-      for (const f of Vault.all('files')) {
-        if (await Cache.get('file-up:' + f.id)) continue;
-        const s = await Cache.get('file:' + f.id); if (!s) continue;
-        try { const m = await Drive.getMeta(fpath(f)); if (!m) await Drive.upload(fpath(f), s); await Cache.set('file-up:' + f.id, 1); } catch (e) { return; }
       }
-    },
-    forRef(coll, id) { return Vault.all('files').filter((f) => f.ref && f.ref.coll === coll && f.ref.id === id).sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1)); },
+    } catch (e) { console.warn(e); this.setState('offline'); clearTimeout(this.retry); this.retry = setTimeout(() => this.save(), 30000); }
+    finally { this.saving = false; if (this.dirty && this.state === 'synced') this.save(); }
+  },
+  async pull(force) { // 讀回別台裝置的更新
+    if (!this.key) return;
+    try {
+      if (!force) { const m = await Drive.getMeta('data.enc'); if (!m || m.eTag === this.eTag) return; }
+      const remote = await Drive.download('data.enc'); if (!remote) return;
+      const env = JSON.parse(dec.decode(remote.bytes));
+      const other = JSON.parse(dec.decode(await unseal(this.key, unb64(env.data))));
+      this.db = merge(other, this.db); this.eTag = remote.eTag;
+      if (!this.dirty) { await Cache.set('data', remote); this.setState('synced'); }
+      App.render();
+    } catch (e) { if (force) throw e; }
+  },
+  setState(s) { this.state = s; document.querySelectorAll('.sync').forEach((el) => { el.textContent = SYNC_LABEL[s] || s; el.dataset.s = s; }); },
+  lock() { this.key = null; this.db = null; this.salt = null; this.eTag = null; this.dirty = false; },
+  put(coll, rec) { const now = new Date().toISOString(); if (!rec.id) rec.id = uid(); if (!rec.createdAt) rec.createdAt = now; rec.updatedAt = now; this.db[coll][rec.id] = rec; this.markDirty(); return rec; },
+  del(coll, id) { if (!this.db[coll][id]) return; this.db[coll][id] = { id, deleted: true, updatedAt: new Date().toISOString() }; this.markDirty(); },
+  all(coll) { return Object.values(this.db?.[coll] || {}).filter((r) => !r.deleted); },
+  get(coll, id) { const r = this.db?.[coll]?.[id]; return r && !r.deleted ? r : null; },
+};
+function merge(a, b) { // 依每筆資料的 updatedAt 取較新的
+  const out = emptyDb();
+  COLLS.forEach((c) => { const A = a[c] || {}, B = b[c] || {}; new Set([...Object.keys(A), ...Object.keys(B)]).forEach((id) => { const x = A[id], y = B[id]; out[c][id] = !x ? y : !y ? x : ((x.updatedAt || '') >= (y.updatedAt || '') ? x : y); }); });
+  return out;
+}
+
+/* ================= 圖片（加密後存 OneDrive files/） ================= */
+const fpath = (id) => 'files/' + id + '.enc';
+const Files = {
+  mem: new Map(),
+  async add(blob, name) {
+    const id = uid(), bytes = new Uint8Array(await blob.arrayBuffer());
+    const sealed = await seal(Vault.key, bytes);
+    await Cache.set('file:' + id, sealed);
+    Vault.put('files', { id, type: blob.type || 'image/jpeg', size: bytes.length, name });
+    this.mem.set(id, URL.createObjectURL(blob));
+    Drive.upload(fpath(id), sealed).then(() => Cache.set('file-up:' + id, 1)).catch(() => toast('圖片已存在這台裝置，連上網路後會再上傳'));
+    return id;
+  },
+  async url(id) {
+    if (this.mem.has(id)) return this.mem.get(id);
+    let sealed = await Cache.get('file:' + id);
+    const meta = Vault.get('files', id) || { id };
+    if (!sealed) { const r = await Drive.download(fpath(id)); if (!r) return null; sealed = r.bytes; Cache.set('file:' + id, sealed); Cache.set('file-up:' + id, 1); }
+    const u = URL.createObjectURL(new Blob([await unseal(Vault.key, sealed)], { type: meta.type || 'image/jpeg' }));
+    this.mem.set(id, u); return u;
+  },
+  async remove(id) { Vault.del('files', id); await Cache.del('file:' + id); Drive.remove(fpath(id)).catch(() => { }); },
+  async retryUploads() {
+    for (const f of Vault.all('files')) {
+      if (await Cache.get('file-up:' + f.id)) continue;
+      const s = await Cache.get('file:' + f.id); if (!s) continue;
+      try { const m = await Drive.getMeta(fpath(f.id)); if (!m) await Drive.upload(fpath(f.id), s); await Cache.set('file-up:' + f.id, 1); } catch (e) { return; }
+    }
+  },
+  clear() { this.mem.forEach((u) => URL.revokeObjectURL(u)); this.mem.clear(); },
+};
+const imgCache = new Map();
+function loadImg(src) { return new Promise((r) => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; }); }
+function getImg(fileId) { if (!imgCache.has(fileId)) imgCache.set(fileId, Files.url(fileId).then((u) => (u ? loadImg(u) : null)).catch(() => null)); return imgCache.get(fileId); }
+
+/* ================= 選項 ================= */
+const ICON = {
+  scan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M4 12h16"/></svg>',
+  bolt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3 4 14h7l-1 7 9-11h-7l1-7z"/></svg>',
+  folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>',
+  book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21V5M8 7h7"/></svg>',
+  list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>',
+  msg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>',
+};
+const NAV = [['quick', '快查', 'bolt'], ['cases', '案件', 'folder'], ['refs', '理賠參考', 'book'], ['sop', 'SOP', 'list'], ['tpl', '範本', 'msg']];
+const CATS = ['理賠', '新契約', '保全', '保費', '保校', '房貸', '服務', '其他', '產險'];
+const STATUS = ['進行中', '待回覆', '已結案'];
+const ITEMS = ['住院醫療', '實支實付', '住院日額', '手術', '意外醫療', '意外失能', '骨折', '重大傷病', '癌症', '長照失能', '門診', '產險-車險', '產險-住火', '產險-旅平'];
+const CAUSE = { '疾病': ['消化系統', '呼吸系統', '心血管', '骨科', '婦科', '腫瘤', '眼耳鼻喉', '其他疾病'], '意外': ['交通事故', '跌倒', '運動傷害', '職業傷害', '燒燙傷', '其他意外'] };
+const SOPGROUPS = ['壽險·新契約', '壽險·保全', '壽險·保費', '壽險·保校', '壽險·理賠', '壽險·房貸', '壽險·服務', '壽險·其他', '產險'];
+
+/* ================= 狀態與畫面 ================= */
+const S = { view: 'cases', sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', sopGroup: '全部', showDetail: false };
+const cases = () => Vault.all('cases');
+const notes = () => Vault.all('notes');
+const cur = () => Vault.get('cases', S.sel);
+const saveCase = (c) => Vault.put('cases', c);
+const app = $('app');
+const pillCls = (s) => (s === '已結案' ? 'p-done' : s === '待回覆' ? 'p-wait' : 'p-go');
+const syncHTML = (cls = '') => `<span class="sync ${cls}" data-s="${Vault.state}">${SYNC_LABEL[Vault.state] || ''}</span>`;
+
+const App = {
+  render() {
+    if (!Vault.db) return;
+    const v = S.view;
+    app.className = 'app' + ((v === 'cases' || v === 'refs') ? '' : ' single') + (S.showDetail ? ' showdetail' : '') + (MOCK ? ' test' : '');
+    let h = MOCK ? '<div class="testbar">測試模式：資料只存在這台裝置，不會上傳 OneDrive</div>' : '';
+    h += railHTML();
+    if (v === 'cases') h += caseListHTML() + '<section class="detail split">' + caseDetailHTML() + '</section>';
+    else if (v === 'refs') h += refListHTML() + '<section class="detail split">' + refDetailHTML() + '</section>';
+    else if (v === 'sop') h += '<section class="wide">' + notesHTML('sop') + '</section>';
+    else if (v === 'quick') h += '<section class="wide">' + quickHTML() + '</section>';
+    else if (v === 'tpl') h += '<section class="wide">' + notesHTML('tpl') + '</section>';
+    h += tabsHTML();
+    const keep = document.activeElement?.id, pos = document.activeElement?.selectionStart;
+    app.innerHTML = h;
+    if (keep && (keep === 'q')) { const el = $(keep); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) { } } }
+    drawThumbs();
+  },
+};
+function railHTML() {
+  return `<nav class="rail" aria-label="主選單"><div class="brand"><i></i>工作手冊</div>
+  <button class="scanbtn" data-act="scan">${ICON.scan}掃描</button>
+  ${NAV.map(([k, l, i]) => `<button class="nav${S.view === k ? ' on' : ''}" data-nav="${k}">${ICON[i]}${l}</button>`).join('')}
+  <div class="foot">${syncHTML()}<div style="margin-top:8px">${esc(Drive.account?.username || '')}</div></div>
+  <button class="nav" data-act="lock">鎖定</button></nav>`;
+}
+function tabsHTML() {
+  const t = [NAV[0], NAV[1], ['scan', '掃描', 'scan'], NAV[2], NAV[3]];
+  return `<nav class="tabs" aria-label="分頁">${t.map(([k, l, i]) => k === 'scan' ? `<button class="tab scan" data-act="scan"><span class="c">${ICON.scan}</span>${l}</button>` : `<button class="tab${S.view === k ? ' on' : ''}" data-nav="${k}">${ICON[i]}${l}</button>`).join('')}</nav>`;
+}
+function caseSummary(c) { const a = [c.cat]; if (c.items?.length) a.push(c.items.slice(0, 2).join('、')); if (c.causeType) a.push(c.causeType + (c.causeDetail ? '›' + c.causeDetail : '')); return a.join(' · '); }
+function filteredCases() {
+  const q = S.q.trim();
+  return cases().filter((c) => (S.cat === '全部' || c.cat === S.cat) && (!q || [c.client, c.title, c.notes, c.diag, c.next].join(' ').includes(q))).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+}
+function caseListHTML() {
+  const list = filteredCases();
+  return `<section class="col"><div class="colhead"><h1>案件 <button class="btn" data-act="newcase">＋ 新增</button></h1>
+  <div class="mobsync">${syncHTML()}</div>
+  <input class="search" id="q" placeholder="搜尋客戶、案件、備註" value="${esc(S.q)}" autocomplete="off">
+  <div class="chips">${['全部', ...CATS].map((c) => `<button class="chip${S.cat === c ? ' on' : ''}" data-cat="${c}">${c}</button>`).join('')}</div></div>
+  <div class="list">${list.length ? list.map((c) => `<button class="item${c.id === S.sel ? ' on' : ''}" data-sel="${c.id}"><span class="t"><span>${esc(c.client || '未填客戶')} · ${esc(c.title || '未命名')}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${esc(caseSummary(c))}</span></button>`).join('') : `<div class="empty">${cases().length ? '沒有符合的案件。' : '還沒有案件。按「＋ 新增」，或按「掃描」直接拍文件建案。'}</div>`}</div></section>`;
+}
+function caseDetailHTML() {
+  const c = cur();
+  if (!c) return '<div class="empty">從左邊選一個案件，或按「掃描」直接拍文件建案。</div>';
+  const isClaim = c.cat === '理賠';
+  const cost = +c.cost || 0, ratio = +c.ratio || 0, auto = cost && ratio ? Math.round(cost * ratio / 100) : 0;
+  return `<button class="back" data-act="back">‹ 案件列表</button>
+  <div class="dhead"><input class="title" id="f_title" data-f="title" value="${esc(c.title)}" placeholder="案件名稱" aria-label="案件名稱"><span class="pill ${pillCls(c.status)}">${c.status}</span></div>
+  <div class="sec"><h2>基本資料</h2><div class="grid2">
+   <label class="f">客戶<input id="f_client" data-f="client" value="${esc(c.client)}"></label>
+   <label class="f">類別<select id="f_cat" data-f="cat">${CATS.map((x) => `<option${x === c.cat ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
+   <label class="f">狀態<select id="f_status" data-f="status">${STATUS.map((x) => `<option${x === c.status ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
+   <label class="f">下一步<input id="f_next" data-f="next" value="${esc(c.next)}" placeholder="例如：補診斷書正本"></label></div></div>
+  ${isClaim ? `<div class="sec"><h2>理賠分類</h2>
+   <div class="sub">險種項目（可複選）</div><div class="tags">${ITEMS.map((x) => `<button class="tag${c.items.includes(x) ? ' on' : ''}" data-item="${x}">${x}</button>`).join('')}</div>
+   <div class="sub">原因</div><div class="tags">${Object.keys(CAUSE).map((x) => `<button class="tag${c.causeType === x ? ' on' : ''}" data-ctype="${x}">${x}</button>`).join('')}</div>
+   ${c.causeType ? `<div class="tags">${CAUSE[c.causeType].map((x) => `<button class="tag${c.causeDetail === x ? ' on' : ''}" data-cdet="${x}">${x}</button>`).join('')}</div>` : ''}
+   <label class="f">診斷／受傷情況<input id="f_diag" data-f="diag" value="${esc(c.diag)}" placeholder="例如：腳踝扭傷併骨裂，打石膏"></label></div>
+  <div class="sec"><h2>理賠計算</h2><div class="calc">
+   <label class="f">實際花費<input id="f_cost" inputmode="numeric" data-f="cost" value="${esc(c.cost)}" placeholder="76600"></label><span class="op">×</span>
+   <label class="f">給付比例 %<input id="f_ratio" inputmode="numeric" data-f="ratio" value="${esc(c.ratio)}" placeholder="65"></label><span class="op">=</span>
+   <span class="res">${auto ? auto.toLocaleString() : '—'}</span></div>
+   <label class="f">實際理賠金額（有不同再填）<input id="f_payout" inputmode="numeric" data-f="payout" value="${esc(c.payout)}"></label></div>` : ''}
+  <div class="sec"><h2>文件 <span class="sub">原圖永遠保留，遮罩可以隨時改</span></h2>
+   <div class="docs">${c.docs.map((d, i) => `<div class="doc"><canvas data-thumb="${i}" width="240" height="320"></canvas><div class="bar"><span>${esc(d.name)}${d.masks.length ? ' · 已遮 ' + d.masks.length : ''}</span><span><button data-view="${i}">看</button><button data-mask="${i}">遮罩</button><button data-deldoc="${i}" aria-label="刪除文件">刪</button></span></div></div>`).join('')}
+   <button class="adddoc" data-act="scan">${ICON.scan}加入文件</button></div>
+   ${c.docs.length ? `<div class="actions"><button class="btn" data-act="pdf">原圖 PDF</button><button class="btn" data-act="share">匯出分享版</button></div>` : ''}</div>
+  <div class="sec"><h2>備註</h2><textarea id="f_notes" data-f="notes" rows="4" aria-label="備註">${esc(c.notes)}</textarea></div>
+  <div class="actions">${isClaim ? `<button class="btn${c.isRef ? ' on' : ''}" data-act="ref">${c.isRef ? '✓ 已在理賠參考' : '做成理賠參考'}</button>` : ''}<button class="btn danger" data-act="delcase">刪除案件</button></div>`;
+}
+function refCases() { return cases().filter((c) => c.isRef && (S.refItem === '全部' || c.items.includes(S.refItem)) && (S.refCause === '全部' || c.causeType === S.refCause)); }
+const refTitle = (c) => c.diag || c.causeDetail || c.causeType || '未分類';
+function refListHTML() {
+  const list = refCases(); const used = [...new Set(cases().filter((c) => c.isRef).flatMap((c) => c.items))];
+  return `<section class="col"><div class="colhead"><h1>理賠參考</h1>
+  <div class="sub">險種</div><div class="chips">${['全部', ...used].map((x) => `<button class="chip${S.refItem === x ? ' on' : ''}" data-ritem="${x}">${x}</button>`).join('')}</div>
+  <div class="sub">原因</div><div class="chips">${['全部', '疾病', '意外'].map((x) => `<button class="chip${S.refCause === x ? ' on' : ''}" data-rcause="${x}">${x}</button>`).join('')}</div></div>
+  <div class="list">${list.length ? list.map((c) => `<button class="item${c.id === S.refSel ? ' on' : ''}" data-rsel="${c.id}"><span class="t"><span>${esc(refTitle(c))}</span></span><span class="s">${esc(c.items.join('、') || '未選險種')} · ${esc(c.causeType)}${c.causeDetail ? '›' + esc(c.causeDetail) : ''}</span></button>`).join('') : '<div class="empty">還沒有理賠參考。在理賠案件裡按「做成理賠參考」就會出現在這裡。</div>'}</div></section>`;
+}
+function refDetailHTML() {
+  const c = cases().find((x) => x.id === S.refSel && x.isRef);
+  if (!c) return '<div class="empty">選一則理賠參考。這裡不會顯示客戶姓名。</div>';
+  const cost = +c.cost || 0, ratio = +c.ratio || 0, auto = cost && ratio ? Math.round(cost * ratio / 100) : 0;
+  return `<button class="back" data-act="back">‹ 理賠參考</button>
+  <div class="dhead"><h1 style="margin:0;font-size:20px">${esc(refTitle(c))}</h1></div>
+  <div class="sec"><h2>分類</h2><div class="reftop">${c.items.map((x) => `<span class="pill p-go">${esc(x)}</span>`).join('')}${c.causeType ? `<span class="pill p-wait">${esc(c.causeType)}${c.causeDetail ? ' › ' + esc(c.causeDetail) : ''}</span>` : ''}</div></div>
+  ${cost ? `<div class="sec"><h2>理賠金額</h2><div class="calcline">花費 ${cost.toLocaleString()} × ${ratio || '—'}% = ${auto ? auto.toLocaleString() : '—'}${c.payout ? `　實際理賠 ${(+c.payout).toLocaleString()}` : ''}</div></div>` : ''}
+  ${c.docs.length ? `<div class="sec"><h2>文件（遮罩版）</h2><div class="docs">${c.docs.map((d, i) => `<div class="doc"><canvas data-rthumb="${i}" width="240" height="320"></canvas></div>`).join('')}</div><div class="actions"><button class="btn pri" data-act="rshare">匯出分享版</button></div></div>` : ''}
+  <div class="note">這頁只顯示分類、計算和遮罩後的文件，不顯示客戶姓名。要修改內容請回到「案件」。</div>
+  <div class="actions"><button class="btn" data-act="gocase">打開原案件</button></div>`;
+}
+function notesHTML(kind) {
+  const groups = kind === 'sop' ? SOPGROUPS : ['簡訊', '信件', '其他'];
+  const list = notes().filter((n) => n.kind === kind && (kind !== 'sop' || S.sopGroup === '全部' || n.group === S.sopGroup));
+  const q = S.q.trim(); const shown = list.filter((n) => !q || (n.title + n.body).includes(q));
+  return `<h1>${kind === 'sop' ? 'SOP 作業流程' : '話術範本'}</h1>
+  <input class="search" id="q" placeholder="搜尋" value="${esc(S.q)}" style="max-width:420px" autocomplete="off">
+  ${kind === 'sop' ? `<div class="chips">${['全部', ...groups].map((g) => `<button class="chip${S.sopGroup === g ? ' on' : ''}" data-sg="${g}">${g}</button>`).join('')}</div>` : ''}
+  <div class="cards">${shown.map((n) => `<div class="card"><h3><span>${esc(n.title)}</span><span class="sub">${esc(n.group)}</span></h3><pre>${esc(n.body)}</pre><div class="mini">${kind === 'tpl' ? `<button data-copy="${n.id}">複製</button>` : ''}<button data-editnote="${n.id}">編輯</button><button data-delnote="${n.id}">刪除</button></div></div>`).join('') || `<div class="empty">${kind === 'sop' ? '還沒有流程。用下面的表單把 Notion、LINE 記事本裡的步驟加進來。' : '還沒有範本。'}</div>`}</div>
+  <div class="sec" style="max-width:620px"><h2>新增${kind === 'sop' ? '流程' : '範本'}</h2>
+   <div class="grid2"><label class="f">分類<select id="nGroup">${groups.map((g) => `<option${S.sopGroup === g ? ' selected' : ''}>${g}</option>`).join('')}</select></label><label class="f">標題<input id="nTitle"></label></div>
+   <label class="f">內容<textarea id="nBody" rows="4"></textarea></label>
+   <div class="actions"><button class="btn pri" data-addnote="${kind}">新增</button></div></div>`;
+}
+function quickHTML() {
+  const phones = notes().filter((n) => n.kind === 'quick');
+  const waiting = cases().filter((c) => c.status !== '已結案').sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+  return `<h1>快查</h1>
+  <input class="search" id="qq" placeholder="搜尋全部 SOP、案件、範本" style="max-width:520px" autocomplete="off">
+  <div id="qres"></div>
+  <div class="cards">
+  <div class="card"><h3>常用電話</h3>${phones.map((p) => `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span>${esc(p.title)}</span><span style="font-family:var(--f-num)">${esc(p.body)} <button class="btn" style="padding:2px 8px;font-size:12px" data-editnote="${p.id}">改</button></span></div>`).join('') || '<div class="sub">還沒有電話。</div>'}
+   <div class="mini"><button data-act="addphone">＋ 新增電話</button></div></div>
+  <div class="card"><h3>待辦案件 <span class="sub">${waiting.length} 件</span></h3>${waiting.slice(0, 6).map((c) => `<button class="item" data-gocase="${c.id}"><span class="t"><span>${esc(c.client)} · ${esc(c.title)}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${esc(c.next || '未填下一步')}</span></button>`).join('') || '<div class="sub">沒有待辦。</div>'}</div>
+  <div class="card"><h3>同步</h3>${syncHTML()}<div class="sub">資料加密後存在 OneDrive › 應用程式 › Work › ${esc(FOLDER)}。iPad 和手機登入同一個帳號就會自動同步，不需要備份。</div>
+   <div class="actions"><button class="btn" data-act="lock">鎖定</button><button class="btn" data-act="signout">登出</button></div></div>
+  </div>`;
+}
+
+/* ---------- 縮圖 ---------- */
+async function drawThumbTo(cv, d, solid) {
+  const im = await getImg(d.fileId); if (!im || !cv.isConnected) return;
+  const x = cv.getContext('2d'); const s = Math.max(cv.width / im.width, cv.height / im.height); const w = im.width * s, h = im.height * s;
+  x.drawImage(im, (cv.width - w) / 2, (cv.height - h) / 2, w, h);
+  x.fillStyle = solid ? '#111' : 'rgba(17,17,17,.82)';
+  d.masks.forEach((m) => x.fillRect((cv.width - w) / 2 + m.x * w, (cv.height - h) / 2 + m.y * h, m.w * w, m.h * h));
+}
+function drawThumbs() {
+  const c = cur(); document.querySelectorAll('[data-thumb]').forEach((cv) => { const d = c?.docs[+cv.dataset.thumb]; if (d) drawThumbTo(cv, d, false); });
+  const r = Vault.get('cases', S.refSel); document.querySelectorAll('[data-rthumb]').forEach((cv) => { const d = r?.docs[+cv.dataset.rthumb]; if (d) drawThumbTo(cv, d, true); });
+}
+
+/* ---------- 事件 ---------- */
+function newCase(cat) { const c = saveCase({ client: '', title: '', cat, status: '進行中', items: [], causeType: '', causeDetail: '', diag: '', next: '', cost: '', ratio: '', payout: '', notes: '', docs: [], isRef: false }); S.sel = c.id; S.showDetail = true; return c; }
+function armConfirm(b, label) { if (b.dataset.confirm) return true; b.dataset.confirm = 1; b.textContent = label; setTimeout(() => { if (b.isConnected) { delete b.dataset.confirm; App.render(); } }, 4000); return false; }
+app.addEventListener('click', async (e) => {
+  const b = e.target.closest('button'); if (!b) return; const d = b.dataset; const c = cur();
+  if (d.nav) { S.view = d.nav; S.showDetail = false; S.q = ''; App.render(); return; }
+  if (d.cat) { S.cat = d.cat; App.render(); return; }
+  if (d.sel) { S.sel = d.sel; S.showDetail = true; App.render(); return; }
+  if (d.rsel) { S.refSel = d.rsel; S.showDetail = true; App.render(); return; }
+  if (d.ritem) { S.refItem = d.ritem; App.render(); return; }
+  if (d.rcause) { S.refCause = d.rcause; App.render(); return; }
+  if (d.sg) { S.sopGroup = d.sg; App.render(); return; }
+  if (d.gocase) { S.view = 'cases'; S.sel = d.gocase; S.showDetail = true; App.render(); return; }
+  if (d.item && c) { const i = c.items.indexOf(d.item); i < 0 ? c.items.push(d.item) : c.items.splice(i, 1); saveCase(c); App.render(); return; }
+  if (d.ctype && c) { c.causeType = c.causeType === d.ctype ? '' : d.ctype; c.causeDetail = ''; saveCase(c); App.render(); return; }
+  if (d.cdet && c) { c.causeDetail = c.causeDetail === d.cdet ? '' : d.cdet; saveCase(c); App.render(); return; }
+  if (d.mask && c) { openMask(c, +d.mask); return; }
+  if (d.view && c) { openViewer(c.docs[+d.view]); return; }
+  if (d.deldoc && c) { if (armConfirm(b, '確定？')) { const [doc] = c.docs.splice(+d.deldoc, 1); saveCase(c); if (doc) Files.remove(doc.fileId); App.render(); } return; }
+  if (d.copy) { const n = Vault.get('notes', d.copy); try { await navigator.clipboard.writeText(n.body); toast('已複製'); } catch (err) { toast('無法自動複製，請長按文字選取'); } return; }
+  if (d.delnote) { if (armConfirm(b, '確定刪除？')) { Vault.del('notes', d.delnote); App.render(); } return; }
+  if (d.editnote) { editNote(d.editnote); return; }
+  if (d.addnote) { const t = $('nTitle').value.trim(), bd = $('nBody').value.trim(); if (!t && !bd) { toast('先填標題或內容'); return; } Vault.put('notes', { kind: d.addnote, group: $('nGroup').value, title: t || '未命名', body: bd }); App.render(); toast('已新增'); return; }
+  switch (d.act) {
+    case 'scan': { let t = c; if (!t || S.view !== 'cases') { t = newCase('理賠'); S.view = 'cases'; } openScanner(t); break; }
+    case 'newcase': newCase(S.cat === '全部' ? '理賠' : S.cat); App.render(); break;
+    case 'back': S.showDetail = false; App.render(); break;
+    case 'ref': c.isRef = !c.isRef; saveCase(c); App.render(); toast(c.isRef ? '已加入理賠參考（不顯示客戶姓名）' : '已從理賠參考移除'); break;
+    case 'delcase': if (armConfirm(b, '再按一次確定刪除')) { c.docs.forEach((doc) => Files.remove(doc.fileId)); Vault.del('cases', c.id); S.sel = null; S.showDetail = false; App.render(); } break;
+    case 'pdf': makePDF(c.docs, false, (c.client || '案件') + '-' + (c.title || '文件')); break;
+    case 'share': openShare(c); break;
+    case 'rshare': openShare(Vault.get('cases', S.refSel)); break;
+    case 'gocase': S.view = 'cases'; S.sel = S.refSel; S.showDetail = true; App.render(); break;
+    case 'addphone': { const n = Vault.put('notes', { kind: 'quick', group: '電話', title: '', body: '' }); editNote(n.id, true); break; }
+    case 'lock': lock(); break;
+    case 'signout': await Vault.save(); Drive.signOut(); break;
+  }
+});
+app.addEventListener('change', (e) => { const f = e.target.dataset?.f; const c = cur(); if (!f || !c) return; c[f] = e.target.value; saveCase(c); if (['cat', 'status', 'cost', 'ratio', 'client', 'title'].includes(f)) App.render(); });
+app.addEventListener('input', (e) => {
+  if (e.target.id === 'q') { S.q = e.target.value; App.render(); }
+  if (e.target.id === 'qq') {
+    const q = e.target.value.trim(); const box = $('qres'); if (!q) { box.innerHTML = ''; return; }
+    const ns = notes().filter((n) => (n.title + n.body).includes(q)).slice(0, 6), cs = cases().filter((c) => [c.client, c.title, c.notes, c.next].join(' ').includes(q)).slice(0, 6);
+    box.innerHTML = `<div class="cards" style="margin-bottom:6px">${ns.map((n) => `<div class="card"><h3><span>${esc(n.title)}</span><span class="sub">${esc(n.group)}</span></h3><pre>${esc(n.body)}</pre></div>`).join('')}${cs.map((c) => `<button class="item" data-gocase="${c.id}"><span class="t">${esc(c.client)} · ${esc(c.title)}</span><span class="s">${esc(caseSummary(c))}</span></button>`).join('')}</div>${!ns.length && !cs.length ? '<div class="sub">找不到。</div>' : ''}`;
+  }
+});
+const ov = $('ovRoot');
+function editNote(id, isNew) {
+  const n = Vault.get('notes', id);
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${n.kind === 'quick' ? '電話' : '編輯'}</h2><button class="btn" id="eCancel">取消</button><button class="btn pri" id="eSave">儲存</button></div><div class="ovbody" style="flex-direction:column;max-width:640px;margin:0 auto;width:100%"><label class="f">${n.kind === 'quick' ? '名稱' : '標題'}<input id="eT" value="${esc(n.title)}"></label>${n.kind === 'quick' ? `<label class="f">電話<input id="eB" inputmode="tel" value="${esc(n.body)}"></label>` : `<label class="f">內容<textarea id="eB" rows="10">${esc(n.body)}</textarea></label>`}${n.kind === 'quick' && !isNew ? '<div class="actions"><button class="btn danger" id="eDel">刪除這支電話</button></div>' : ''}</div></div>`;
+  $('eCancel').onclick = () => { if (isNew) Vault.del('notes', id); ov.innerHTML = ''; App.render(); };
+  $('eSave').onclick = () => { n.title = $('eT').value.trim() || '未命名'; n.body = $('eB').value; Vault.put('notes', n); ov.innerHTML = ''; App.render(); };
+  if ($('eDel')) $('eDel').onclick = () => { Vault.del('notes', id); ov.innerHTML = ''; App.render(); };
+}
+
+/* ================= 掃描 ================= */
+const fileIn = $('fileIn'), fileLib = $('fileLib');
+let SC = null;
+function openScanner(c) { SC = { c, pages: [], img: null, corners: null, filter: 'gray', drag: -1, queue: [] }; renderScanner(); }
+function renderScanner() {
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>掃描文件</h2><span class="sub">${SC.pages.length} 頁</span><button class="btn" id="scCancel">取消</button><button class="btn pri" id="scDone">完成（${SC.pages.length}）</button></div>
+  <div class="ovbody">${SC.img ? `<div class="stage"><canvas id="scCv"></canvas></div>
+  <div class="side"><div class="note">拖曳四個角對齊文件邊緣，再按「加入這頁」。</div>
+   <div><div class="sub" style="margin-bottom:4px">效果</div><div class="seg">${[['color', '原色'], ['gray', '灰階增強'], ['bw', '黑白']].map(([k, l]) => `<button data-flt="${k}" class="${SC.filter === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>
+   <label class="f">文件名稱<input id="scName" value="${['醫療收據', '診斷證明', '申請書', '其他'][Math.min(SC.pages.length, 3)]}"></label>
+   <div class="actions"><button class="btn pri" id="scAdd">加入這頁</button><button class="btn" id="scRetake">重拍</button></div>
+   ${SC.pages.length ? `<div class="pages">${SC.pages.map((p) => `<img src="${p.url}" alt="${esc(p.name)}">`).join('')}</div>` : ''}</div>`
+    : `<div class="pick">${ICON.scan}<div>拍一張文件，或從相簿選照片</div><div class="actions" style="justify-content:center"><button class="btn pri" id="scCam">開相機</button><button class="btn" id="scLib">從相簿選</button></div>${SC.pages.length ? `<div class="pages">${SC.pages.map((p) => `<img src="${p.url}" alt="">`).join('')}</div>` : ''}</div>`}
+  </div></div>`;
+  $('scCancel').onclick = () => { SC.pages.forEach((p) => URL.revokeObjectURL(p.url)); ov.innerHTML = ''; SC = null; App.render(); };
+  $('scDone').onclick = async () => {
+    const s = SC; ov.innerHTML = ''; SC = null;
+    if (s.pages.length) {
+      for (const p of s.pages) { const fileId = await Files.add(p.blob, p.name); s.c.docs.push({ id: uid(), name: p.name, fileId, masks: [] }); }
+      saveCase(s.c); toast(`已加入 ${s.pages.length} 頁`);
+    }
+    App.render();
   };
-  async function compress(file, max = 1800, q = 0.82) {
-    if (!/^image\//.test(file.type)) return file;
-    const bmp = await createImageBitmap(file).catch(() => null); if (!bmp) return file;
-    const r = Math.min(1, max / Math.max(bmp.width, bmp.height));
-    const c = document.createElement('canvas'); c.width = Math.round(bmp.width * r); c.height = Math.round(bmp.height * r);
-    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
-    return await new Promise((ok) => c.toBlob((b) => ok(b || file), 'image/jpeg', q));
-  }
-
-  /* ================= 個資遮罩 ================= */
-  const Mask = {
-    all: false, timer: null,
-    name: (s) => { s = String(s || ''); if (s.length <= 1) return s; if (s.length === 2) return s[0] + '○'; return s[0] + '○'.repeat(s.length - 2) + s[s.length - 1]; },
-    id: (s) => { s = String(s || ''); return s.length < 5 ? '＊＊＊' : s.slice(0, 3) + '＊'.repeat(Math.max(1, s.length - 5)) + s.slice(-2); },
-    phone: (s) => { const d = String(s || ''); return d.length < 7 ? '＊＊＊' : d.slice(0, 4) + '-＊＊＊-' + d.slice(-3); },
-    addr: (s) => { s = String(s || ''); return s.length > 6 ? s.slice(0, 6) + '…' : s; },
-    email: (s) => { s = String(s || ''); const [u, d] = s.split('@'); return d ? u[0] + '＊＊＊@' + d : '＊＊＊'; },
-    date: (s) => (s ? '＊＊＊＊/' + s.slice(5).replace('-', '/') : ''),
-    num: (s) => { s = String(s || ''); return s.length > 4 ? '＊'.repeat(s.length - 4) + s.slice(-4) : '＊＊＊＊'; },
-    text: () => '（已遮蔽，按一下顯示）',
+  if (!SC.img) { $('scCam').onclick = () => fileIn.click(); $('scLib').onclick = () => fileLib.click(); return; }
+  ov.querySelectorAll('[data-flt]').forEach((b) => (b.onclick = () => { SC.filter = b.dataset.flt; renderScanner(); }));
+  $('scRetake').onclick = () => { SC.img = null; nextQueued(); };
+  $('scAdd').onclick = async () => { const blob = await warp(SC.img, SC.corners, SC.filter); SC.pages.push({ name: $('scName').value || '文件', blob, url: URL.createObjectURL(blob) }); SC.img = null; nextQueued(); };
+  setupCornerCanvas();
+}
+function nextQueued() { if (SC.queue.length) loadFile(SC.queue.shift()); else renderScanner(); }
+function onFiles(files) { if (!SC || !files.length) return; SC.queue.push(...[...files].slice(1)); loadFile(files[0]); }
+fileIn.onchange = () => { onFiles(fileIn.files); fileIn.value = ''; };
+fileLib.onchange = () => { onFiles(fileLib.files); fileLib.value = ''; };
+async function loadFile(f) {
+  const bmp = await createImageBitmap(f).catch(() => null);
+  if (!bmp) { toast('這張圖片打不開，換一張試試'); return; }
+  const s = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
+  const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * s); cv.height = Math.round(bmp.height * s); cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+  SC.img = cv; const w = cv.width, h = cv.height, m = 0.06; SC.corners = [[w * m, h * m], [w * (1 - m), h * m], [w * (1 - m), h * (1 - m)], [w * m, h * (1 - m)]];
+  renderScanner();
+}
+function setupCornerCanvas() {
+  const cv = $('scCv'); cv.width = SC.img.width; cv.height = SC.img.height; const x = cv.getContext('2d'); const R = Math.max(cv.width, cv.height) / 40;
+  const draw = () => {
+    x.drawImage(SC.img, 0, 0); const k = SC.corners;
+    x.fillStyle = 'rgba(20,22,16,.45)'; x.beginPath(); x.rect(0, 0, cv.width, cv.height); x.moveTo(...k[0]); x.lineTo(...k[3]); x.lineTo(...k[2]); x.lineTo(...k[1]); x.closePath(); x.fill('evenodd');
+    x.strokeStyle = '#9DBA88'; x.lineWidth = R / 4; x.beginPath(); k.forEach((p, i) => (i ? x.lineTo(...p) : x.moveTo(...p))); x.closePath(); x.stroke();
+    k.forEach((p) => { x.beginPath(); x.arc(p[0], p[1], R, 0, 7); x.fillStyle = 'rgba(157,186,136,.35)'; x.fill(); x.lineWidth = R / 5; x.stroke(); });
   };
-  // pii(值, 遮罩方式)：第一層自動遮蔽；按一下（或右上「顯示個資」）才顯示完整內容
-  function pii(v, kind) {
-    if (v == null || v === '') return '';
-    const full = String(v), masked = (Mask[kind] || Mask.text)(full);
-    if (Mask.all) return `<span class="pii open">${esc(full)}</span>`;
-    return `<span class="pii" data-full="${esc(full)}" data-masked="${esc(masked)}" title="按一下顯示">${esc(masked)}</span>`;
+  draw();
+  const pt = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * cv.width / r.width, (e.clientY - r.top) * cv.height / r.height]; };
+  cv.onpointerdown = (e) => { const p = pt(e); let best = -1, bd = R * 3.5; SC.corners.forEach((c, i) => { const d = Math.hypot(c[0] - p[0], c[1] - p[1]); if (d < bd) { bd = d; best = i; } }); SC.drag = best; if (best >= 0) cv.setPointerCapture(e.pointerId); };
+  cv.onpointermove = (e) => { if (SC.drag < 0) return; const p = pt(e); SC.corners[SC.drag] = [Math.max(0, Math.min(cv.width, p[0])), Math.max(0, Math.min(cv.height, p[1]))]; draw(); };
+  cv.onpointerup = cv.onpointercancel = () => (SC.drag = -1);
+}
+function solveH(dst, src) {
+  const A = [];
+  for (let i = 0; i < 4; i++) { const [u, v] = dst[i], [x, y] = src[i]; A.push([u, v, 1, 0, 0, 0, -u * x, -v * x, x]); A.push([0, 0, 0, u, v, 1, -u * y, -v * y, y]); }
+  for (let c = 0; c < 8; c++) { let p = c; for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r; [A[c], A[p]] = [A[p], A[c]]; for (let r = 0; r < 8; r++) { if (r === c) continue; const f = A[r][c] / A[c][c]; for (let k = c; k < 9; k++) A[r][k] -= f * A[c][k]; } }
+  return A.map((r, i) => r[8] / r[i]);
+}
+function warp(img, k, filter) {
+  const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  let W = Math.max(d(k[0], k[1]), d(k[3], k[2])), H = Math.max(d(k[0], k[3]), d(k[1], k[2])); const s = Math.min(1, 1800 / Math.max(W, H)); W = Math.round(W * s); H = Math.round(H * s);
+  const h = solveH([[0, 0], [W, 0], [W, H], [0, H]], k); const sd = img.getContext('2d').getImageData(0, 0, img.width, img.height).data, iw = img.width, ih = img.height;
+  const out = document.createElement('canvas'); out.width = W; out.height = H; const ox = out.getContext('2d'); const od = ox.createImageData(W, H), o = od.data;
+  let sum = 0;
+  for (let v = 0; v < H; v++) for (let u = 0; u < W; u++) {
+    const z = h[6] * u + h[7] * v + 1; let x = (h[0] * u + h[1] * v + h[2]) / z, y = (h[3] * u + h[4] * v + h[5]) / z;
+    x = Math.min(iw - 1, Math.max(0, x | 0)); y = Math.min(ih - 1, Math.max(0, y | 0));
+    const si = (y * iw + x) * 4, oi = (v * W + u) * 4; o[oi] = sd[si]; o[oi + 1] = sd[si + 1]; o[oi + 2] = sd[si + 2]; o[oi + 3] = 255; sum += 0.3 * sd[si] + 0.59 * sd[si + 1] + 0.11 * sd[si + 2];
   }
-  document.addEventListener('click', (e) => {
-    const p = e.target.closest('.pii:not(.open)'); if (!p) return;
-    e.preventDefault(); e.stopPropagation();
-    p.textContent = p.dataset.full; p.classList.add('open');
-    setTimeout(() => { if (!Mask.all && p.isConnected) { p.textContent = p.dataset.masked; p.classList.remove('open'); } }, 30000);
-  }, true);
-  function setRevealAll(on) {
-    Mask.all = on; clearTimeout(Mask.timer);
-    $('btnReveal').setAttribute('aria-pressed', on); $('btnReveal').textContent = on ? '隱藏個資' : '顯示個資';
-    document.body.classList.toggle('reveal-all', on);
-    if (on) Mask.timer = setTimeout(() => setRevealAll(false), 120000);
-    App.refresh();
+  if (filter !== 'color') {
+    const mean = sum / (W * H);
+    for (let i = 0; i < o.length; i += 4) {
+      let g = 0.3 * o[i] + 0.59 * o[i + 1] + 0.11 * o[i + 2];
+      if (filter === 'gray') { g = (g - mean * 0.55) * (255 / (mean * 0.55 || 1)); g = Math.max(0, Math.min(255, g)); } else { g = g > mean * 0.82 ? 255 : Math.max(0, g * 0.35); }
+      o[i] = o[i + 1] = o[i + 2] = g;
+    }
   }
+  ox.putImageData(od, 0, 0);
+  return new Promise((ok) => out.toBlob((b) => ok(b), 'image/jpeg', 0.82));
+}
 
-  /* ================= 選項 ================= */
-  const STAGES = ['名單', '約訪', '需求分析', '建議書', '送件', '核保', '成交', '暫緩'];
-  const SERVICE_TYPES = ['受益人變更', '地址／聯絡資料變更', '繳費方式變更', '保額／保障變更', '保單借款／還款', '停效／復效', '契約轉換', '解約／部分解約', '要保人變更', '其他'];
-  const SERVICE_STATUS = ['待辦', '準備文件', '已送件', '補件中', '完成'];
-  const CLAIM_STATUS = ['準備文件', '已送件', '補件中', '已給付', '拒賠／結案'];
-  const CLAIM_DOCS = ['理賠申請書', '診斷證明書', '醫療收據', '住院證明', '手術證明', '身分證影本', '存摺影本', '事故證明（意外）', '病歷摘要', '重大傷病證明'];
-  const TASK_CATS = ['行政', '業績', '學習', '活動', '其他'];
-  const LOG_TYPES = ['電話', '面談', 'LINE', '拜訪', '送禮', '其他'];
+/* ================= 看原圖 ================= */
+async function openViewer(d) {
+  const url = await Files.url(d.fileId); if (!url) { toast('圖片讀取失敗，請確認網路'); return; }
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${esc(d.name)}（原圖）</h2><button class="btn pri" id="vClose">關閉</button></div><div class="ovbody" style="justify-content:center"><img src="${url}" alt="${esc(d.name)}" style="max-width:100%;height:auto;align-self:flex-start;border-radius:6px"></div></div>`;
+  $('vClose').onclick = () => (ov.innerHTML = '');
+}
 
-  /* ================= 表單 ================= */
-  // 欄位：{k,label,type:text|date|number|select|textarea|client|checks|tags, opts, full:佔整行, ph}
-  function formHtml(fields, rec) {
-    return '<form class="form" autocomplete="off">' + fields.map((f) => {
-      const v = rec[f.k] ?? (f.def ?? '');
-      const id = 'f_' + f.k, cls = 'fld' + (f.full ? ' full' : '');
-      let input;
-      if (f.type === 'select') input = `<select id="${id}" name="${f.k}">${f.opts.map((o) => `<option ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
-      else if (f.type === 'textarea') input = `<textarea id="${id}" name="${f.k}" rows="3" placeholder="${esc(f.ph || '')}">${esc(v)}</textarea>`;
-      else if (f.type === 'client') input = clientPicker(id, f.k, v);
-      else if (f.type === 'checks') { const set = new Set(v || []); input = `<div class="checks">${f.opts.map((o) => `<label><input type="checkbox" name="${f.k}" value="${esc(o)}" ${set.has(o) ? 'checked' : ''}>${esc(o)}</label>`).join('')}</div>`; }
-      else input = `<input id="${id}" name="${f.k}" type="${f.type || 'text'}" value="${esc(v)}" placeholder="${esc(f.ph || '')}" ${f.type === 'number' ? 'inputmode="decimal"' : ''}>`;
-      return `<div class="${cls}"><label for="${id}">${esc(f.label)}</label>${input}</div>`;
-    }).join('') + '</form>';
-  }
-  function clientPicker(id, name, v) {
-    const cs = Vault.all('clients').sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-Hant'));
-    return `<div class="picker"><input class="pick-q" placeholder="搜尋姓名或電話"><select id="${id}" name="${name}"><option value="">（未指定）</option>${cs.map((c) => `<option value="${c.id}" ${c.id === v ? 'selected' : ''} data-s="${esc((c.name || '') + (c.phone || ''))}">${esc(Mask.all ? c.name : Mask.name(c.name))}</option>`).join('')}</select></div>`;
-  }
-  function readForm(form, fields, rec) {
-    const fd = new FormData(form);
-    fields.forEach((f) => {
-      if (f.type === 'checks') rec[f.k] = fd.getAll(f.k);
-      else if (f.type === 'number') { const n = fd.get(f.k); rec[f.k] = n === '' || n == null ? '' : Number(n); }
-      else rec[f.k] = (fd.get(f.k) ?? '').toString().trim();
-    });
-    return rec;
-  }
-  function wirePickers(root) {
-    root.querySelectorAll('.picker').forEach((p) => {
-      const q = p.querySelector('.pick-q'), sel = p.querySelector('select');
-      q.addEventListener('input', () => { const t = q.value.trim(); [...sel.options].forEach((o, i) => { if (i) o.hidden = t && !(o.dataset.s || '').includes(t); }); const first = [...sel.options].find((o, i) => i && !o.hidden); if (t && first) sel.value = first.value; });
-    });
-  }
+/* ================= 遮罩 ================= */
+let MK = null;
+async function openMask(c, i) { const d = c.docs[i]; const im = await getImg(d.fileId); if (!im) { toast('圖片讀取失敗，請確認網路'); return; } MK = { c, d, im, masks: d.masks.map((m) => ({ ...m })), sel: -1, mode: null, start: null, preview: false }; renderMask(); }
+function renderMask() {
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>遮罩 · ${esc(MK.d.name)}</h2><button class="btn" id="mkCancel">取消</button><button class="btn pri" id="mkSave">儲存遮罩</button></div>
+  <div class="ovbody"><div class="stage"><canvas id="mkCv"></canvas></div>
+  <div class="side"><div class="note">在要遮的地方拖曳畫框。點一下框可以選取、拖曳移動。原圖不會被改動。</div>
+  <div class="actions"><button class="btn${MK.preview ? ' on' : ''}" id="mkPrev">${MK.preview ? '回到編輯' : '看分享版效果'}</button></div>
+  <div class="actions"><button class="btn danger" id="mkDel">刪除選取的框</button><button class="btn" id="mkClear">全部清除</button></div>
+  <div class="sub">目前 ${MK.masks.length} 個框</div></div></div></div>`;
+  $('mkCancel').onclick = () => { ov.innerHTML = ''; MK = null; };
+  $('mkSave').onclick = () => { MK.d.masks = MK.masks; saveCase(MK.c); ov.innerHTML = ''; MK = null; App.render(); toast('遮罩已儲存，原圖保留'); };
+  $('mkPrev').onclick = () => { MK.preview = !MK.preview; renderMask(); };
+  $('mkDel').onclick = () => { if (MK.sel >= 0) { MK.masks.splice(MK.sel, 1); MK.sel = -1; renderMask(); } else toast('先點選一個框'); };
+  $('mkClear').onclick = () => { MK.masks = []; MK.sel = -1; renderMask(); };
+  const cv = $('mkCv'); cv.width = MK.im.width; cv.height = MK.im.height; const x = cv.getContext('2d'); const W = cv.width, H = cv.height;
+  const draw = (tmp) => { x.drawImage(MK.im, 0, 0); const all = tmp ? [...MK.masks, tmp] : MK.masks; all.forEach((m, i) => { if (MK.preview) { x.fillStyle = '#111'; x.fillRect(m.x * W, m.y * H, m.w * W, m.h * H); } else { x.fillStyle = 'rgba(17,17,17,.6)'; x.fillRect(m.x * W, m.y * H, m.w * W, m.h * H); x.lineWidth = Math.max(2, W / 300); x.strokeStyle = i === MK.sel ? '#E2B56A' : '#9DBA88'; x.strokeRect(m.x * W, m.y * H, m.w * W, m.h * H); } }); };
+  draw(); if (MK.preview) return;
+  const pt = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]; };
+  let tmp = null;
+  cv.onpointerdown = (e) => { const [px, py] = pt(e); cv.setPointerCapture(e.pointerId); const hit = MK.masks.findIndex((m) => px >= m.x && px <= m.x + m.w && py >= m.y && py <= m.y + m.h); if (hit >= 0) { MK.sel = hit; MK.mode = 'move'; MK.start = [px, py, { ...MK.masks[hit] }]; } else { MK.sel = -1; MK.mode = 'draw'; MK.start = [px, py]; } draw(); };
+  cv.onpointermove = (e) => { if (!MK.mode) return; const [px, py] = pt(e); if (MK.mode === 'move') { const [sx, sy, o] = MK.start; const m = MK.masks[MK.sel]; m.x = Math.max(0, Math.min(1 - m.w, o.x + px - sx)); m.y = Math.max(0, Math.min(1 - m.h, o.y + py - sy)); draw(); } else { const [sx, sy] = MK.start; tmp = { x: Math.min(sx, px), y: Math.min(sy, py), w: Math.abs(px - sx), h: Math.abs(py - sy) }; draw(tmp); } };
+  cv.onpointerup = cv.onpointercancel = () => { if (MK.mode === 'draw' && tmp && tmp.w > 0.01 && tmp.h > 0.008) { MK.masks.push(tmp); MK.sel = MK.masks.length - 1; } MK.mode = null; tmp = null; renderMask(); };
+}
 
-  /* ================= 彈出面板 ================= */
-  const Sheet = {
-    open(title, html, opts = {}) {
-      $('sheetTitle').textContent = title; const b = $('sheetBody'); b.innerHTML = html;
-      $('sheet').classList.remove('hidden'); $('sheet').classList.toggle('wide', !!opts.wide); b.scrollTop = 0; wirePickers(b); return b;
-    },
-    close() { $('sheet').classList.add('hidden'); },
+/* ================= 分享版 / PDF ================= */
+async function renderDoc(d, mask) { // 回傳 canvas
+  const im = await getImg(d.fileId); if (!im) throw new Error('圖片讀取失敗');
+  const cv = document.createElement('canvas'); cv.width = im.width; cv.height = im.height; const x = cv.getContext('2d'); x.drawImage(im, 0, 0);
+  if (mask) { x.fillStyle = '#111'; d.masks.forEach((m) => x.fillRect(m.x * cv.width, m.y * cv.height, m.w * cv.width, m.h * cv.height)); }
+  return cv;
+}
+const toBlob = (cv, type = 'image/jpeg') => new Promise((ok) => cv.toBlob((b) => ok(b), type, 0.85));
+async function shareOrSave(files) { // 有分享功能就跳分享（可以直接傳 LINE），沒有就下載
+  try { if (navigator.canShare && navigator.canShare({ files })) { await navigator.share({ files }); return; } } catch (e) { if (e.name === 'AbortError') return; }
+  files.forEach((f) => { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000); });
+}
+async function openShare(c) {
+  if (!c) return;
+  let canvases; try { canvases = await Promise.all(c.docs.map((d) => renderDoc(d, true))); } catch (e) { toast('圖片讀取失敗，請確認網路'); return; }
+  const unmasked = c.docs.filter((d) => !d.masks.length).length;
+  const urls = canvases.map((cv) => cv.toDataURL('image/jpeg', 0.85));
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>分享版</h2><button class="btn" id="shPdf">分享 PDF</button><button class="btn" id="shAll">分享全部圖片</button><button class="btn pri" id="shClose">關閉</button></div>
+  <div class="ovbody" style="flex-direction:column;align-items:center">${unmasked ? `<div class="note" style="color:var(--warn);background:var(--warn-soft)">有 ${unmasked} 張文件還沒有遮罩，傳出去前請先檢查。</div>` : ''}
+  <div class="note">遮罩已經直接畫進這些圖片裡，按「分享」可以直接傳到 LINE。案件裡的原圖不受影響。</div>
+  <div class="shareimgs">${urls.map((s) => `<img src="${s}" alt="遮罩後的文件">`).join('')}</div></div></div>`;
+  $('shClose').onclick = () => (ov.innerHTML = '');
+  $('shAll').onclick = async () => { const files = await Promise.all(canvases.map(async (cv, i) => new File([await toBlob(cv)], `分享版-${c.docs[i].name}-${i + 1}.jpg`, { type: 'image/jpeg' }))); shareOrSave(files); };
+  $('shPdf').onclick = () => makePDF(c.docs, true, '理賠參考-' + refTitle(c));
+}
+async function makePDF(docs, mask, name) {
+  if (!window.jspdf) { toast('PDF 元件沒有載入，請重新整理'); return; }
+  toast('正在產生 PDF…');
+  const { jsPDF } = window.jspdf; let pdf = null;
+  try {
+    for (const d of docs) {
+      const cv = await renderDoc(d, mask); const o = cv.width > cv.height ? 'l' : 'p'; const pw = o === 'p' ? 210 : 297, ph = o === 'p' ? 297 : 210;
+      if (!pdf) pdf = new jsPDF({ orientation: o, unit: 'mm', format: 'a4' }); else pdf.addPage('a4', o);
+      const s = Math.min(pw / cv.width, ph / cv.height); const w = cv.width * s, h = cv.height * s;
+      pdf.addImage(cv.toDataURL('image/jpeg', 0.85), 'JPEG', (pw - w) / 2, (ph - h) / 2, w, h);
+    }
+  } catch (e) { toast('圖片讀取失敗，請確認網路'); return; }
+  if (!pdf) return;
+  shareOrSave([new File([pdf.output('blob')], name.replace(/[\\/:*?"<>|]/g, '_') + '.pdf', { type: 'application/pdf' })]);
+}
+
+/* ================= 登入／密碼 ================= */
+const gate = $('gate');
+function showGate(html) { app.hidden = true; gate.hidden = false; gate.innerHTML = `<div class="gate-card"><h1><i></i>工作手冊</h1>${html}</div>`; }
+function gateLoading(msg) { showGate(`<p>${esc(msg)}</p>`); }
+async function boot() {
+  gateLoading('載入中…');
+  if (!CFG.CLIENT_ID && !MOCK) { showGate(`<p>還差一步：把 Azure「Work」應用程式的用戶端識別碼填進 <b>crm/config.js</b>。</p><p>想先試用，可以開測試模式，資料只會存在這台裝置。</p><a class="btn" href="?test">先用測試模式</a>`); return; }
+  try { await Drive.init(); } catch (e) { console.warn(e); showGate(`<p>登入元件載入失敗，請重新整理。</p><div class="err">${esc(e.message || e)}</div>`); return; }
+  if (!Drive.account) {
+    showGate(`<p>用你的 Microsoft 帳號登入。資料會加密存在你自己的 OneDrive，只有你看得到。</p><button class="btn pri" id="gSign">用 Microsoft 帳號登入</button>`);
+    $('gSign').onclick = () => Drive.signIn(); return;
+  }
+  gateLoading('正在連線 OneDrive…');
+  let exists = false, offline = false;
+  try { exists = !!(await Drive.getMeta('data.enc')); } catch (e) { offline = true; exists = !!(await Cache.get('data')); }
+  if (!exists && offline) { showGate(`<p>連不上 OneDrive，請確認網路後再試一次。</p><button class="btn pri" id="gRetry">重試</button>`); $('gRetry').onclick = boot; return; }
+  exists ? askUnlock() : askCreate();
+}
+function askCreate() {
+  showGate(`<p>第一次使用，請設定一組密碼。所有資料（包含照片）都會用這組密碼加密後才存到 OneDrive。</p>
+  <div class="warnbox">忘記密碼，資料就救不回來。請把它記在安全的地方。</div>
+  <label class="f">密碼（至少 6 個字）<input type="password" id="gP1" autocomplete="new-password"></label>
+  <label class="f">再輸入一次<input type="password" id="gP2" autocomplete="new-password"></label>
+  <div class="err" id="gErr"></div><button class="btn pri" id="gGo">建立</button>
+  <p style="font-size:12px">登入帳號：${esc(Drive.account.username)}</p>`);
+  $('gGo').onclick = async () => {
+    const a = $('gP1').value, b = $('gP2').value;
+    if (a.length < 6) { $('gErr').textContent = '密碼至少要 6 個字'; return; }
+    if (a !== b) { $('gErr').textContent = '兩次輸入的密碼不一樣'; return; }
+    $('gGo').disabled = true; $('gErr').textContent = '';
+    try { await Vault.create(a); enter(); } catch (e) { $('gGo').disabled = false; $('gErr').textContent = '建立失敗：' + (e.message || e); }
   };
-  $('sheetClose').onclick = () => Sheet.close();
-  $('sheet').addEventListener('click', (e) => { if (e.target.id === 'sheet') Sheet.close(); });
-  function confirmBox(msg, ok, okText = '確定', danger = true) {
-    const b = Sheet.open('請確認', `<p class="lead">${esc(msg)}</p><div class="row"><button class="${danger ? 'danger' : 'primary'}" id="cOk">${esc(okText)}</button><button class="ghostbtn" id="cNo">取消</button></div>`);
-    b.querySelector('#cOk').onclick = () => { Sheet.close(); ok(); }; b.querySelector('#cNo').onclick = () => Sheet.close();
-  }
-  function editor(title, fields, rec, onSave, extra = {}) {
-    const b = Sheet.open(title, formHtml(fields, rec) + (extra.html || '') + `<div class="row foot">${extra.onDelete ? '<button class="danger" id="eDel">刪除</button>' : ''}<div class="spacer"></div><button class="ghostbtn" id="eCancel">取消</button><button class="primary" id="eSave">儲存</button></div>`, { wide: true });
-    const form = b.querySelector('form');
-    if (extra.wire) extra.wire(b);
-    b.querySelector('#eCancel').onclick = () => Sheet.close();
-    b.querySelector('#eSave').onclick = () => {
-      const r = readForm(form, fields, { ...rec });
-      const bad = fields.find((f) => f.req && !r[f.k]); if (bad) { toast('請填寫「' + bad.label + '」'); return; }
-      onSave(r); Sheet.close(); App.refresh(); toast('已儲存');
-    };
-    if (extra.onDelete) b.querySelector('#eDel').onclick = () => confirmBox('確定要刪除嗎？刪除後無法復原。', () => { extra.onDelete(); App.refresh(); toast('已刪除'); }, '刪除');
-  }
-
-  /* ================= 欄位定義 ================= */
-  const F = {
-    client: [
-      { k: 'name', label: '姓名', req: 1 }, { k: 'gender', label: '性別', type: 'select', opts: ['', '女', '男'] },
-      { k: 'birthday', label: '生日', type: 'date' }, { k: 'idNo', label: '身分證字號' },
-      { k: 'phone', label: '手機', type: 'tel' }, { k: 'line', label: 'LINE ID' }, { k: 'email', label: 'Email', type: 'email' },
-      { k: 'job', label: '職業' }, { k: 'address', label: '地址', full: 1 },
-      { k: 'source', label: '來源／介紹人' }, { k: 'tags', label: '標籤', ph: '例：家庭支柱、VIP、轉介紹（用逗號分隔）' },
-      { k: 'family', label: '家庭狀況', type: 'textarea', full: 1, ph: '配偶、子女、父母、家庭責任…' },
-      { k: 'note', label: '備註', type: 'textarea', full: 1 },
-    ],
-    policy: [
-      { k: 'product', label: '商品名稱', req: 1 }, { k: 'policyNo', label: '保單號碼' },
-      { k: 'company', label: '保險公司', def: '國泰人壽' }, { k: 'status', label: '狀態', type: 'select', opts: ['有效', '繳清', '停效', '已終止'] },
-      { k: 'holder', label: '要保人' }, { k: 'insured', label: '被保險人' }, { k: 'beneficiary', label: '受益人', full: 1 },
-      { k: 'amount', label: '保額' }, { k: 'premium', label: '年繳保費', type: 'number' },
-      { k: 'payMode', label: '繳別', type: 'select', opts: ['年繳', '半年繳', '季繳', '月繳', '躉繳'] }, { k: 'startDate', label: '生效日', type: 'date' },
-      { k: 'payYears', label: '繳費年期' }, { k: 'note', label: '備註', type: 'textarea', full: 1 },
-    ],
-    deal: [
-      { k: 'clientId', label: '客戶', type: 'client', full: 1 }, { k: 'title', label: '需求／商品', req: 1, ph: '例：補重大傷病、小孩醫療' },
-      { k: 'stage', label: '階段', type: 'select', opts: STAGES }, { k: 'premium', label: '預估年繳保費', type: 'number' },
-      { k: 'nextAction', label: '下一步', ph: '例：送建議書、約第二次面談' }, { k: 'nextDate', label: '下一步日期', type: 'date' },
-      { k: 'note', label: '紀錄', type: 'textarea', full: 1 },
-    ],
-    service: [
-      { k: 'clientId', label: '客戶', type: 'client', full: 1 }, { k: 'type', label: '保全項目', type: 'select', opts: SERVICE_TYPES },
-      { k: 'status', label: '進度', type: 'select', opts: SERVICE_STATUS }, { k: 'policyNo', label: '保單號碼' },
-      { k: 'submitDate', label: '送件日', type: 'date' }, { k: 'dueDate', label: '追蹤日', type: 'date' },
-      { k: 'note', label: '內容／紀錄', type: 'textarea', full: 1 },
-    ],
-    claim: [
-      { k: 'clientId', label: '客戶', type: 'client', full: 1 }, { k: 'insured', label: '被保險人' },
-      { k: 'kind', label: '類型', type: 'select', opts: ['疾病', '意外', '癌症', '重大傷病', '長照／失能', '身故', '其他'] },
-      { k: 'eventDate', label: '事故日／確診日', type: 'date' }, { k: 'hospital', label: '醫院' },
-      { k: 'diagnosis', label: '診斷／事故經過', type: 'textarea', full: 1 },
-      { k: 'docs', label: '文件清單（已備齊打勾）', type: 'checks', opts: CLAIM_DOCS, full: 1 },
-      { k: 'status', label: '進度', type: 'select', opts: CLAIM_STATUS }, { k: 'submitDate', label: '送件日', type: 'date' },
-      { k: 'followDate', label: '追蹤日', type: 'date' }, { k: 'paidAmount', label: '給付金額', type: 'number' },
-      { k: 'paidDate', label: '給付日', type: 'date' }, { k: 'note', label: '備註', type: 'textarea', full: 1 },
-    ],
-    task: [
-      { k: 'title', label: '事項', req: 1, full: 1 }, { k: 'cat', label: '分類', type: 'select', opts: TASK_CATS },
-      { k: 'due', label: '期限', type: 'date' }, { k: 'clientId', label: '相關客戶（可不填）', type: 'client', full: 1 },
-      { k: 'note', label: '備註', type: 'textarea', full: 1 },
-    ],
-    log: [
-      { k: 'date', label: '日期', type: 'date' }, { k: 'type', label: '方式', type: 'select', opts: LOG_TYPES },
-      { k: 'content', label: '內容', type: 'textarea', full: 1, req: 1 },
-    ],
+}
+function askUnlock() {
+  showGate(`<p>輸入密碼解鎖。</p>
+  <label class="f">密碼<input type="password" id="gP" autocomplete="current-password"></label>
+  <div class="err" id="gErr"></div><button class="btn pri" id="gGo">解鎖</button>
+  <p style="font-size:12px">登入帳號：${esc(Drive.account.username)}　<button class="btn" id="gOut" style="padding:2px 8px;font-size:12px">換帳號</button></p>`);
+  const go = async () => {
+    $('gGo').disabled = true; $('gErr').textContent = '';
+    try { const r = await Vault.load($('gP').value); if (r === 'new') { askCreate(); return; } enter(); }
+    catch (e) { $('gGo').disabled = false; $('gErr').textContent = e.badPassword ? '密碼不正確' : '讀取失敗：' + (e.message || e); }
   };
+  $('gGo').onclick = go; $('gP').onkeydown = (e) => { if (e.key === 'Enter') go(); };
+  $('gOut').onclick = () => Drive.signOut();
+  setTimeout(() => $('gP')?.focus(), 50);
+}
+let lastAct = Date.now();
+function enter() {
+  gate.hidden = true; app.hidden = false;
+  const first = cases().slice().sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))[0];
+  S.sel = first?.id || null; S.refSel = cases().find((c) => c.isRef)?.id || null; S.showDetail = false;
+  lastAct = Date.now(); App.render(); Files.retryUploads();
+}
+async function lock() {
+  if (Vault.dirty) await Vault.save();
+  Vault.lock(); Files.clear(); imgCache.clear(); ov.innerHTML = ''; app.innerHTML = '';
+  askUnlock();
+}
+['pointerdown', 'keydown'].forEach((t) => document.addEventListener(t, () => (lastAct = Date.now()), true));
+setInterval(() => { if (Vault.key && Date.now() - lastAct > (CFG.AUTO_LOCK_MINUTES || 30) * 60000) lock(); }, 30000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Vault.key) { if (Date.now() - lastAct > (CFG.AUTO_LOCK_MINUTES || 30) * 60000) lock(); else Vault.pull(); } else if (Vault.dirty) Vault.save(); });
+window.addEventListener('online', () => { if (Vault.key) { Vault.save(); Files.retryUploads(); } });
+window.addEventListener('beforeunload', (e) => { if (Vault.dirty) { Vault.save(); e.preventDefault(); e.returnValue = ''; } });
 
-  /* ================= 照片區塊 ================= */
-  function photoBlock(coll, id) {
-    if (!id) return '<p class="hint">儲存後即可加入照片。</p>';
-    const fs = Files.forRef(coll, id);
-    return `<div class="photos" data-coll="${coll}" data-id="${id}">${fs.map((f) => `<button class="ph" data-f="${f.id}"><span>載入中…</span></button>`).join('')}<label class="ph add"><input type="file" accept="image/*" multiple hidden>＋ 拍照／選照片</label></div>`;
-  }
-  function wirePhotos(root) {
-    root.querySelectorAll('.photos').forEach((box) => {
-      box.querySelectorAll('.ph[data-f]').forEach(async (b) => {
-        try { const u = await Files.url(b.dataset.f); if (u) b.innerHTML = `<img src="${u}" alt="照片">`; else b.innerHTML = '<span>找不到</span>'; } catch (e) { b.innerHTML = '<span>離線中</span>'; }
-        b.onclick = () => Viewer.open(b.dataset.f, () => App.refresh());
-      });
-      const inp = box.querySelector('input[type=file]');
-      inp.onchange = async () => {
-        const list = [...inp.files]; if (!list.length) return;
-        toast('加密並上傳中…', 4000);
-        for (const f of list) await Files.add(f, { coll: box.dataset.coll, id: box.dataset.id });
-        toast('已加入 ' + list.length + ' 張照片'); App.refresh();
-        const fresh = document.querySelector(`.photos[data-coll="${box.dataset.coll}"][data-id="${box.dataset.id}"]`);
-        if (fresh) { fresh.outerHTML = photoBlock(box.dataset.coll, box.dataset.id); } else { box.outerHTML = photoBlock(box.dataset.coll, box.dataset.id); }
-        wirePhotos(document);
-      };
-    });
-  }
-  const Viewer = {
-    id: null,
-    async open(id, after) {
-      this.id = id; this.after = after; $('viewerImg').src = await Files.url(id); $('viewer').classList.remove('hidden');
-    },
-    close() { $('viewer').classList.add('hidden'); $('viewerImg').removeAttribute('src'); },
-  };
-  $('viewerClose').onclick = () => Viewer.close();
-  $('viewerShare').onclick = async () => {
-    const u = $('viewerImg').src, blob = await (await fetch(u)).blob(), file = new File([blob], '照片.jpg', { type: blob.type });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file] }).catch(() => { });
-    else { const a = document.createElement('a'); a.href = u; a.download = '照片.jpg'; a.click(); }
-  };
-  $('viewerDel').onclick = () => confirmBox('確定要刪除這張照片嗎？', async () => { await Files.remove(Viewer.id); Viewer.close(); App.refresh(); toast('照片已刪除'); }, '刪除');
-
-  /* ================= 小元件 ================= */
-  const clientName = (id) => { const c = id && Vault.get('clients', id); return c ? pii(c.name, 'name') : '<span class="muted">（未指定客戶）</span>'; };
-  const money = (n) => (n === '' || n == null ? '' : Number(n).toLocaleString('zh-TW'));
-  const dueTag = (d) => { if (!d) return ''; const t = today(); const cls = d < t ? 'late' : d === t ? 'now' : d <= addDays(t, 7) ? 'soon' : ''; const lab = d < t ? '已過期 ' : d === t ? '今天 ' : ''; return `<span class="due ${cls}">${lab}${fmtDate(d)}</span>`; };
-  const pill = (s, map) => `<span class="pill s-${(map || {})[s] || 'x'}">${esc(s)}</span>`;
-  const STAT = { '完成': 'ok', '已給付': 'ok', '成交': 'ok', '拒賠／結案': 'off', '暫緩': 'off', '已送件': 'go', '核保': 'go', '送件': 'go', '補件中': 'warn' };
-  function empty(msg, btn) { return `<div class="empty"><p>${esc(msg)}</p>${btn ? `<button class="primary" data-add>${esc(btn)}</button>` : ''}</div>`; }
-
-  /* ================= 各頁面 ================= */
-  const Views = {
-    today() {
-      const t = today(), wk = addDays(t, 7);
-      const items = [];
-      Vault.all('deals').filter((d) => d.nextDate && d.nextDate <= wk && !['成交', '暫緩'].includes(d.stage)).forEach((d) => items.push({ d: d.nextDate, kind: '促約', html: `${clientName(d.clientId)}・${esc(d.title)}<small>${esc(d.nextAction || d.stage)}</small>`, open: () => Edit.deal(d) }));
-      Vault.all('services').filter((s) => s.dueDate && s.dueDate <= wk && s.status !== '完成').forEach((s) => items.push({ d: s.dueDate, kind: '保全', html: `${clientName(s.clientId)}・${esc(s.type)}<small>${esc(s.status)}</small>`, open: () => Edit.service(s) }));
-      Vault.all('claims').filter((c) => c.followDate && c.followDate <= wk && !['已給付', '拒賠／結案'].includes(c.status)).forEach((c) => items.push({ d: c.followDate, kind: '理賠', html: `${clientName(c.clientId)}・${esc(c.kind)}<small>${esc(c.status)}</small>`, open: () => Edit.claim(c) }));
-      Vault.all('tasks').filter((x) => !x.done && x.due && x.due <= wk).forEach((x) => items.push({ d: x.due, kind: '行政', html: `${esc(x.title)}<small>${esc(x.cat || '')}</small>`, open: () => Edit.task(x) }));
-      items.sort((a, b) => (a.d < b.d ? -1 : 1));
-      const m = t.slice(5, 7);
-      const bdays = Vault.all('clients').filter((c) => c.birthday && c.birthday.slice(5, 7) === m).sort((a, b) => (a.birthday.slice(8) < b.birthday.slice(8) ? -1 : 1));
-      const annis = [];
-      Vault.all('policies').filter((p) => p.startDate && p.status !== '已終止').forEach((p) => {
-        const y = +t.slice(0, 4); let a = y + p.startDate.slice(4); if (a < t) a = (y + 1) + p.startDate.slice(4);
-        if (a <= addDays(t, 30) && a.slice(0, 4) !== p.startDate.slice(0, 4)) annis.push({ a, p });
-      });
-      annis.sort((x, y) => (x.a < y.a ? -1 : 1));
-      const openClaims = Vault.all('claims').filter((c) => !['已給付', '拒賠／結案'].includes(c.status)).length;
-      const openDeals = Vault.all('deals').filter((d) => !['成交', '暫緩'].includes(d.stage));
-      const pipe = openDeals.reduce((s, d) => s + (+d.premium || 0), 0);
-      this._items = items;
-      return `<div class="kpis"><div><b>${items.filter((i) => i.d <= t).length}</b><span>今天要處理</span></div><div><b>${openDeals.length}</b><span>進行中促約</span></div><div><b>${money(pipe) || 0}</b><span>預估年繳保費</span></div><div><b>${openClaims}</b><span>處理中理賠</span></div></div>
-      <div class="cols2">
-        <div class="panel"><h2>未來 7 天待辦</h2>${items.length ? `<ul class="list">${items.map((i, n) => `<li class="click" data-i="${n}"><span class="k k-${i.kind}">${i.kind}</span><div class="main">${i.html}</div>${dueTag(i.d)}</li>`).join('')}</ul>` : '<p class="muted pad">沒有到期事項。</p>'}</div>
-        <div class="panel"><h2>本月生日（${+m} 月）</h2>${bdays.length ? `<ul class="list">${bdays.map((c) => `<li class="click" data-c="${c.id}"><div class="main">${pii(c.name, 'name')}</div><span class="due">${+c.birthday.slice(5, 7)}/${+c.birthday.slice(8)}</span></li>`).join('')}</ul>` : '<p class="muted pad">這個月沒有客戶生日。</p>'}
-        <h2>30 天內保單週年</h2>${annis.length ? `<ul class="list">${annis.map(({ a, p }) => `<li class="click" data-c="${p.clientId}"><div class="main">${clientName(p.clientId)}・${esc(p.product)}</div>${dueTag(a)}</li>`).join('')}</ul>` : '<p class="muted pad">沒有即將到來的保單週年。</p>'}</div>
-      </div>`;
-    },
-    clients() {
-      const q = (App.q || '').trim();
-      let cs = Vault.all('clients');
-      if (q) cs = cs.filter((c) => [c.name, c.phone, c.tags, c.source, c.job].join(' ').includes(q));
-      cs.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
-      const counts = (id, coll) => Vault.all(coll).filter((x) => x.clientId === id).length;
-      return `<div class="toolbar"><input id="q" class="search" placeholder="搜尋姓名、電話、標籤…" value="${esc(q)}"><span class="muted">${cs.length} 位客戶</span></div>` +
-        (cs.length ? `<div class="grid">${cs.map((c) => `<button class="ccard" data-c="${c.id}"><div class="cn">${pii(c.name, 'name')}${c.gender ? `<small>${esc(c.gender)}</small>` : ''}</div><div class="cp">${pii(c.phone, 'phone')}</div><div class="ct">${(c.tags || '').split(/[,，、]/).filter(Boolean).map((t) => `<span class="tag">${esc(t.trim())}</span>`).join('')}</div><div class="cm">保單 ${counts(c.id, 'policies')}・促約 ${counts(c.id, 'deals')}・理賠 ${counts(c.id, 'claims')}</div></button>`).join('')}</div>` : empty(q ? '找不到符合的客戶。' : '還沒有客戶。從右上「＋ 新增」開始建立第一位客戶。', q ? '' : '＋ 新增客戶'));
-    },
-    client(id) {
-      const c = Vault.get('clients', id); if (!c) return empty('找不到這位客戶。');
-      const pol = Vault.all('policies').filter((p) => p.clientId === id);
-      const logs = Vault.all('logs').filter((l) => l.clientId === id).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-      const deals = Vault.all('deals').filter((d) => d.clientId === id), svcs = Vault.all('services').filter((s) => s.clientId === id), cls = Vault.all('claims').filter((x) => x.clientId === id);
-      const row = (l, v) => (v ? `<div class="kv"><span>${l}</span><b>${v}</b></div>` : '');
-      const age = c.birthday ? Math.floor((Date.now() - new Date(c.birthday)) / 31557600000) : null;
-      return `<div class="cols2 detail">
-        <div class="panel"><div class="ph-head"><h2>${pii(c.name, 'name')} ${age != null ? `<small>${age} 歲</small>` : ''}</h2><button class="ghostbtn" data-edit-client>編輯</button></div>
-          ${row('生日', pii(c.birthday, 'date'))}${row('身分證', pii(c.idNo, 'id'))}${row('手機', pii(c.phone, 'phone'))}${row('LINE', pii(c.line, 'text'))}${row('Email', pii(c.email, 'email'))}${row('地址', pii(c.address, 'addr'))}${row('職業', esc(c.job))}${row('來源', esc(c.source))}${row('標籤', esc(c.tags))}
-          ${c.family ? `<h3>家庭狀況</h3><p class="pre">${pii(c.family, 'text')}</p>` : ''}${c.note ? `<h3>備註</h3><p class="pre">${pii(c.note, 'text')}</p>` : ''}
-          <h3>照片／文件</h3>${photoBlock('clients', c.id)}
-        </div>
-        <div>
-          <div class="panel"><div class="ph-head"><h2>保單（${pol.length}）</h2><button class="ghostbtn" data-add-policy>＋ 保單</button></div>
-            ${pol.length ? `<ul class="list">${pol.map((p) => `<li class="click" data-p="${p.id}"><div class="main">${esc(p.product)}<small>${p.policyNo ? '號碼 ' + pii(p.policyNo, 'num') + '・' : ''}${esc(p.payMode || '')} ${money(p.premium)}${p.startDate ? '・生效 ' + fmtDate(p.startDate) : ''}</small></div>${pill(p.status || '有效', { '有效': 'ok', '繳清': 'go', '停效': 'warn', '已終止': 'off' })}</li>`).join('')}</ul>` : '<p class="muted pad">尚未登錄保單。</p>'}
-          </div>
-          <div class="panel"><div class="ph-head"><h2>往來紀錄</h2><button class="ghostbtn" data-add-log>＋ 紀錄</button></div>
-            ${logs.length ? `<ul class="list">${logs.map((l) => `<li class="click" data-l="${l.id}"><span class="k">${esc(l.type)}</span><div class="main">${pii(l.content, 'text')}</div><span class="due">${fmtDate(l.date)}</span></li>`).join('')}</ul>` : '<p class="muted pad">還沒有紀錄。</p>'}
-          </div>
-          <div class="panel"><div class="ph-head"><h2>相關案件</h2><div class="row"><button class="ghostbtn" data-new="deal">＋ 促約</button><button class="ghostbtn" data-new="service">＋ 保全</button><button class="ghostbtn" data-new="claim">＋ 理賠</button></div></div>
-            <ul class="list">${deals.map((d) => `<li class="click" data-deal="${d.id}"><span class="k k-促約">促約</span><div class="main">${esc(d.title)}<small>${esc(d.nextAction || '')}</small></div>${pill(d.stage, STAT)}</li>`).join('')}${svcs.map((s) => `<li class="click" data-svc="${s.id}"><span class="k k-保全">保全</span><div class="main">${esc(s.type)}</div>${pill(s.status, STAT)}</li>`).join('')}${cls.map((x) => `<li class="click" data-claim="${x.id}"><span class="k k-理賠">理賠</span><div class="main">${esc(x.kind)}・${fmtDate(x.eventDate)}</div>${pill(x.status, STAT)}</li>`).join('')}</ul>
-            ${deals.length + svcs.length + cls.length ? '' : '<p class="muted pad">沒有相關案件。</p>'}
-          </div>
-        </div></div>`;
-    },
-    deals() {
-      const ds = Vault.all('deals');
-      if (!ds.length) return empty('還沒有促約案件。從名單開始，記下每位潛在客戶的下一步。', '＋ 新增促約');
-      return `<div class="kanban">${STAGES.map((s) => { const list = ds.filter((d) => (d.stage || '名單') === s).sort((a, b) => (a.nextDate || '9') < (b.nextDate || '9') ? -1 : 1); const sum = list.reduce((x, d) => x + (+d.premium || 0), 0);
-        return `<div class="lane"><div class="lane-h"><b>${s}</b><span>${list.length}${sum ? '・' + money(sum) : ''}</span></div>${list.map((d) => `<div class="kcard" data-deal="${d.id}"><div class="kc-n">${clientName(d.clientId)}</div><div class="kc-t">${esc(d.title)}</div>${d.nextAction ? `<div class="kc-a">→ ${esc(d.nextAction)}</div>` : ''}<div class="kc-f">${dueTag(d.nextDate)}${d.premium ? `<span class="muted">${money(d.premium)}</span>` : ''}</div><div class="kc-mv"><button data-mv="-1" aria-label="上一階段">‹</button><button data-mv="1" aria-label="下一階段">›</button></div></div>`).join('')}</div>`; }).join('')}</div>`;
-    },
-    services() { return listCases('services', SERVICE_STATUS, (s) => `${esc(s.type)}${s.policyNo ? `<small>保單 ${pii(s.policyNo, 'num')}</small>` : ''}`, (s) => s.dueDate, '還沒有保全案件。', '＋ 新增保全'); },
-    claims() { return listCases('claims', CLAIM_STATUS, (c) => { const n = (c.docs || []).length; return `${esc(c.kind)}${c.insured ? '・被保人 ' + pii(c.insured, 'name') : ''}<small>事故 ${fmtDate(c.eventDate) || '—'}・文件 ${n}/${CLAIM_DOCS.length}${c.paidAmount ? '・給付 ' + money(c.paidAmount) : ''}・照片 ${Files.forRef('claims', c.id).length}</small>`; }, (c) => c.followDate, '還沒有理賠案件。', '＋ 新增理賠'); },
-    tasks() {
-      const ts = Vault.all('tasks').sort((a, b) => (a.done - b.done) || ((a.due || '9') < (b.due || '9') ? -1 : 1));
-      if (!ts.length) return empty('沒有行政待辦。', '＋ 新增待辦');
-      const open = ts.filter((x) => !x.done), done = ts.filter((x) => x.done).slice(0, 30);
-      const li = (x) => `<li class="task ${x.done ? 'done' : ''}"><input type="checkbox" data-done="${x.id}" ${x.done ? 'checked' : ''} aria-label="完成"><div class="main click" data-task="${x.id}">${esc(x.title)}<small>${esc(x.cat || '')}${x.clientId ? '・' + clientName(x.clientId) : ''}</small></div>${dueTag(x.due)}</li>`;
-      return `<div class="panel"><h2>待辦（${open.length}）</h2><ul class="list">${open.map(li).join('') || '<p class="muted pad">全部完成了。</p>'}</ul></div>${done.length ? `<div class="panel"><h2>最近完成</h2><ul class="list">${done.map(li).join('')}</ul></div>` : ''}`;
-    },
-  };
-  function listCases(coll, statuses, body, dateOf, emptyMsg, btn) {
-    const xs = Vault.all(coll); if (!xs.length) return empty(emptyMsg, btn);
-    const key = coll === 'services' ? 'svc' : 'claim';
-    return statuses.map((st) => { const list = xs.filter((x) => (x.status || statuses[0]) === st).sort((a, b) => ((dateOf(a) || '9') < (dateOf(b) || '9') ? -1 : 1)); if (!list.length) return '';
-      return `<div class="panel"><h2>${pill(st, STAT)} <span class="muted">${list.length}</span></h2><ul class="list">${list.map((x) => `<li class="click" data-${key}="${x.id}"><div class="main"><b>${clientName(x.clientId)}</b>・${body(x)}</div>${dueTag(dateOf(x))}</li>`).join('')}</ul></div>`; }).join('');
-  }
-
-  /* ================= 新增／編輯 ================= */
-  const Edit = {
-    client(c = {}) { editor(c.id ? '編輯客戶' : '新增客戶', F.client, c, (r) => { Vault.put('clients', r); if (!c.id) location.hash = '#client/' + r.id; }, { onDelete: c.id ? () => Vault.del('clients', c.id) : null }); },
-    policy(p) { editor(p.id ? '編輯保單' : '新增保單', F.policy, p, (r) => Vault.put('policies', r), { onDelete: p.id ? () => Vault.del('policies', p.id) : null }); },
-    log(l) { editor(l.id ? '編輯紀錄' : '新增往來紀錄', F.log, { date: today(), type: 'LINE', ...l }, (r) => Vault.put('logs', r), { onDelete: l.id ? () => Vault.del('logs', l.id) : null }); },
-    deal(d = {}) { editor(d.id ? '促約案件' : '新增促約', F.deal, { stage: '名單', ...d }, (r) => Vault.put('deals', r), { onDelete: d.id ? () => Vault.del('deals', d.id) : null }); },
-    service(s = {}) { editor(s.id ? '保全案件' : '新增保全', F.service, { status: '待辦', ...s }, (r) => Vault.put('services', r), { onDelete: s.id ? () => Vault.del('services', s.id) : null, html: s.id ? '<h3>照片／文件</h3>' + photoBlock('services', s.id) : '<p class="hint">儲存後可加入照片。</p>', wire: wirePhotos }); },
-    claim(c = {}) { editor(c.id ? '理賠案件' : '新增理賠', F.claim, { status: '準備文件', docs: [], ...c }, (r) => Vault.put('claims', r), { onDelete: c.id ? () => Vault.del('claims', c.id) : null, html: c.id ? '<h3>照片／文件（收據、診斷書…）</h3>' + photoBlock('claims', c.id) : '<p class="hint">先儲存，再打開這筆理賠就能拍照加入收據和診斷書。</p>', wire: wirePhotos }); },
-    task(t = {}) { editor(t.id ? '編輯待辦' : '新增待辦', F.task, { cat: '行政', ...t }, (r) => Vault.put('tasks', r), { onDelete: t.id ? () => Vault.del('tasks', t.id) : null }); },
-  };
-
-  /* ================= App ================= */
-  const TITLES = { today: '今日', clients: '客戶', deals: '新契約促約', services: '保全服務', claims: '理賠', tasks: '行政待辦', client: '客戶資料' };
-  const App = {
-    route: 'today', arg: null, q: '',
-    go() {
-      const [r, a] = (location.hash.slice(1) || 'today').split('/');
-      this.route = Views[r] ? r : 'today'; this.arg = a || null;
-      document.querySelectorAll('#nav a').forEach((x) => x.classList.toggle('on', x.dataset.r === (this.route === 'client' ? 'clients' : this.route)));
-      this.refresh(true);
-    },
-    refresh(scrollTop) {
-      if (!Vault.db || $('app').classList.contains('hidden')) return;
-      $('title').textContent = TITLES[this.route];
-      $('btnBack').classList.toggle('hidden', this.route !== 'client');
-      $('btnAdd').classList.toggle('hidden', this.route === 'client');
-      const v = $('view'), y = v.scrollTop;
-      v.innerHTML = Views[this.route](this.arg);
-      if (this.route === 'client') wirePhotos(v);
-      const q = $('q'); if (q) { q.oninput = () => { this.q = q.value; const pos = q.selectionStart; this.refresh(); const n = $('q'); n.focus(); n.setSelectionRange(pos, pos); }; }
-      v.scrollTop = scrollTop === true ? 0 : y;
-    },
-  };
-  window.addEventListener('hashchange', () => App.go());
-  $('btnBack').onclick = () => history.length > 1 ? history.back() : (location.hash = '#clients');
-  $('btnAdd').onclick = () => ({ today: () => quickAdd(), clients: () => Edit.client(), deals: () => Edit.deal(), services: () => Edit.service(), claims: () => Edit.claim(), tasks: () => Edit.task() }[App.route] || quickAdd)();
-  function quickAdd() {
-    const b = Sheet.open('新增', `<div class="qa">${[['client', '客戶'], ['deal', '促約'], ['service', '保全'], ['claim', '理賠'], ['task', '行政待辦']].map(([k, t]) => `<button class="primary" data-k="${k}">＋ ${t}</button>`).join('')}</div>`);
-    b.onclick = (e) => { const x = e.target.closest('[data-k]'); if (x) { Sheet.close(); setTimeout(() => Edit[x.dataset.k]({}), 50); } };
-  }
-  $('view').addEventListener('click', (e) => {
-    const t = e.target.closest('[data-c],[data-deal],[data-svc],[data-claim],[data-task],[data-p],[data-l],[data-i],[data-add],[data-edit-client],[data-add-policy],[data-add-log],[data-new],[data-mv]');
-    if (!t) return;
-    const d = t.dataset;
-    if (d.mv) { e.stopPropagation(); const card = t.closest('[data-deal]'); const r = Vault.get('deals', card.dataset.deal); const i = Math.max(0, Math.min(STAGES.length - 1, STAGES.indexOf(r.stage || '名單') + +d.mv)); Vault.put('deals', { ...r, stage: STAGES[i] }); App.refresh(); return; }
-    if (d.add !== undefined) return $('btnAdd').onclick();
-    if (d.i !== undefined) return Views._items && Views._items[+d.i].open();
-    if (d.c) { location.hash = '#client/' + d.c; return; }
-    if (d.deal) return Edit.deal(Vault.get('deals', d.deal));
-    if (d.svc) return Edit.service(Vault.get('services', d.svc));
-    if (d.claim) return Edit.claim(Vault.get('claims', d.claim));
-    if (d.task) return Edit.task(Vault.get('tasks', d.task));
-    if (d.p) return Edit.policy(Vault.get('policies', d.p));
-    if (d.l) return Edit.log(Vault.get('logs', d.l));
-    if (d.editClient !== undefined) return Edit.client(Vault.get('clients', App.arg));
-    if (d.addPolicy !== undefined) return Edit.policy({ clientId: App.arg, company: '國泰人壽', status: '有效', payMode: '年繳' });
-    if (d.addLog !== undefined) return Edit.log({ clientId: App.arg });
-    if (d.new) return Edit[d.new]({ clientId: App.arg });
-  });
-  $('view').addEventListener('change', (e) => { const x = e.target.closest('[data-done]'); if (x) { const r = Vault.get('tasks', x.dataset.done); Vault.put('tasks', { ...r, done: x.checked, doneAt: x.checked ? today() : '' }); App.refresh(); } });
-  $('btnReveal').onclick = () => setRevealAll(!Mask.all);
-
-  /* ================= 解鎖畫面 ================= */
-  const Gate = {
-    show(html) { $('app').classList.add('hidden'); const g = $('gate'); g.innerHTML = `<div class="gate-card"><div class="gate-logo">客戶管理</div>${html}</div>`; g.classList.remove('hidden'); return g; },
-    hide() { $('gate').classList.add('hidden'); $('gate').innerHTML = ''; $('app').classList.remove('hidden'); },
-    async start() {
-      if (!CFG.CLIENT_ID && !MOCK) return this.show(`<p class="lead">還差一步設定：請把 Azure「保險 CRM」的應用程式識別碼交給 Claude，設定完成後這裡就會出現登入按鈕。</p>`);
-      try { await Drive.init(); } catch (e) { return this.show(`<p class="lead">無法載入 Microsoft 登入，請確認網路後重新開啟。</p><p class="err">${esc(e.message)}</p>`); }
-      if (!Drive.account) {
-        const g = this.show(`<p class="lead">客戶資料會加密後存在<b>你自己的 OneDrive</b>（應用程式 → 保險 CRM），iPad 清空也不會不見。</p><button class="primary big" id="gSign">用 Microsoft 帳號登入 OneDrive</button>`);
-        g.querySelector('#gSign').onclick = () => Drive.signIn();
-        return;
-      }
-      let exists = null;
-      try { exists = !!(await Drive.getMeta('data.enc')); } catch (e) { exists = !!(await Cache.get('data')); }
-      if (exists) this.unlock(); else this.setup();
-    },
-    unlock() {
-      const g = this.show(`<p class="lead">輸入 CRM 密碼解鎖</p><form id="gForm"><input id="gPw" type="password" class="big" autocomplete="current-password" placeholder="密碼"><p class="err" id="gErr"></p><button class="primary big" type="submit">解鎖</button></form><p class="muted small">已登入：${esc(Drive.account.username || '')}　<a href="#" id="gOut">換帳號</a></p>`);
-      const pw = g.querySelector('#gPw'); setTimeout(() => pw.focus(), 50);
-      g.querySelector('#gOut').onclick = (e) => { e.preventDefault(); Cache.clear(); Drive.signOut(); };
-      g.querySelector('#gForm').onsubmit = async (e) => {
-        e.preventDefault(); const err = g.querySelector('#gErr'); err.textContent = '解鎖中…';
-        try { const r = await Vault.load(pw.value); if (r === 'new') return this.setup(); this.enter(); }
-        catch (x) { err.textContent = x.badPassword ? '密碼不正確，請再試一次。' : '讀取 OneDrive 失敗：' + x.message; }
-      };
-    },
-    setup() {
-      const g = this.show(`<p class="lead">第一次使用：設定 CRM 密碼</p><p class="warn">所有客戶資料都用這組密碼加密。<b>忘記密碼就無法打開資料，沒有人能幫你找回</b>，請記在安全的地方。</p><form id="gForm"><input id="gPw" type="password" class="big" autocomplete="new-password" placeholder="設定密碼（至少 8 個字）"><input id="gPw2" type="password" class="big" autocomplete="new-password" placeholder="再輸入一次"><label class="chk"><input type="checkbox" id="gOk"> 我已經把密碼記下來了</label><p class="err" id="gErr"></p><button class="primary big" type="submit">建立加密資料庫</button></form>`);
-      g.querySelector('#gForm').onsubmit = async (e) => {
-        e.preventDefault(); const a = g.querySelector('#gPw').value, b = g.querySelector('#gPw2').value, err = g.querySelector('#gErr');
-        if (a.length < 8) return (err.textContent = '密碼至少 8 個字。');
-        if (a !== b) return (err.textContent = '兩次輸入的密碼不一樣。');
-        if (!g.querySelector('#gOk').checked) return (err.textContent = '請先確認已記下密碼。');
-        err.textContent = '建立中…';
-        try { await Vault.create(a); this.enter(); } catch (x) { err.textContent = '建立失敗：' + x.message; }
-      };
-    },
-    enter() { this.hide(); setRevealAll(false); App.go(); Idle.reset(); Files.retryUploads(); try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) { } },
-  };
-  function lockNow() { Vault.save(); Vault.lock(); Files.mem.forEach((u) => URL.revokeObjectURL(u)); Files.mem.clear(); Sheet.close(); Viewer.close(); $('view').innerHTML = ''; Gate.unlock(); }
-  $('btnLock').onclick = lockNow;
-  const Idle = { reset() { clearTimeout(this.t); this.t = setTimeout(() => { if (Vault.key) { lockNow(); } }, (CFG.AUTO_LOCK_MINUTES || 10) * 60000); } };
-  ['pointerdown', 'keydown'].forEach((ev) => document.addEventListener(ev, () => Vault.key && Idle.reset(), { passive: true }));
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && Vault.dirty) Vault.save(); });
-  window.addEventListener('online', () => { if (Vault.key) { Vault.save(true); Files.retryUploads(); } });
-
-  /* ================= 設定 ================= */
-  $('btnSettings').onclick = () => {
-    const n = (c) => Vault.all(c).length;
-    const b = Sheet.open('設定', `<div class="settings">
-      <p class="muted">已登入：${esc((Drive.account || {}).username || '')}<br>資料位置：OneDrive → 應用程式 → 保險 CRM（加密檔）<br>客戶 ${n('clients')}・保單 ${n('policies')}・促約 ${n('deals')}・保全 ${n('services')}・理賠 ${n('claims')}・照片 ${n('files')}</p>
-      <button class="primary" id="sSync">立即同步</button>
-      <button class="ghostbtn" id="sCsv">匯出客戶清單（Excel 可開）</button>
-      <button class="ghostbtn" id="sPw">更改 CRM 密碼</button>
-      <button class="ghostbtn" id="sClear">清除這台 iPad 上的暫存</button>
-      <button class="danger" id="sOut">登出 OneDrive</button>
-      <p class="muted small">這台 iPad 只暫存加密檔；資料以 OneDrive 為準。閒置 ${CFG.AUTO_LOCK_MINUTES || 10} 分鐘會自動鎖定。</p></div>`);
-    b.querySelector('#sSync').onclick = async () => { await Vault.save(true); Files.retryUploads(); toast(Vault.state === 'synced' ? '已同步' : '目前離線，稍後自動同步'); };
-    b.querySelector('#sCsv').onclick = () => reauth('匯出客戶清單', exportCsv);
-    b.querySelector('#sPw').onclick = () => changePw();
-    b.querySelector('#sClear').onclick = () => confirmBox('清除這台 iPad 上的暫存？雲端資料不受影響，下次開啟會從 OneDrive 重新下載。', async () => { await Vault.save(true); await Cache.clear(); toast('已清除暫存'); }, '清除', false);
-    b.querySelector('#sOut').onclick = () => confirmBox('登出後這台 iPad 的暫存也會清除，資料仍保留在 OneDrive。', async () => { await Vault.save(true); await Cache.clear(); Vault.lock(); Drive.signOut(); }, '登出');
-  };
-  function reauth(title, then) {
-    const b = Sheet.open(title, `<p class="lead">請再輸入一次 CRM 密碼</p><form id="rf"><input id="rp" type="password" class="big" autocomplete="current-password"><p class="err" id="re"></p><button class="primary" type="submit">確認</button></form>`);
-    const p = b.querySelector('#rp'); setTimeout(() => p.focus(), 50);
-    b.querySelector('#rf').onsubmit = async (e) => { e.preventDefault(); try { const k = await deriveKey(p.value, Vault.salt); const probe = await seal(Vault.key, enc.encode('x')); await open(k, probe); Sheet.close(); then(p.value); } catch (x) { b.querySelector('#re').textContent = '密碼不正確。'; } };
-  }
-  function exportCsv() {
-    const cols = [['name', '姓名'], ['gender', '性別'], ['birthday', '生日'], ['idNo', '身分證'], ['phone', '手機'], ['line', 'LINE'], ['email', 'Email'], ['address', '地址'], ['job', '職業'], ['source', '來源'], ['tags', '標籤'], ['note', '備註']];
-    const q = (s) => '"' + String(s ?? '').replace(/"/g, '""') + '"';
-    const lines = [cols.map((c) => c[1]).join(',')].concat(Vault.all('clients').map((c) => cols.map(([k]) => q(c[k])).join(',')));
-    const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv' }), name = `客戶清單_${today()}.csv`, file = new File([blob], name, { type: 'text/csv' });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file] }).catch(() => { });
-    else { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); }
-    toast('檔案含完整個資，用完請刪除');
-  }
-  function changePw() {
-    const b = Sheet.open('更改 CRM 密碼', `<form id="cp"><input id="c0" type="password" class="big" placeholder="目前密碼" autocomplete="current-password"><input id="c1" type="password" class="big" placeholder="新密碼（至少 8 個字）" autocomplete="new-password"><input id="c2" type="password" class="big" placeholder="再輸入一次新密碼" autocomplete="new-password"><p class="err" id="ce"></p><button class="primary" type="submit">更改密碼</button></form><p class="muted small">更改時會把所有照片重新加密上傳，照片多時需要一點時間，請保持網路連線、不要關閉 App。</p>`);
-    b.querySelector('#cp').onsubmit = async (e) => {
-      e.preventDefault(); const er = b.querySelector('#ce');
-      const [o, n1, n2] = ['c0', 'c1', 'c2'].map((i) => b.querySelector('#' + i).value);
-      if (n1.length < 8) return (er.textContent = '新密碼至少 8 個字。'); if (n1 !== n2) return (er.textContent = '兩次新密碼不一樣。');
-      try { const k = await deriveKey(o, Vault.salt); await open(k, await seal(Vault.key, enc.encode('x'))); } catch (x) { return (er.textContent = '目前密碼不正確。'); }
-      // 註：AES-GCM 金鑰無法直接比對，上面用「舊密碼重新推導的金鑰」解目前金鑰封裝的資料來驗證
-      er.textContent = '重新加密中…';
-      try {
-        // 先把照片用新密碼另存新檔，全部成功後才切換資料庫密碼，最後刪除舊檔；中途失敗時舊密碼仍可用
-        const oldKey = Vault.key, oldSalt = Vault.salt, salt = crypto.getRandomValues(new Uint8Array(16)), key = await deriveKey(n1, salt);
-        const kv = Date.now().toString(36), fs = Vault.all('files'), done = []; let i = 0;
-        for (const f of fs) {
-          er.textContent = `重新加密照片 ${++i}/${fs.length}…`;
-          let s = await Cache.get('file:' + f.id); if (!s) { const r = await Drive.download(fpath(f)); if (!r) continue; s = r.bytes; }
-          const ns = await seal(key, await open(oldKey, s)); await Drive.upload(fpath({ id: f.id, kv }), ns); done.push({ f, ns });
-        }
-        const oldDb = JSON.parse(JSON.stringify(Vault.db));
-        done.forEach(({ f }) => { Vault.db.files[f.id] = { ...f, kv, updatedAt: new Date().toISOString() }; });
-        Vault.key = key; Vault.salt = salt; Vault.dirty = true; await Vault.save(true);
-        if (Vault.state !== 'synced') { Vault.key = oldKey; Vault.salt = oldSalt; Vault.db = oldDb; throw new Error('無法存到 OneDrive'); }
-        for (const { f, ns } of done) { await Cache.set('file:' + f.id, ns); Drive.remove(fpath(f)).catch(() => { }); }
-        await Cache.del('pending');
-        Sheet.close(); toast('密碼已更改，請記好新密碼', 3500);
-      } catch (x) { er.textContent = '更改失敗（' + x.message + '），請在網路穩定時再試；舊密碼仍然有效。'; }
-    };
-  }
-
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { });
-  Gate.start();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { });
+boot();
 })();

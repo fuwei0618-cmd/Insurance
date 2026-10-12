@@ -1,11 +1,11 @@
 {
-  "name": "客戶管理",
-  "short_name": "客戶管理",
+  "name": "工作手冊",
+  "short_name": "工作手冊",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0E3930",
-  "theme_color": "#0E3930",
+  "background_color": "#ECEBE6",
+  "theme_color": "#ECEBE6",
   "lang": "zh-Hant",
   "icons": [
     {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
