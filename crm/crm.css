@@ -181,3 +181,4 @@ input.secret:not(.shown){-webkit-text-security:disc;text-security:disc}
 label.adddoc{cursor:pointer;text-align:center;padding:8px}
 .chip .cnt{opacity:.6;font-size:11px}
 .ov iframe{min-height:60vh}
+.doc input.ddate{border:0;border-bottom:1px solid var(--line);background:var(--card);color:var(--muted);font-size:12px;padding:3px 6px;width:100%;font-family:var(--f-num)}

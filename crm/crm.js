@@ -229,6 +229,10 @@ const SOPGROUPS = ['壽險·新契約', '壽險·保全', '壽險·保費', '壽
 /* ================= 狀態與畫面 ================= */
 const S = { view: 'cases', ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', sopGroup: '全部', showDetail: false };
 const cases = () => Vault.all('cases');
+const localDay = (d = new Date()) => { const t = new Date(d); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
+const caseDate = (c) => c.date || (c.createdAt ? localDay(c.createdAt) : '');
+const byDate = (a, b) => caseDate(b).localeCompare(caseDate(a)) || (b.updatedAt || '').localeCompare(a.updatedAt || '');
+const fmtDay = (d) => (d ? d.replace(/-/g, '/') : '');
 const notes = () => Vault.all('notes');
 const cur = () => Vault.get('cases', S.sel);
 const clients = () => Vault.all('clients');
@@ -272,7 +276,7 @@ function tabsHTML() {
 function caseSummary(c) { const a = [c.cat]; if (c.items?.length) a.push(c.items.slice(0, 2).join('、')); if (c.causeType) a.push(c.causeType + (c.causeDetail ? '›' + c.causeDetail : '')); return a.join(' · '); }
 function filteredCases() {
   const q = S.q.trim();
-  return cases().filter((c) => (S.cat === '全部' || c.cat === S.cat) && (!q || [c.client, c.title, c.notes, c.diag, c.next].join(' ').includes(q))).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+  return cases().filter((c) => (S.cat === '全部' || c.cat === S.cat) && (!q || [c.client, c.title, c.notes, c.diag, c.next].join(' ').includes(q))).sort(byDate);
 }
 function caseListHTML() {
   const list = filteredCases();
@@ -280,7 +284,7 @@ function caseListHTML() {
   <div class="mobsync">${syncHTML()}</div>
   <input class="search" id="q" placeholder="搜尋客戶、案件、備註" value="${esc(S.q)}" autocomplete="off">
   <div class="chips">${['全部', ...CATS].map((c) => `<button class="chip${S.cat === c ? ' on' : ''}" data-cat="${c}">${c}</button>`).join('')}</div></div>
-  <div class="list">${list.length ? list.map((c) => `<button class="item${c.id === S.sel ? ' on' : ''}" data-sel="${c.id}"><span class="t"><span>${esc(c.client || '未填客戶')} · ${esc(c.title || '未命名')}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${esc(caseSummary(c))}</span></button>`).join('') : `<div class="empty">${cases().length ? '沒有符合的案件。' : '還沒有案件。按「＋ 新增」，或按「掃描」直接拍文件建案。'}</div>`}</div></section>`;
+  <div class="list">${list.length ? list.map((c) => `<button class="item${c.id === S.sel ? ' on' : ''}" data-sel="${c.id}"><span class="t"><span>${esc(c.client || '未填客戶')} · ${esc(c.title || '未命名')}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${fmtDay(caseDate(c))} · ${esc(caseSummary(c))}</span></button>`).join('') : `<div class="empty">${cases().length ? '沒有符合的案件。' : '還沒有案件。按「＋ 新增」，或按「掃描」直接拍文件建案。'}</div>`}</div></section>`;
 }
 function caseDetailHTML() {
   const c = cur();
@@ -293,6 +297,7 @@ function caseDetailHTML() {
   ${c.cat === '建議書' ? `<div class="sec" style="flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap"><div><div style="font-weight:500">促約成功了嗎？</div><div class="sub">轉成新契約後，文件、備註都會保留，客戶頁的「新契約」就會出現這一件。</div></div><button class="btn pri" data-act="convert">轉成新契約</button></div>` : ''}
   <div class="sec"><h2>基本資料</h2><div class="grid2">
    <label class="f">客戶${c.clientId && Vault.get('clients', c.clientId) ? ` <button class="linkbtn" data-goclient="${c.clientId}">看客戶資料 ›</button>` : ''}<input id="f_client" data-f="client" list="clientNames" autocomplete="off" value="${esc(c.client)}" placeholder="打名字，會自動帶出或建立客戶"><datalist id="clientNames">${clients().map((x) => `<option value="${esc(x.name)}">`).join('')}</datalist></label>
+   <label class="f">日期<input type="date" id="f_date" data-f="date" value="${esc(caseDate(c))}"></label>
    <label class="f">類別<select id="f_cat" data-f="cat">${CATS.map((x) => `<option${x === c.cat ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
    <label class="f">狀態<select id="f_status" data-f="status">${STATUS.map((x) => `<option${x === c.status ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
    <label class="f">下一步<input id="f_next" data-f="next" value="${esc(c.next)}" placeholder="例如：補診斷書正本"></label></div></div>
@@ -310,7 +315,7 @@ function caseDetailHTML() {
   <div class="sec"><h2>備註</h2><textarea id="f_notes" data-f="notes" rows="4" aria-label="備註">${esc(c.notes)}</textarea></div>
   <div class="actions">${isClaim ? `<button class="btn${c.isRef ? ' on' : ''}" data-act="ref">${c.isRef ? '✓ 已在理賠參考' : '做成理賠參考'}</button>` : ''}<button class="btn danger" data-act="delcase">刪除案件</button></div>`;
 }
-function clientCases(cl) { return cases().filter((c) => c.clientId === cl.id).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')); }
+function clientCases(cl) { return cases().filter((c) => c.clientId === cl.id).sort(byDate); }
 function clientListHTML() {
   const q = S.q.trim();
   const list = clients().filter((x) => !q || [x.name, x.phone, x.line, x.note].join(' ').includes(q)).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-Hant'));
@@ -339,26 +344,27 @@ function clientDetailHTML() {
    ${f('address', '地址')}
    <label class="f">備註<textarea id="cf_note" data-cf="note" rows="3" placeholder="家庭狀況、保單重點、喜好…">${esc(x.note)}</textarea></label></div>
   <div class="sec"><h2>證件與文件 <button class="btn" data-act="toggleids" style="padding:4px 10px;font-size:13px">${S.showIds ? '隱藏證件' : '顯示證件'}</button></h2>
-   <div class="docs${S.showIds ? '' : ' veiled'}">${docs.map((d, i) => docTile(d, i, 'c', null)).join('')}
+   <div class="docs${S.showIds ? '' : ' veiled'}">${docs.map((d, i) => [d, i]).sort(([a], [b]) => (b.date || '').localeCompare(a.date || '')).map(([d, i]) => docTile(d, i, 'c', null)).join('')}
    <button class="adddoc" data-act="cscan">${ICON.scan}拍身分證、存摺<span style="font-size:11px">也可以拖曳圖片、PDF 進來</span></button><label class="adddoc">＋ 上傳 PDF 或圖片<input type="file" id="docUpC" accept="image/*,application/pdf,.pdf" multiple></label></div>
    ${docs.some((d) => !isPdf(d)) ? '<div class="actions"><button class="btn" data-act="cpdf">圖片合成 PDF</button><button class="btn" data-act="cshare">匯出遮罩版</button></div>' : ''}</div>
   <div class="sec"><h2>案件 <button class="btn" data-act="ccase" style="padding:4px 10px;font-size:13px">＋ 新增${S.ccat !== '全部' ? esc(S.ccat) : '案件'}</button></h2>
    ${cs.length ? `<div class="chips">${['全部', ...CATS.filter((k) => cs.some((c) => c.cat === k))].map((k) => `<button class="chip${S.ccat === k ? ' on' : ''}" data-ccat="${k}">${k} <span class="cnt">${k === '全部' ? cs.length : cs.filter((c) => c.cat === k).length}</span></button>`).join('')}</div>` : ''}
-   ${cs.length ? cs.filter((c) => S.ccat === '全部' || c.cat === S.ccat).map((c) => `<button class="item" data-gocase="${c.id}"><span class="t"><span>${esc(c.title || '未命名')}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${esc(caseSummary(c))}${c.next ? ' · 下一步：' + esc(c.next) : ''}</span></button>`).join('') : '<div class="sub">還沒有案件。</div>'}</div>
+   ${cs.length ? cs.filter((c) => S.ccat === '全部' || c.cat === S.ccat).map((c) => `<button class="item" data-gocase="${c.id}"><span class="t"><span>${esc(c.title || '未命名')}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${fmtDay(caseDate(c))} · ${esc(caseSummary(c))}${c.next ? ' · 下一步：' + esc(c.next) : ''}</span></button>`).join('') : '<div class="sub">還沒有案件。</div>'}</div>
   <div class="actions"><button class="btn danger" data-act="delclient">刪除客戶</button></div>`;
 }
 const isPdf = (d) => d.type === 'pdf';
 function docTile(d, i, p, folders) { // p：'' 案件、'c' 客戶
   const media = isPdf(d) ? `<div class="pdftile">PDF<small>${esc(d.name)}</small></div>` : `<canvas data-${p}thumb="${i}" width="240" height="320"></canvas>`;
   const mv = folders ? `<select class="mv" data-movedoc="${i}" aria-label="移到資料夾"><option value="">未分類</option>${folders.map((f) => `<option${f === d.folder ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select>` : '';
-  return `<div class="doc">${media}<div class="bar"><span>${esc(d.name)}${d.masks?.length ? ' · 已遮 ' + d.masks.length : ''}</span><span><button data-${p}view="${i}">看</button>${isPdf(d) ? '' : `<button data-${p}mask="${i}">遮罩</button>`}<button data-${p}deldoc="${i}" aria-label="刪除文件">刪</button></span></div>${mv}</div>`;
+  const dt = `<input type="date" class="ddate" data-${p}docdate="${i}" value="${esc(d.date || '')}" aria-label="文件日期">`;
+  return `<div class="doc">${media}${dt}<div class="bar"><span>${esc(d.name)}${d.masks?.length ? ' · 已遮 ' + d.masks.length : ''}</span><span><button data-${p}view="${i}">看</button>${isPdf(d) ? '' : `<button data-${p}mask="${i}">遮罩</button>`}<button data-${p}deldoc="${i}" aria-label="刪除文件">刪</button></span></div>${mv}</div>`;
 }
 function curFolder(c) { return (c?.folders || []).includes(S.folder) ? S.folder : ''; }
 function caseDocsHTML(c) {
   const folders = c.folders || [];
   if (!['全部', '未分類', ...folders].includes(S.folder)) S.folder = '全部';
   const cnt = (f) => c.docs.filter((d) => (f === '全部' ? true : f === '未分類' ? !d.folder : d.folder === f)).length;
-  const shown = c.docs.map((d, i) => [d, i]).filter(([d]) => S.folder === '全部' || (S.folder === '未分類' ? !d.folder : d.folder === S.folder));
+  const shown = c.docs.map((d, i) => [d, i]).filter(([d]) => S.folder === '全部' || (S.folder === '未分類' ? !d.folder : d.folder === S.folder)).sort(([a], [b]) => (b.date || '').localeCompare(a.date || ''));
   const hasImg = c.docs.some((d) => !isPdf(d));
   return `<div class="sec"><h2>文件 <span class="sub">原圖永遠保留，遮罩可以隨時改</span></h2>
    <div class="chips">${['全部', ...(c.docs.some((d) => !d.folder) && folders.length ? ['未分類'] : []), ...folders].map((f) => `<button class="chip${S.folder === f ? ' on' : ''}" data-folder="${esc(f)}">${esc(f)} <span class="cnt">${cnt(f)}</span></button>`).join('')}<button class="chip" data-act="newfolder">＋ 資料夾</button></div>
@@ -373,11 +379,11 @@ async function addPdfs(rec, coll, files, folder) {
   for (const f of files) {
     if (f.size > 60 * 1024 * 1024) { toast(`「${f.name}」超過 60MB，太大了`); continue; }
     const fileId = await Files.add(new Blob([await f.arrayBuffer()], { type: 'application/pdf' }), f.name);
-    rec.docs = rec.docs || []; rec.docs.push({ id: uid(), name: f.name.replace(/\.pdf$/i, ''), fileId, masks: [], type: 'pdf', folder: folder || '' }); n++;
+    rec.docs = rec.docs || []; rec.docs.push({ id: uid(), name: f.name.replace(/\.pdf$/i, ''), fileId, masks: [], type: 'pdf', folder: folder || '', date: localDay() }); n++;
   }
   if (n) { Vault.put(coll, rec); App.render(); toast(`已加入 ${n} 個 PDF`); }
 }
-function refCases() { return cases().filter((c) => c.isRef && (S.refItem === '全部' || c.items.includes(S.refItem)) && (S.refCause === '全部' || c.causeType === S.refCause)); }
+function refCases() { return cases().filter((c) => c.isRef && (S.refItem === '全部' || c.items.includes(S.refItem)) && (S.refCause === '全部' || c.causeType === S.refCause)).sort(byDate); }
 const refTitle = (c) => c.diag || c.causeDetail || c.causeType || '未分類';
 function refListHTML() {
   const list = refCases(); const used = [...new Set(cases().filter((c) => c.isRef).flatMap((c) => c.items))];
@@ -445,7 +451,7 @@ function drawThumbs() {
 }
 
 /* ---------- 事件 ---------- */
-function newCase(cat) { const c = saveCase({ client: '', title: '', cat, status: '進行中', items: [], causeType: '', causeDetail: '', diag: '', next: '', cost: '', ratio: '', payout: '', notes: '', docs: [], isRef: false }); S.sel = c.id; S.showDetail = true; return c; }
+function newCase(cat) { const c = saveCase({ date: localDay(), client: '', title: '', cat, status: '進行中', items: [], causeType: '', causeDetail: '', diag: '', next: '', cost: '', ratio: '', payout: '', notes: '', docs: [], isRef: false }); S.sel = c.id; S.showDetail = true; return c; }
 function armConfirm(b, label) { if (b.dataset.confirm) return true; b.dataset.confirm = 1; b.textContent = label; setTimeout(() => { if (b.isConnected) { delete b.dataset.confirm; App.render(); } }, 4000); return false; }
 app.addEventListener('click', async (e) => {
   const b = e.target.closest('button'); if (!b) return; const d = b.dataset; const c = cur();
@@ -527,10 +533,12 @@ app.addEventListener('change', (e) => {
   }
 });
 app.addEventListener('change', (e) => {
+  if (e.target.dataset?.docdate != null) { const c = cur(); if (!c) return; c.docs[+e.target.dataset.docdate].date = e.target.value; saveCase(c); App.render(); return; }
+  if (e.target.dataset?.cdocdate != null) { const cl = curClient(); if (!cl) return; cl.docs[+e.target.dataset.cdocdate].date = e.target.value; Vault.put('clients', cl); App.render(); return; }
   if (e.target.dataset?.movedoc != null) { const c = cur(); if (!c) return; c.docs[+e.target.dataset.movedoc].folder = e.target.value; saveCase(c); App.render(); return; }
   if (e.target.id === 'docUp' || e.target.id === 'docUpC') { const fs = [...e.target.files]; e.target.value = ''; takeImages(fs); }
 });
-app.addEventListener('change', (e) => { if (e.target.dataset?.f === 'client') { const c = cur(); if (!c) return; c.client = e.target.value; const made = linkClient(c); saveCase(c); App.render(); if (made) toast(`已建立客戶「${made.name}」`); return; } if (e.target.id === 'nImgs') { const k = e.target.files.length; $('nImgsN').textContent = k ? `已選 ${k} 張` : ''; return; } const f = e.target.dataset?.f; const c = cur(); if (!f || !c) return; c[f] = e.target.value; saveCase(c); if (['cat', 'status', 'cost', 'ratio', 'client', 'title'].includes(f)) App.render(); });
+app.addEventListener('change', (e) => { if (e.target.dataset?.f === 'client') { const c = cur(); if (!c) return; c.client = e.target.value; const made = linkClient(c); saveCase(c); App.render(); if (made) toast(`已建立客戶「${made.name}」`); return; } if (e.target.id === 'nImgs') { const k = e.target.files.length; $('nImgsN').textContent = k ? `已選 ${k} 張` : ''; return; } const f = e.target.dataset?.f; const c = cur(); if (!f || !c) return; c[f] = e.target.value; saveCase(c); if (['cat', 'status', 'cost', 'ratio', 'client', 'title', 'date'].includes(f)) App.render(); });
 app.addEventListener('input', (e) => {
   if (e.target.id === 'q') { S.q = e.target.value; App.render(); }
   if (e.target.id === 'qq') {
@@ -641,7 +649,7 @@ function renderScanner() {
     const s = SC; ov.innerHTML = ''; SC = null;
     if (s.onDone) { if (s.pages.length) toast('加入中…'); await s.onDone(s.pages); return; }
     if (s.pages.length) {
-      for (const p of s.pages) { const fileId = await Files.add(p.blob, p.name); s.c.docs.push({ id: uid(), name: p.name, fileId, masks: [], folder: s.folder || '' }); }
+      for (const p of s.pages) { const fileId = await Files.add(p.blob, p.name); s.c.docs.push({ id: uid(), name: p.name, fileId, masks: [], folder: s.folder || '', date: localDay() }); }
       Vault.put(s.coll, s.c); toast(`已加入 ${s.pages.length} 頁`);
     }
     App.render();
@@ -869,6 +877,7 @@ let lastAct = Date.now();
 function enter() {
   gate.hidden = true; app.hidden = false;
   cases().filter((c) => c.client && !c.clientId).forEach((c) => { linkClient(c); saveCase(c); }); // 舊案件補連客戶
+  cases().filter((c) => !c.date || c.docs.some((d) => !d.date)).forEach((c) => { c.date = caseDate(c); c.docs.forEach((d) => { if (!d.date) d.date = c.date; }); saveCase(c); }); // 舊資料補日期
   const first = cases().slice().sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))[0];
   S.sel = first?.id || null; S.refSel = cases().find((c) => c.isRef)?.id || null; S.showDetail = false;
   lastAct = Date.now(); App.render(); Files.retryUploads();
