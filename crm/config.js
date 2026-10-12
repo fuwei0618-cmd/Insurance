@@ -5,7 +5,7 @@
  * AUTO_LOCK_MINUTES：多久沒操作就自動鎖定（要重新輸入密碼）。
  */
 window.CRM_CONFIG = {
-  CLIENT_ID: '',
+  CLIENT_ID: '7e8e3649-9129-4092-b975-c313063a1057',
   FOLDER: 'Cathay',
   AUTO_LOCK_MINUTES: 30,
 };
