@@ -174,3 +174,10 @@ body.dropping::after{content:"放開就加入這個案件";position:fixed;inset:
 input.secret:not(.shown){-webkit-text-security:disc;text-security:disc}
 .docs.veiled canvas{filter:blur(10px) saturate(.4)}
 @media (max-width:900px){.tabs{grid-template-columns:repeat(6,1fr)}}
+/* PDF 與資料夾 */
+.pdftile{aspect-ratio:3/4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:var(--danger-soft);color:var(--danger);font-weight:700;font-size:22px;padding:8px;text-align:center}
+.pdftile small{font-size:11px;font-weight:400;color:var(--muted);word-break:break-all;line-height:1.4}
+.doc select.mv{border:0;border-top:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:12px;padding:5px 6px;width:100%;border-radius:0}
+label.adddoc{cursor:pointer;text-align:center;padding:8px}
+.chip .cnt{opacity:.6;font-size:11px}
+.ov iframe{min-height:60vh}

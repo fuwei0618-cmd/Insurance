@@ -304,10 +304,7 @@ function caseDetailHTML() {
    <label class="f">給付比例 %<input id="f_ratio" inputmode="numeric" data-f="ratio" value="${esc(c.ratio)}" placeholder="65"></label><span class="op">=</span>
    <span class="res">${auto ? auto.toLocaleString() : '—'}</span></div>
    <label class="f">實際理賠金額（有不同再填）<input id="f_payout" inputmode="numeric" data-f="payout" value="${esc(c.payout)}"></label></div>` : ''}
-  <div class="sec"><h2>文件 <span class="sub">原圖永遠保留，遮罩可以隨時改</span></h2>
-   <div class="docs">${c.docs.map((d, i) => `<div class="doc"><canvas data-thumb="${i}" width="240" height="320"></canvas><div class="bar"><span>${esc(d.name)}${d.masks.length ? ' · 已遮 ' + d.masks.length : ''}</span><span><button data-view="${i}">看</button><button data-mask="${i}">遮罩</button><button data-deldoc="${i}" aria-label="刪除文件">刪</button></span></div></div>`).join('')}
-   <button class="adddoc" data-act="scan">${ICON.scan}加入文件<span style="font-size:11px">也可以拖曳圖片進來</span></button></div>
-   ${c.docs.length ? `<div class="actions"><button class="btn" data-act="pdf">原圖 PDF</button><button class="btn" data-act="share">匯出分享版</button></div>` : ''}</div>
+  ${caseDocsHTML(c)}
   <div class="sec"><h2>備註</h2><textarea id="f_notes" data-f="notes" rows="4" aria-label="備註">${esc(c.notes)}</textarea></div>
   <div class="actions">${isClaim ? `<button class="btn${c.isRef ? ' on' : ''}" data-act="ref">${c.isRef ? '✓ 已在理賠參考' : '做成理賠參考'}</button>` : ''}<button class="btn danger" data-act="delcase">刪除案件</button></div>`;
 }
@@ -339,12 +336,42 @@ function clientDetailHTML() {
    ${f('address', '地址')}
    <label class="f">備註<textarea id="cf_note" data-cf="note" rows="3" placeholder="家庭狀況、保單重點、喜好…">${esc(x.note)}</textarea></label></div>
   <div class="sec"><h2>證件與文件 <button class="btn" data-act="toggleids" style="padding:4px 10px;font-size:13px">${S.showIds ? '隱藏證件' : '顯示證件'}</button></h2>
-   <div class="docs${S.showIds ? '' : ' veiled'}">${docs.map((d, i) => `<div class="doc"><canvas data-cthumb="${i}" width="240" height="320"></canvas><div class="bar"><span>${esc(d.name)}${d.masks.length ? ' · 已遮 ' + d.masks.length : ''}</span><span><button data-cview="${i}">看</button><button data-cmask="${i}">遮罩</button><button data-cdeldoc="${i}" aria-label="刪除文件">刪</button></span></div></div>`).join('')}
-   <button class="adddoc" data-act="cscan">${ICON.scan}拍身分證、存摺<span style="font-size:11px">也可以拖曳圖片進來</span></button></div>
-   ${docs.length ? '<div class="actions"><button class="btn" data-act="cpdf">原圖 PDF</button><button class="btn" data-act="cshare">匯出遮罩版</button></div>' : ''}</div>
+   <div class="docs${S.showIds ? '' : ' veiled'}">${docs.map((d, i) => docTile(d, i, 'c', null)).join('')}
+   <button class="adddoc" data-act="cscan">${ICON.scan}拍身分證、存摺<span style="font-size:11px">也可以拖曳圖片、PDF 進來</span></button><label class="adddoc">＋ 上傳 PDF 或圖片<input type="file" id="docUpC" accept="image/*,application/pdf,.pdf" multiple></label></div>
+   ${docs.some((d) => !isPdf(d)) ? '<div class="actions"><button class="btn" data-act="cpdf">圖片合成 PDF</button><button class="btn" data-act="cshare">匯出遮罩版</button></div>' : ''}</div>
   <div class="sec"><h2>案件 <button class="btn" data-act="ccase" style="padding:4px 10px;font-size:13px">＋ 新增案件</button></h2>
    ${cs.length ? cs.map((c) => `<button class="item" data-gocase="${c.id}"><span class="t"><span>${esc(c.title || '未命名')}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${esc(caseSummary(c))}${c.next ? ' · 下一步：' + esc(c.next) : ''}</span></button>`).join('') : '<div class="sub">還沒有案件。</div>'}</div>
   <div class="actions"><button class="btn danger" data-act="delclient">刪除客戶</button></div>`;
+}
+const isPdf = (d) => d.type === 'pdf';
+function docTile(d, i, p, folders) { // p：'' 案件、'c' 客戶
+  const media = isPdf(d) ? `<div class="pdftile">PDF<small>${esc(d.name)}</small></div>` : `<canvas data-${p}thumb="${i}" width="240" height="320"></canvas>`;
+  const mv = folders ? `<select class="mv" data-movedoc="${i}" aria-label="移到資料夾"><option value="">未分類</option>${folders.map((f) => `<option${f === d.folder ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select>` : '';
+  return `<div class="doc">${media}<div class="bar"><span>${esc(d.name)}${d.masks?.length ? ' · 已遮 ' + d.masks.length : ''}</span><span><button data-${p}view="${i}">看</button>${isPdf(d) ? '' : `<button data-${p}mask="${i}">遮罩</button>`}<button data-${p}deldoc="${i}" aria-label="刪除文件">刪</button></span></div>${mv}</div>`;
+}
+function curFolder(c) { return (c?.folders || []).includes(S.folder) ? S.folder : ''; }
+function caseDocsHTML(c) {
+  const folders = c.folders || [];
+  if (!['全部', '未分類', ...folders].includes(S.folder)) S.folder = '全部';
+  const cnt = (f) => c.docs.filter((d) => (f === '全部' ? true : f === '未分類' ? !d.folder : d.folder === f)).length;
+  const shown = c.docs.map((d, i) => [d, i]).filter(([d]) => S.folder === '全部' || (S.folder === '未分類' ? !d.folder : d.folder === S.folder));
+  const hasImg = c.docs.some((d) => !isPdf(d));
+  return `<div class="sec"><h2>文件 <span class="sub">原圖永遠保留，遮罩可以隨時改</span></h2>
+   <div class="chips">${['全部', ...(c.docs.some((d) => !d.folder) && folders.length ? ['未分類'] : []), ...folders].map((f) => `<button class="chip${S.folder === f ? ' on' : ''}" data-folder="${esc(f)}">${esc(f)} <span class="cnt">${cnt(f)}</span></button>`).join('')}<button class="chip" data-act="newfolder">＋ 資料夾</button></div>
+   ${folders.includes(S.folder) ? `<div class="actions"><button class="linkbtn" data-act="renfolder">重新命名資料夾</button><button class="linkbtn" data-act="delfolder">刪除資料夾</button><span class="sub">新加的文件會放進「${esc(S.folder)}」</span></div>` : ''}
+   <div class="docs">${shown.map(([d, i]) => docTile(d, i, '', folders.length ? folders : null)).join('')}
+   <button class="adddoc" data-act="scan">${ICON.scan}拍照／掃描<span style="font-size:11px">也可以拖曳圖片、PDF 進來</span></button>
+   <label class="adddoc">＋ 上傳 PDF 或圖片<input type="file" id="docUp" accept="image/*,application/pdf,.pdf" multiple></label></div>
+   ${hasImg ? '<div class="actions"><button class="btn" data-act="pdf">圖片合成 PDF</button><button class="btn" data-act="share">匯出分享版</button></div>' : ''}</div>`;
+}
+async function addPdfs(rec, coll, files, folder) {
+  let n = 0;
+  for (const f of files) {
+    if (f.size > 60 * 1024 * 1024) { toast(`「${f.name}」超過 60MB，太大了`); continue; }
+    const fileId = await Files.add(new Blob([await f.arrayBuffer()], { type: 'application/pdf' }), f.name);
+    rec.docs = rec.docs || []; rec.docs.push({ id: uid(), name: f.name.replace(/\.pdf$/i, ''), fileId, masks: [], type: 'pdf', folder: folder || '' }); n++;
+  }
+  if (n) { Vault.put(coll, rec); App.render(); toast(`已加入 ${n} 個 PDF`); }
 }
 function refCases() { return cases().filter((c) => c.isRef && (S.refItem === '全部' || c.items.includes(S.refItem)) && (S.refCause === '全部' || c.causeType === S.refCause)); }
 const refTitle = (c) => c.diag || c.causeDetail || c.causeType || '未分類';
@@ -363,7 +390,7 @@ function refDetailHTML() {
   <div class="dhead"><h1 style="margin:0;font-size:20px">${esc(refTitle(c))}</h1></div>
   <div class="sec"><h2>分類</h2><div class="reftop">${c.items.map((x) => `<span class="pill p-go">${esc(x)}</span>`).join('')}${c.causeType ? `<span class="pill p-wait">${esc(c.causeType)}${c.causeDetail ? ' › ' + esc(c.causeDetail) : ''}</span>` : ''}</div></div>
   ${cost ? `<div class="sec"><h2>理賠金額</h2><div class="calcline">花費 ${cost.toLocaleString()} × ${ratio || '—'}% = ${auto ? auto.toLocaleString() : '—'}${c.payout ? `　實際理賠 ${(+c.payout).toLocaleString()}` : ''}</div></div>` : ''}
-  ${c.docs.length ? `<div class="sec"><h2>文件（遮罩版）</h2><div class="docs">${c.docs.map((d, i) => `<div class="doc"><canvas data-rthumb="${i}" width="240" height="320"></canvas></div>`).join('')}</div><div class="actions"><button class="btn pri" data-act="rshare">匯出分享版</button></div></div>` : ''}
+  ${c.docs.length ? `<div class="sec"><h2>文件（遮罩版）</h2><div class="docs">${c.docs.map((d, i) => (isPdf(d) ? '' : `<div class="doc"><canvas data-rthumb="${i}" width="240" height="320"></canvas></div>`)).join('')}</div><div class="actions"><button class="btn pri" data-act="rshare">匯出分享版</button></div></div>` : ''}
   <div class="note">這頁只顯示分類、計算和遮罩後的文件，不顯示客戶姓名。要修改內容請回到「案件」。</div>
   <div class="actions"><button class="btn" data-act="gocase">打開原案件</button></div>`;
 }
@@ -398,6 +425,7 @@ function quickHTML() {
 
 /* ---------- 縮圖 ---------- */
 async function drawThumbTo(cv, d, solid) {
+  if (isPdf(d)) return;
   const im = await getImg(d.fileId); if (!im || !cv.isConnected) return;
   const x = cv.getContext('2d'); const s = Math.max(cv.width / im.width, cv.height / im.height); const w = im.width * s, h = im.height * s;
   x.drawImage(im, (cv.width - w) / 2, (cv.height - h) / 2, w, h);
@@ -419,11 +447,12 @@ app.addEventListener('click', async (e) => {
   const b = e.target.closest('button'); if (!b) return; const d = b.dataset; const c = cur();
   if (d.nav) { S.view = d.nav; S.showDetail = false; S.q = ''; App.render(); return; }
   if (d.cat) { S.cat = d.cat; App.render(); return; }
-  if (d.sel) { S.sel = d.sel; S.showDetail = true; App.render(); return; }
+  if (d.sel) { S.folder = '全部'; S.sel = d.sel; S.showDetail = true; App.render(); return; }
   if (d.rsel) { S.refSel = d.rsel; S.showDetail = true; App.render(); return; }
   if (d.ritem) { S.refItem = d.ritem; App.render(); return; }
   if (d.rcause) { S.refCause = d.rcause; App.render(); return; }
   if (d.sg) { S.sopGroup = d.sg; App.render(); return; }
+  if (d.folder != null) { S.folder = d.folder; App.render(); return; }
   if (d.goclient) { S.view = 'clients'; S.csel = d.goclient; S.showDetail = true; S.showIds = false; App.render(); return; }
   if (d.csel) { S.csel = d.csel; S.showDetail = true; S.showIds = false; App.render(); return; }
   if (d.reveal) { const el = $(d.reveal); if (el) { const on = el.classList.toggle('shown'); b.textContent = on ? '隱藏' : '顯示'; } return; }
@@ -457,7 +486,10 @@ app.addEventListener('click', async (e) => {
     case 'cshare': openShare(ccl, (ccl.name || '客戶') + '-證件'); break;
     case 'ccase': { const c = newCase('理賠'); c.client = ccl.name; c.clientId = ccl.id; saveCase(c); S.view = 'cases'; App.render(); break; }
     case 'delclient': if (armConfirm(b, '再按一次確定刪除（證件照片也會刪掉）')) { (ccl.docs || []).forEach((doc) => Files.remove(doc.fileId)); cases().filter((c) => c.clientId === ccl.id).forEach((c) => { c.clientId = ''; saveCase(c); }); Vault.del('clients', ccl.id); S.csel = null; S.showDetail = false; App.render(); } break;
-    case 'scan': { if (S.view === 'clients' && ccl) { scanForClient(ccl); break; } let t = c; if (!t || S.view !== 'cases') { t = newCase('理賠'); S.view = 'cases'; } openScanner(t); break; }
+    case 'newfolder': { const name = (prompt('資料夾名稱（例如：體檢報告、基本資料、收據）') || '').trim(); if (!name) break; c.folders = c.folders || []; if (!c.folders.includes(name)) c.folders.push(name); saveCase(c); S.folder = name; App.render(); break; }
+    case 'renfolder': { const old = S.folder; const name = (prompt('新的資料夾名稱', old) || '').trim(); if (!name || name === old) break; c.folders = c.folders.map((f) => (f === old ? name : f)); c.docs.forEach((doc) => { if (doc.folder === old) doc.folder = name; }); saveCase(c); S.folder = name; App.render(); break; }
+    case 'delfolder': if (armConfirm(b, '確定刪除？裡面的文件會移到未分類')) { const old = S.folder; c.folders = c.folders.filter((f) => f !== old); c.docs.forEach((doc) => { if (doc.folder === old) doc.folder = ''; }); saveCase(c); S.folder = '全部'; App.render(); } break;
+    case 'scan': { if (S.view === 'clients' && ccl) { scanForClient(ccl); break; } let t = c; if (!t || S.view !== 'cases') { t = newCase('理賠'); S.view = 'cases'; } openScanner(t, { folder: curFolder(t) }); break; }
     case 'newcase': newCase(S.cat === '全部' ? '理賠' : S.cat); App.render(); break;
     case 'back': S.showDetail = false; App.render(); break;
     case 'ref': c.isRef = !c.isRef; saveCase(c); App.render(); toast(c.isRef ? '已加入理賠參考（不顯示客戶姓名）' : '已從理賠參考移除'); break;
@@ -487,6 +519,10 @@ app.addEventListener('change', (e) => {
     if (cf === 'name') { cases().filter((c) => c.clientId === cl.id).forEach((c) => { c.client = cl.name; saveCase(c); }); App.render(); }
     return;
   }
+});
+app.addEventListener('change', (e) => {
+  if (e.target.dataset?.movedoc != null) { const c = cur(); if (!c) return; c.docs[+e.target.dataset.movedoc].folder = e.target.value; saveCase(c); App.render(); return; }
+  if (e.target.id === 'docUp' || e.target.id === 'docUpC') { const fs = [...e.target.files]; e.target.value = ''; takeImages(fs); }
 });
 app.addEventListener('change', (e) => { if (e.target.dataset?.f === 'client') { const c = cur(); if (!c) return; c.client = e.target.value; const made = linkClient(c); saveCase(c); App.render(); if (made) toast(`已建立客戶「${made.name}」`); return; } if (e.target.id === 'nImgs') { const k = e.target.files.length; $('nImgsN').textContent = k ? `已選 ${k} 張` : ''; return; } const f = e.target.dataset?.f; const c = cur(); if (!f || !c) return; c[f] = e.target.value; saveCase(c); if (['cat', 'status', 'cost', 'ratio', 'client', 'title'].includes(f)) App.render(); });
 app.addEventListener('input', (e) => {
@@ -582,7 +618,7 @@ const fileIn = $('fileIn'), fileLib = $('fileLib');
 let SC = null;
 const CASE_DOC_NAMES = ['醫療收據', '診斷證明', '申請書', '其他'];
 const CLIENT_DOC_NAMES = ['身分證正面', '身分證反面', '存摺封面', '健保卡', '其他'];
-function openScanner(c, opts = {}) { SC = { c, coll: opts.coll || 'cases', names: opts.names || CASE_DOC_NAMES, pages: [], img: null, corners: null, filter: opts.filter || 'gray', drag: -1, queue: [], onDone: opts.onDone, onCancel: opts.onCancel }; renderScanner(); }
+function openScanner(c, opts = {}) { SC = { c, folder: opts.folder || '', coll: opts.coll || 'cases', names: opts.names || CASE_DOC_NAMES, pages: [], img: null, corners: null, filter: opts.filter || 'gray', drag: -1, queue: [], onDone: opts.onDone, onCancel: opts.onCancel }; renderScanner(); }
 function scanForClient(cl) { if (!cl) { toast('先選一位客戶'); return; } openScanner(cl, { coll: 'clients', names: CLIENT_DOC_NAMES, filter: 'color' }); }
 function renderScanner() {
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>掃描文件</h2><span class="sub">${SC.pages.length} 頁</span><button class="btn" id="scCancel">取消</button><button class="btn pri" id="scDone">完成（${SC.pages.length}）</button></div>
@@ -599,7 +635,7 @@ function renderScanner() {
     const s = SC; ov.innerHTML = ''; SC = null;
     if (s.onDone) { if (s.pages.length) toast('加入中…'); await s.onDone(s.pages); return; }
     if (s.pages.length) {
-      for (const p of s.pages) { const fileId = await Files.add(p.blob, p.name); s.c.docs.push({ id: uid(), name: p.name, fileId, masks: [] }); }
+      for (const p of s.pages) { const fileId = await Files.add(p.blob, p.name); s.c.docs.push({ id: uid(), name: p.name, fileId, masks: [], folder: s.folder || '' }); }
       Vault.put(s.coll, s.c); toast(`已加入 ${s.pages.length} 頁`);
     }
     App.render();
@@ -614,11 +650,17 @@ function renderScanner() {
 /* 拖曳／貼上圖片：在任何畫面都可以，會加進目前的案件（沒有就新建一個） */
 function takeImages(files) {
   const imgs = [...files].filter((f) => /^image\//.test(f.type));
-  if (!imgs.length) { if (files.length) toast('只能放圖片（JPG、PNG）。PDF 請先截圖或轉成圖片'); return; }
+  const pdfs = [...files].filter((f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name || ''));
+  if (pdfs.length) {
+    if (NE || SC || S.view === 'sop' || S.view === 'tpl') toast('PDF 只能放進案件或客戶');
+    else if (S.view === 'clients') { const cl = curClient(); if (cl) addPdfs(cl, 'clients', pdfs); else toast('先選一位客戶'); }
+    else { let t = S.view === 'cases' ? cur() : null; if (!t) { t = newCase('理賠'); S.view = 'cases'; } addPdfs(t, 'cases', pdfs, curFolder(t)); }
+  }
+  if (!imgs.length) { if (files.length && !pdfs.length) toast('只能放圖片或 PDF'); return; }
   if (NE) { toast('加入中…'); addNoteImages(NE, imgs).then(() => NE?.refresh?.()); return; }
   if (!SC && S.view === 'clients') { const cl = curClient(); if (!cl) { toast('先選一位客戶，再把證件拖進來'); return; } scanForClient(cl); }
   if (!SC && (S.view === 'sop' || S.view === 'tpl')) { const n = Vault.put('notes', { kind: S.view, group: S.view === 'sop' ? (S.sopGroup === '全部' ? '壽險·其他' : S.sopGroup) : '其他', title: '', body: '', images: [] }); editNote(n.id, true); toast('加入中…'); addNoteImages(n, imgs).then(() => NE?.refresh?.()); return; }
-  if (!SC) { let t = S.view === 'cases' ? cur() : null; if (!t) { t = newCase('理賠'); S.view = 'cases'; } openScanner(t); }
+  if (!SC) { let t = S.view === 'cases' ? cur() : null; if (!t) { t = newCase('理賠'); S.view = 'cases'; } openScanner(t, { folder: curFolder(t) }); }
   if (SC.img) SC.queue.push(...imgs); else onFiles(imgs);
   if (imgs.length > 1) toast(`收到 ${imgs.length} 張，一張一張對齊後按「加入這頁」`);
 }
@@ -691,7 +733,13 @@ function warp(img, k, filter) {
 
 /* ================= 看原圖 ================= */
 async function openViewer(d, overEdit) {
-  const url = await Files.url(d.fileId); if (!url) { toast('圖片讀取失敗，請確認網路'); return; }
+  const url = await Files.url(d.fileId); if (!url) { toast('檔案讀取失敗，請確認網路'); return; }
+  if (isPdf(d)) {
+    ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${esc(d.name)}</h2><button class="btn" id="vShare">分享／儲存</button><button class="btn pri" id="vClose">關閉</button></div><div class="sub" style="padding:6px 16px">如果只看到第一頁，按「分享／儲存」用「檔案」或 PDF 閱讀器打開。</div><iframe src="${url}" title="${esc(d.name)}" style="flex:1;width:100%;border:0;background:#fff"></iframe></div>`;
+    $('vClose').onclick = () => (ov.innerHTML = '');
+    $('vShare').onclick = async () => { const blob = await (await fetch(url)).blob(); shareOrSave([new File([blob], d.name.replace(/[\\/:*?"<>|]/g, '_') + '.pdf', { type: 'application/pdf' })]); };
+    return;
+  }
   if (overEdit) { const v = document.createElement('div'); v.innerHTML = `<div class="ov" style="z-index:30"><div class="ovhead"><h2>${esc(d.name)}</h2><button class="btn pri">關閉</button></div><div class="ovbody" style="justify-content:center"><img src="${url}" alt="" style="max-width:100%;height:auto;align-self:flex-start;border-radius:6px"></div></div>`; v.querySelector('button').onclick = () => v.remove(); document.body.appendChild(v); return; }
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${esc(d.name)}（原圖）</h2><button class="btn pri" id="vClose">關閉</button></div><div class="ovbody" style="justify-content:center"><img src="${url}" alt="${esc(d.name)}" style="max-width:100%;height:auto;align-self:flex-start;border-radius:6px"></div></div>`;
   $('vClose').onclick = () => (ov.innerHTML = '');
@@ -736,23 +784,24 @@ async function shareOrSave(files) { // 有分享功能就跳分享（可以直�
 }
 async function openShare(c, pdfName) {
   if (!c) return;
-  let canvases; try { canvases = await Promise.all(c.docs.map((d) => renderDoc(d, true))); } catch (e) { toast('圖片讀取失敗，請確認網路'); return; }
-  const unmasked = c.docs.filter((d) => !d.masks.length).length;
+  const docs = c.docs.filter((d) => !isPdf(d)); if (!docs.length) { toast('PDF 檔請在文件上按「看」再分享'); return; }
+  let canvases; try { canvases = await Promise.all(docs.map((d) => renderDoc(d, true))); } catch (e) { toast('圖片讀取失敗，請確認網路'); return; }
+  const unmasked = docs.filter((d) => !d.masks.length).length;
   const urls = canvases.map((cv) => cv.toDataURL('image/jpeg', 0.85));
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>分享版</h2><button class="btn" id="shPdf">分享 PDF</button><button class="btn" id="shAll">分享全部圖片</button><button class="btn pri" id="shClose">關閉</button></div>
   <div class="ovbody" style="flex-direction:column;align-items:center">${unmasked ? `<div class="note" style="color:var(--warn);background:var(--warn-soft)">有 ${unmasked} 張文件還沒有遮罩，傳出去前請先檢查。</div>` : ''}
   <div class="note">遮罩已經直接畫進這些圖片裡，按「分享」可以直接傳到 LINE。案件裡的原圖不受影響。</div>
   <div class="shareimgs">${urls.map((s) => `<img src="${s}" alt="遮罩後的文件">`).join('')}</div></div></div>`;
   $('shClose').onclick = () => (ov.innerHTML = '');
-  $('shAll').onclick = async () => { const files = await Promise.all(canvases.map(async (cv, i) => new File([await toBlob(cv)], `分享版-${c.docs[i].name}-${i + 1}.jpg`, { type: 'image/jpeg' }))); shareOrSave(files); };
-  $('shPdf').onclick = () => makePDF(c.docs, true, pdfName || '理賠參考-' + refTitle(c));
+  $('shAll').onclick = async () => { const files = await Promise.all(canvases.map(async (cv, i) => new File([await toBlob(cv)], `分享版-${docs[i].name}-${i + 1}.jpg`, { type: 'image/jpeg' }))); shareOrSave(files); };
+  $('shPdf').onclick = () => makePDF(docs, true, pdfName || '理賠參考-' + refTitle(c));
 }
 async function makePDF(docs, mask, name) {
   if (!window.jspdf) { toast('PDF 元件沒有載入，請重新整理'); return; }
   toast('正在產生 PDF…');
   const { jsPDF } = window.jspdf; let pdf = null;
   try {
-    for (const d of docs) {
+    for (const d of docs.filter((x) => !isPdf(x))) {
       const cv = await renderDoc(d, mask); const o = cv.width > cv.height ? 'l' : 'p'; const pw = o === 'p' ? 210 : 297, ph = o === 'p' ? 297 : 210;
       if (!pdf) pdf = new jsPDF({ orientation: o, unit: 'mm', format: 'a4' }); else pdf.addPage('a4', o);
       const s = Math.min(pw / cv.width, ph / cv.height); const w = cv.width * s, h = cv.height * s;
