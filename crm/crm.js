@@ -104,7 +104,7 @@ const Mock = {
 };
 
 /* ================= 資料庫（記憶體中明文，存檔時加密） ================= */
-const COLLS = ['cases', 'notes', 'files', 'clients', 'settings'];
+const COLLS = ['cases', 'notes', 'files', 'clients', 'settings', 'calls'];
 const emptyDb = () => Object.fromEntries([['v', 1], ...COLLS.map((c) => [c, {}])]);
 const SYNC_LABEL = { synced: '已同步 OneDrive', saving: '同步中…', pending: '待同步…', offline: '離線中，連上網路會自動同步', idle: '—' };
 const Vault = {
@@ -216,10 +216,11 @@ const ICON = {
   folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>',
   book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21V5M8 7h7"/></svg>',
   list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>',
+  phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>',
   user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
   msg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>',
 };
-const NAV = [['quick', '快查', 'bolt'], ['clients', '客戶', 'user'], ['cases', '案件', 'folder'], ['refs', '理賠參考', 'book'], ['sop', 'SOP', 'list'], ['tpl', '範本', 'msg']];
+const NAV = [['quick', '快查', 'bolt'], ['clients', '客戶', 'user'], ['cases', '案件', 'folder'], ['calls', '電訪', 'phone'], ['refs', '理賠參考', 'book'], ['sop', 'SOP', 'list'], ['tpl', '範本', 'msg']];
 const CATS = ['理賠', '建議書', '新契約', '保全', '保費', '保校', '房貸', '服務', '其他', '產險'];
 const STATUS = ['進行中', '待回覆', '已結案'];
 const ITEMS = ['住院醫療', '實支實付', '住院日額', '手術', '意外醫療', '意外失能', '骨折', '重大傷病', '癌症', '長照失能', '門診', '產險-車險', '產險-住火', '產險-旅平'];
@@ -227,7 +228,7 @@ const CAUSE = { '疾病': ['消化系統', '呼吸系統', '心血管', '骨科'
 const SOPGROUPS = ['壽險·新契約', '壽險·保全', '壽險·保費', '壽險·保校', '壽險·理賠', '壽險·房貸', '壽險·服務', '壽險·其他', '產險'];
 
 /* ================= 狀態與畫面 ================= */
-const S = { view: 'cases', ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', sopGroup: '全部', showDetail: false };
+const S = { view: 'cases', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', sopGroup: '全部', showDetail: false };
 const cases = () => Vault.all('cases');
 const localDay = (d = new Date()) => { const t = new Date(d); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
 const caseDate = (c) => c.date || (c.createdAt ? localDay(c.createdAt) : '');
@@ -246,11 +247,12 @@ const App = {
   render() {
     if (!Vault.db) return;
     const v = S.view;
-    app.className = 'app' + ((v === 'cases' || v === 'refs' || v === 'clients') ? '' : ' single') + (S.showDetail ? ' showdetail' : '') + (MOCK ? ' test' : '');
+    app.className = 'app' + ((v === 'cases' || v === 'refs' || v === 'clients' || v === 'calls') ? '' : ' single') + (S.showDetail ? ' showdetail' : '') + (MOCK ? ' test' : '');
     let h = MOCK ? '<div class="testbar">測試模式：資料只存在這台裝置，不會上傳 OneDrive</div>' : '';
     h += railHTML();
     if (v === 'clients') h += clientListHTML() + '<section class="detail split">' + clientDetailHTML() + '</section>';
     else if (v === 'cases') h += caseListHTML() + '<section class="detail split">' + caseDetailHTML() + '</section>';
+    else if (v === 'calls') h += callListHTML() + '<section class="detail split">' + callDetailHTML() + '</section>';
     else if (v === 'refs') h += refListHTML() + '<section class="detail split">' + refDetailHTML() + '</section>';
     else if (v === 'sop') h += '<section class="wide">' + notesHTML('sop') + '</section>';
     else if (v === 'quick') h += '<section class="wide">' + quickHTML() + '</section>';
@@ -270,7 +272,7 @@ function railHTML() {
   <button class="nav" data-act="lock">鎖定</button></nav>`;
 }
 function tabsHTML() {
-  const t = [NAV[0], NAV[1], ['scan', '掃描', 'scan'], NAV[2], NAV[3], NAV[4]];
+  const t = [NAV[0], NAV[1], NAV[2], ['scan', '掃描', 'scan'], NAV[3], ['refs', '參考', 'book'], NAV[5]];
   return `<nav class="tabs" aria-label="分頁">${t.map(([k, l, i]) => k === 'scan' ? `<button class="tab scan" data-act="scan"><span class="c">${ICON.scan}</span>${l}</button>` : `<button class="tab${S.view === k ? ' on' : ''}" data-nav="${k}">${ICON[i]}${l}</button>`).join('')}</nav>`;
 }
 function caseSummary(c) { const a = [c.cat]; if (c.items?.length) a.push(c.items.slice(0, 2).join('、')); if (c.causeType) a.push(c.causeType + (c.causeDetail ? '›' + c.causeDetail : '')); return a.join(' · '); }
@@ -316,6 +318,63 @@ function caseDetailHTML() {
   ${linksHTML(c)}
   <div class="sec"><h2>備註</h2><textarea id="f_notes" data-f="notes" rows="4" aria-label="備註">${esc(c.notes)}</textarea></div>
   <div class="actions">${isClaim ? `<button class="btn${c.isRef ? ' on' : ''}" data-act="ref">${c.isRef ? '✓ 已在理賠參考' : '做成理賠參考'}</button>` : ''}<button class="btn danger" data-act="delcase">刪除案件</button></div>`;
+}
+/* ================= 電訪 ================= */
+const calls = () => Vault.all('calls');
+const curCall = () => Vault.get('calls', S.ksel);
+const CALL_ST = ['待撥', '再聯絡', '已約訪', '結案'];
+const RESULTS = [['未接', '再聯絡'], ['已接・聊過', '再聯絡'], ['約訪成功', '已約訪'], ['請我再打', '再聯絡'], ['拒絕', '結案'], ['空號／錯號', '結案']];
+const scripts = () => notes().filter((n) => n.kind === 'script').sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+const logsOf = (k) => (k.logs || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.at || '').localeCompare(a.at || ''));
+const stCls = (st) => (st === '已約訪' ? 'p-done' : st === '結案' ? 'p-off' : st === '再聯絡' ? 'p-wait' : 'p-go');
+const SAMPLE_SCRIPT = '1. 開場\n您好，請問是○○先生／小姐嗎？我是國泰人壽的服務人員馥瑋，之後由我負責您的保單服務。\n\n2. 確認時間\n請問現在講電話方便嗎？大概佔用您三分鐘。\n\n3. 說明來意\n這次打來主要是幫您確認聯絡資料，順便看看保單有沒有需要協助的地方。\n\n4. 了解近況\n最近家裡、工作有沒有什麼變化？之前有沒有理賠或保單上的問題？\n\n5. 約訪\n我可以帶一份保單整理給您看，您比較方便平日還是週末？\n\n6. 結尾\n謝謝您！我先加您 LINE，有任何保單問題都可以直接找我。';
+function callListHTML() {
+  const q = S.q.trim(), all = calls(), today = localDay();
+  const rank = (k) => ({ 再聯絡: 0, 待撥: 1, 已約訪: 2, 結案: 3 }[k.status] ?? 1);
+  const list = all.filter((k) => (S.kst === '全部' || k.status === S.kst) && (!q || [k.name, k.phone, k.source, k.note].join(' ').includes(q)))
+    .sort((a, b) => rank(a) - rank(b) || (a.nextDate || '9999').localeCompare(b.nextDate || '9999') || (a.name || '').localeCompare(b.name || '', 'zh-Hant'));
+  return `<section class="col"><div class="colhead"><h1>電訪 <span style="display:flex;gap:6px"><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="newcall">＋ 新增</button></span></h1>
+  <div class="mobsync">${syncHTML()}</div>
+  <input class="search" id="q" placeholder="搜尋姓名、電話、來源" value="${esc(S.q)}" autocomplete="off">
+  <div class="chips">${['全部', ...CALL_ST].map((x) => `<button class="chip${S.kst === x ? ' on' : ''}" data-kst="${x}">${x} <span class="cnt">${x === '全部' ? all.length : all.filter((k) => k.status === x).length}</span></button>`).join('')}</div></div>
+  <div class="list">${list.length ? list.map((k) => { const l = logsOf(k)[0], due = k.nextDate && k.status !== '結案' && k.nextDate <= today; return `<button class="item${k.id === S.ksel ? ' on' : ''}" data-ksel="${k.id}"><span class="t"><span>${esc(k.name || '未填姓名')}</span><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></span><span class="s">${l ? `上次 ${fmtDay(l.date).slice(5)} ${esc(l.result)}` : '還沒打過'}${k.nextDate && k.status !== '結案' ? ` · <span class="${due ? 'due' : ''}">下次 ${fmtDay(k.nextDate).slice(5)}</span>` : ''}${k.source ? ' · ' + esc(k.source) : ''}</span></button>`; }).join('') : `<div class="empty">${all.length ? '沒有符合的對象。' : '還沒有電訪名單。按「匯入名單」一次貼上很多人，或「＋ 新增」一個一個加。'}</div>`}</div></section>`;
+}
+function callDetailHTML() {
+  const k = curCall();
+  if (!k) return '<div class="empty">從左邊選一位要撥打的對象。</div>';
+  const scs = scripts(); if (!scs.some((x) => x.id === S.script)) S.script = scs[0]?.id || null; const sc = Vault.get('notes', S.script);
+  const cl = k.clientId && Vault.get('clients', k.clientId), logs = logsOf(k);
+  return `<button class="back" data-act="back">‹ 電訪名單</button>
+  <div class="dhead"><input class="title" id="kf_name" data-kf="name" value="${esc(k.name)}" placeholder="姓名" aria-label="姓名"><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></div>
+  <div class="sec"><h2>聯絡資料</h2><div class="grid2">
+   <label class="f"><span style="display:flex;justify-content:space-between">電話${k.phone ? `<a class="linkbtn" href="tel:${esc(k.phone.replace(/[^0-9+#*]/g, ''))}">撥打</a>` : ''}</span><input id="kf_phone" data-kf="phone" inputmode="tel" value="${esc(k.phone)}"></label>
+   <label class="f">狀態<select id="kf_status" data-kf="status">${CALL_ST.map((x) => `<option${x === k.status ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
+   <label class="f">下次聯絡<input type="date" id="kf_nextDate" data-kf="nextDate" value="${esc(k.nextDate)}"></label>
+   <label class="f">來源／名單<input id="kf_source" data-kf="source" value="${esc(k.source)}" placeholder="例如：10 月服務件"></label></div>
+   <label class="f">備註<textarea id="kf_note" data-kf="note" rows="2" placeholder="家庭、保單、個性…">${esc(k.note)}</textarea></label></div>
+  <details class="sec script" open><summary><h2 style="display:inline">話術 SOP</h2></summary>
+   ${scs.length ? `<div class="actions" style="align-items:center"><select id="kScript" aria-label="選擇話術">${scs.map((x) => `<option value="${x.id}"${x.id === S.script ? ' selected' : ''}>${esc(x.title)}</option>`).join('')}</select><button class="linkbtn" data-act="editscript">編輯</button><button class="linkbtn" data-act="newscript">＋ 新話術</button></div><pre class="scripttext">${esc(sc?.body || '')}</pre>${nimgsHTML(sc || {})}`
+    : `<div class="sub">還沒有話術。可以先用範例改成你自己的說法。</div><div class="actions"><button class="btn pri" data-act="samplescript">用範例開始</button><button class="btn" data-act="newscript">自己寫</button></div>`}</details>
+  <div class="sec"><h2>記錄這通</h2>
+   <div class="tags">${RESULTS.map(([r]) => `<button class="tag${S.kres === r ? ' on' : ''}" data-kres="${r}">${r}</button>`).join('')}</div>
+   <label class="f">聊了什麼<textarea id="kNote" rows="3" placeholder="重點、對方的需求、約了什麼…"></textarea></label>
+   <div class="actions" style="align-items:flex-end"><label class="f" style="width:170px">下次聯絡（可不填）<input type="date" id="kNext"></label><button class="btn pri" data-act="logcall">記錄</button></div></div>
+  <div class="sec"><h2>通話紀錄 <span class="sub">${logs.length ? logs.length + ' 通，新的在上面' : ''}</span></h2>
+   ${logs.length ? `<div class="tl">${logs.map((l) => `<div class="tli"><span class="tldot"></span><div class="tlrow"><span class="tldate" style="padding:3px 6px">${fmtDay(l.date)}</span><span class="tltitle" style="padding:3px 6px">${esc(l.result)}</span><button class="tldel" data-kdel="${l.id}" aria-label="刪除這通">✕</button></div>${l.note ? `<div class="lognote">${esc(l.note)}</div>` : ''}</div>`).join('')}</div>` : '<div class="sub">還沒有紀錄。</div>'}</div>
+  <div class="actions">${cl ? `<button class="btn" data-goclient="${cl.id}">看客戶資料 ›</button>` : '<button class="btn" data-act="tocliient">轉成客戶</button>'}<button class="btn danger" data-act="delcall">刪除</button></div>`;
+}
+function openCallImport() {
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>匯入電訪名單</h2><button class="btn" id="ciCancel">取消</button><button class="btn pri" id="ciGo">匯入</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:640px;margin:0 auto;width:100%">
+   <div class="note">一行一個人：姓名、電話，中間用空白或逗號隔開，後面可以接備註。可以直接從 Excel 複製兩欄貼上。</div>
+   <label class="f">來源／名單名稱<input id="ciSrc" placeholder="例如：10 月服務件" value="${new Date().getMonth() + 1} 月服務件"></label>
+   <label class="f">名單<textarea id="ciText" rows="12" placeholder="王小明 0912345678\n陳美麗, 0987654321, 有小孩"></textarea></label>
+   <div class="sub" id="ciCount"></div></div></div>`;
+  const parse = () => $('ciText').value.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => { const parts = l.split(/[\t,，]+|\s+/).filter(Boolean); const pi = parts.findIndex((x) => /^[0-9+()#\-]{7,}$/.test(x)); const phone = pi >= 0 ? parts[pi] : ''; const rest = parts.filter((_, i) => i !== pi); return { name: rest[0] || '', phone, note: rest.slice(1).join(' ') }; }).filter((x) => x.name || x.phone);
+  $('ciText').oninput = () => { const n = parse().length; $('ciCount').textContent = n ? `會新增 ${n} 位` : ''; };
+  $('ciCancel').onclick = () => (ov.innerHTML = '');
+  $('ciGo').onclick = () => { const rows = parse(); if (!rows.length) { toast('先貼上名單'); return; } const src = $('ciSrc').value.trim(); rows.forEach((r) => Vault.put('calls', { ...r, source: src, status: '待撥', nextDate: '', logs: [] })); ov.innerHTML = ''; S.kst = '全部'; App.render(); toast(`已匯入 ${rows.length} 位`); };
+  setTimeout(() => $('ciText')?.focus(), 50);
 }
 function clientCases(cl) { return cases().filter((c) => c.clientId === cl.id).sort(byDate); }
 function clientListHTML() {
@@ -480,6 +539,7 @@ function quickHTML() {
   <div class="cards">
   <div class="card"><h3>常用電話</h3>${phones.map((p) => `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span>${esc(p.title)}</span><span style="font-family:var(--f-num)">${esc(p.body)} <button class="btn" style="padding:2px 8px;font-size:12px" data-editnote="${p.id}">改</button></span></div>`).join('') || '<div class="sub">還沒有電話。</div>'}
    <div class="mini"><button data-act="addphone">＋ 新增電話</button></div></div>
+  ${(() => { const t = localDay(), due = calls().filter((k) => k.nextDate && k.nextDate <= t && k.status !== '結案').sort((a, b) => a.nextDate.localeCompare(b.nextDate)); return due.length ? `<div class="card"><h3>今天要回撥 <span class="sub">${due.length} 位</span></h3>${due.slice(0, 6).map((k) => `<button class="item" data-gocall="${k.id}"><span class="t"><span>${esc(k.name)}</span><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></span><span class="s">${k.nextDate < t ? '<span class="due">已過 ' + fmtDay(k.nextDate).slice(5) + '</span>' : '今天'}${k.source ? ' · ' + esc(k.source) : ''}</span></button>`).join('')}</div>` : ''; })()}
   <div class="card"><h3>待辦案件 <span class="sub">${waiting.length} 件</span></h3>${waiting.slice(0, 6).map((c) => `<button class="item" data-gocase="${c.id}"><span class="t"><span>${esc(c.client)} · ${esc(c.title)}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${esc(c.next || '未填下一步')}</span></button>`).join('') || '<div class="sub">沒有待辦。</div>'}</div>
   <div class="card"><h3>同步</h3>${syncHTML()}<div class="sub">資料加密後存在 OneDrive › 應用程式 › Work › ${esc(FOLDER)}。iPad 和手機登入同一個帳號就會自動同步，不需要備份。</div>
    <div class="actions"><button class="btn" data-act="import">批次匯入</button><button class="btn" data-act="lock">鎖定</button><button class="btn" data-act="signout">登出</button></div></div>
@@ -517,6 +577,11 @@ app.addEventListener('click', async (e) => {
   if (d.sg) { S.sopGroup = d.sg; App.render(); return; }
   if (d.folder != null) { S.folder = d.folder; App.render(); return; }
   if (d.goclient) { S.ccat = '全部'; S.view = 'clients'; S.csel = d.goclient; S.showDetail = true; S.showIds = false; App.render(); return; }
+  if (d.ksel) { S.ksel = d.ksel; S.kres = ''; S.showDetail = true; App.render(); return; }
+  if (d.gocall) { S.view = 'calls'; S.ksel = d.gocall; S.kres = ''; S.showDetail = true; App.render(); return; }
+  if (d.kst) { S.kst = d.kst; App.render(); return; }
+  if (d.kres) { const note = $('kNote')?.value || '', next = $('kNext')?.value || ''; S.kres = S.kres === d.kres ? '' : d.kres; App.render(); $('kNote').value = note; $('kNext').value = next; return; }
+  if (d.kdel) { const k = curCall(); if (k && armConfirm(b, '刪？')) { k.logs = (k.logs || []).filter((x) => x.id !== d.kdel); Vault.put('calls', k); App.render(); } return; }
   if (d.ccat) { S.ccat = d.ccat; App.render(); return; }
   if (d.csel) { S.ccat = '全部'; S.csel = d.csel; S.showDetail = true; S.showIds = false; App.render(); return; }
   if (d.reveal) { const el = $(d.reveal); if (el) { const on = el.classList.toggle('shown'); b.textContent = on ? '隱藏' : '顯示'; } return; }
@@ -558,6 +623,21 @@ app.addEventListener('click', async (e) => {
     case 'cshare': openShare(ccl, (ccl.name || '客戶') + '-證件'); break;
     case 'ccase': { const c = newCase(S.ccat !== '全部' ? S.ccat : '理賠'); c.client = ccl.name; c.clientId = ccl.id; saveCase(c); S.view = 'cases'; App.render(); break; }
     case 'delclient': if (armConfirm(b, '再按一次確定刪除（證件照片也會刪掉）')) { (ccl.docs || []).forEach((doc) => Files.remove(doc.fileId)); cases().filter((c) => c.clientId === ccl.id).forEach((c) => { c.clientId = ''; saveCase(c); }); Vault.del('clients', ccl.id); S.csel = null; S.showDetail = false; App.render(); } break;
+    case 'newcall': { const k = Vault.put('calls', { name: '', phone: '', source: '', status: '待撥', nextDate: '', logs: [] }); S.ksel = k.id; S.kres = ''; S.showDetail = true; S.view = 'calls'; App.render(); setTimeout(() => $('kf_name')?.focus(), 50); break; }
+    case 'importcalls': openCallImport(); break;
+    case 'samplescript': { const n = Vault.put('notes', { kind: 'script', group: '電訪', title: '服務件電訪', body: SAMPLE_SCRIPT, images: [] }); S.script = n.id; editNote(n.id); break; }
+    case 'newscript': { const n = Vault.put('notes', { kind: 'script', group: '電訪', title: '', body: '', images: [] }); S.script = n.id; editNote(n.id, true); break; }
+    case 'editscript': if (S.script) editNote(S.script); break;
+    case 'logcall': {
+      const k = curCall(); if (!k) break; const note = $('kNote').value.trim(), next = $('kNext').value;
+      if (!S.kres && !note) { toast('先選結果或寫一點內容'); break; }
+      const res = RESULTS.find(([r]) => r === S.kres);
+      k.logs = [...(k.logs || []), { id: uid(), date: localDay(), at: new Date().toISOString(), result: S.kres || '通話', note }];
+      if (res) k.status = res[1]; if (next) k.nextDate = next; else if (res && res[1] === '結案') k.nextDate = '';
+      Vault.put('calls', k); S.kres = ''; App.render(); toast('已記錄'); break;
+    }
+    case 'tocliient': { const k = curCall(); if (!k) break; let cl = clients().find((x) => x.name === k.name && k.name); if (!cl) cl = Vault.put('clients', { name: k.name, phone: k.phone, note: [k.source, k.note].filter(Boolean).join('\n'), docs: [] }); k.clientId = cl.id; Vault.put('calls', k); App.render(); toast(`已轉成客戶「${cl.name || '未填姓名'}」`); break; }
+    case 'delcall': if (armConfirm(b, '再按一次確定刪除')) { Vault.del('calls', S.ksel); S.ksel = null; S.showDetail = false; App.render(); } break;
     case 'editsteps': openStepEditor(c.cat); break;
     case 'linkcase': openLinkPicker(c); break;
     case 'convert': { const t = new Date(); const day = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; c.cat = '新契約'; c.status = '進行中'; c.convertedAt = day; saveCase(c); S.cat = S.cat === '建議書' ? '新契約' : S.cat; App.render(); toast('已轉成新契約'); break; }
@@ -587,6 +667,8 @@ function linkClient(c) { // 案件填了客戶名字：找到同名客戶就連�
   c.clientId = cl.id; return made ? cl : null;
 }
 app.addEventListener('change', (e) => {
+  if (e.target.id === 'kScript') { S.script = e.target.value; App.render(); return; }
+  const kf = e.target.dataset?.kf; if (kf) { const k = curCall(); if (!k) return; k[kf] = kf === 'name' ? e.target.value.trim() : e.target.value; Vault.put('calls', k); if (kf !== 'note') App.render(); return; }
   const cf = e.target.dataset?.cf; const cl = curClient();
   if (cf && cl) {
     cl[cf] = e.target.value; if (cf === 'name') cl.name = cl.name.trim();
@@ -609,8 +691,9 @@ app.addEventListener('input', (e) => {
   if (e.target.id === 'qq') {
     const q = e.target.value.trim(); const box = $('qres'); if (!q) { box.innerHTML = ''; return; }
     const cls = clients().filter((x) => [x.name, x.phone, x.line, x.note].join(' ').includes(q)).slice(0, 6);
+    const ks = calls().filter((x) => [x.name, x.phone, x.source].join(' ').includes(q)).slice(0, 6);
     const ns = notes().filter((n) => (n.title + n.body).includes(q)).slice(0, 6), cs = cases().filter((c) => [c.client, c.title, c.notes, c.next].join(' ').includes(q)).slice(0, 6);
-    box.innerHTML = `<div class="cards" style="margin-bottom:6px">${cls.map((x) => `<button class="item" data-goclient="${x.id}"><span class="t">${esc(x.name || '未填姓名')}</span><span class="s">客戶</span></button>`).join('')}${ns.map((n) => `<div class="card"><h3><span>${esc(n.title)}</span><span class="sub">${esc(n.group)}</span></h3><pre>${esc(n.body)}</pre></div>`).join('')}${cs.map((c) => `<button class="item" data-gocase="${c.id}"><span class="t">${esc(c.client)} · ${esc(c.title)}</span><span class="s">${esc(caseSummary(c))}</span></button>`).join('')}</div>${!cls.length && !ns.length && !cs.length ? '<div class="sub">找不到。</div>' : ''}`;
+    box.innerHTML = `<div class="cards" style="margin-bottom:6px">${ks.map((x) => `<button class="item" data-gocall="${x.id}"><span class="t">${esc(x.name || '未填姓名')}</span><span class="s">電訪 · ${esc(x.status)}</span></button>`).join('')}${cls.map((x) => `<button class="item" data-goclient="${x.id}"><span class="t">${esc(x.name || '未填姓名')}</span><span class="s">客戶</span></button>`).join('')}${ns.map((n) => `<div class="card"><h3><span>${esc(n.title)}</span><span class="sub">${esc(n.group)}</span></h3><pre>${esc(n.body)}</pre></div>`).join('')}${cs.map((c) => `<button class="item" data-gocase="${c.id}"><span class="t">${esc(c.client)} · ${esc(c.title)}</span><span class="s">${esc(caseSummary(c))}</span></button>`).join('')}</div>${!ks.length && !cls.length && !ns.length && !cs.length ? '<div class="sub">找不到。</div>' : ''}`;
   }
 });
 const ov = $('ovRoot');

@@ -173,7 +173,7 @@ body.dropping::after{content:"放開就加入這個案件";position:fixed;inset:
 .linkbtn{border:0;background:none;color:var(--accent-ink);font-size:12px;padding:0;font-weight:500}
 input.secret:not(.shown){-webkit-text-security:disc;text-security:disc}
 .docs.veiled canvas{filter:blur(10px) saturate(.4)}
-@media (max-width:900px){.tabs{grid-template-columns:repeat(6,1fr)}}
+@media (max-width:900px){.tabs{grid-template-columns:repeat(7,1fr)}.tab{font-size:10.5px}}
 /* PDF 與資料夾 */
 .pdftile{aspect-ratio:3/4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:var(--danger-soft);color:var(--danger);font-weight:700;font-size:22px;padding:8px;text-align:center}
 .pdftile small{font-size:11px;font-weight:400;color:var(--muted);word-break:break-all;line-height:1.4}
@@ -202,3 +202,13 @@ label.adddoc{cursor:pointer;text-align:center;padding:8px}
 .updbar{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:60;background:var(--accent);color:var(--card);border:0;border-radius:999px;padding:9px 18px;font-weight:500;font-size:14px}
 :root[data-theme="dark"] .updbar{color:#15160F}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .updbar{color:#15160F}}
+/* 電訪 */
+.p-off{background:var(--line);color:var(--muted)}
+.due{color:var(--danger);font-weight:500}
+details.sec>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary::after{content:"▾";color:var(--muted);font-size:12px}
+details.sec:not([open])>summary::after{content:"▸"}
+.scripttext{margin:0;white-space:pre-wrap;font-family:var(--f-body);font-size:15px;line-height:1.75;background:var(--surface);border-radius:8px;padding:12px 14px;max-height:46vh;overflow:auto}
+details.script select{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 8px;font-size:14px;max-width:60%}
+.lognote{font-size:14px;color:var(--ink);padding:0 6px;white-space:pre-wrap}
