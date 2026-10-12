@@ -104,7 +104,7 @@ const Mock = {
 };
 
 /* ================= 資料庫（記憶體中明文，存檔時加密） ================= */
-const COLLS = ['cases', 'notes', 'files', 'clients', 'settings', 'calls'];
+const COLLS = ['cases', 'notes', 'files', 'clients', 'settings', 'calls', 'rels'];
 const emptyDb = () => Object.fromEntries([['v', 1], ...COLLS.map((c) => [c, {}])]);
 const SYNC_LABEL = { synced: '已同步 OneDrive', saving: '同步中…', pending: '待同步…', offline: '離線中，連上網路會自動同步', idle: '—' };
 const Vault = {
@@ -263,6 +263,7 @@ const App = {
     app.innerHTML = h;
     if (keep && (keep === 'q')) { const el = $(keep); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) { } } }
     drawThumbs();
+    if (v === 'clients' && curClient()) drawEgo(curClient());
   },
 };
 function railHTML() {
@@ -379,10 +380,112 @@ function openCallImport() {
   setTimeout(() => $('ciText')?.focus(), 50);
 }
 function clientCases(cl) { return cases().filter((c) => c.clientId === cl.id).sort(byDate); }
+/* ================= 關係圖 ================= */
+const rels = () => Vault.all('rels').filter((r) => Vault.get('clients', r.a) && Vault.get('clients', r.b));
+const FAMILY = ['parent', 'spouse', 'sibling', 'relative'];
+const REL_PICK = [ // 從「這位客戶」的角度選：對方是他的…
+  ['父母', 'parent', 'in'], ['子女', 'parent', 'out'], ['配偶', 'spouse'], ['兄弟姊妹', 'sibling'], ['其他親戚', 'relative'],
+  ['朋友', 'friend'], ['同事', 'colleague'], ['介紹人', 'referral', 'in'], ['他介紹的人', 'referral', 'out'],
+];
+function relLabel(r, me) { // 對方對「me」來說是什麼
+  const other = Vault.get('clients', r.a === me ? r.b : r.a), g = other?.gender, out = r.a === me;
+  switch (r.type) {
+    case 'parent': return out ? (g === '男' ? '兒子' : g === '女' ? '女兒' : '子女') : (g === '男' ? '爸爸' : g === '女' ? '媽媽' : '父母');
+    case 'spouse': return g === '男' ? '先生' : g === '女' ? '太太' : '配偶';
+    case 'sibling': return g === '男' ? '兄弟' : g === '女' ? '姊妹' : '兄弟姊妹';
+    case 'relative': return r.note || '親戚';
+    case 'friend': return '朋友';
+    case 'colleague': return '同事';
+    case 'referral': return out ? '他介紹的人' : '介紹人';
+  }
+  return '';
+}
+function relsHTML(x) {
+  const mine = rels().filter((r) => r.a === x.id || r.b === x.id);
+  const fam = mine.filter((r) => FAMILY.includes(r.type)), soc = mine.filter((r) => !FAMILY.includes(r.type));
+  const row = (r) => { const o = Vault.get('clients', r.a === x.id ? r.b : r.a); return `<div class="relrow"><span class="reltag ${FAMILY.includes(r.type) ? 'fam' : 'soc'}">${esc(relLabel(r, x.id))}</span><button class="linkbtn relname" data-goclient="${o.id}">${esc(o.name || '未填姓名')}</button><button class="tldel" data-delrel="${r.id}" aria-label="移除關係">✕</button></div>`; };
+  return `<div class="sec"><h2>關係 <span style="display:flex;gap:6px"><button class="btn" data-act="relgraph" style="padding:4px 10px;font-size:13px">全部關係圖</button><button class="btn" data-act="addrel" style="padding:4px 10px;font-size:13px">＋ 新增關係</button></span></h2>
+   ${mine.length ? `<div class="egograph" id="egoGraph"></div><div class="grid2">${fam.length ? `<div><div class="sub" style="margin-bottom:4px">家人</div>${fam.map(row).join('')}</div>` : ''}${soc.length ? `<div><div class="sub" style="margin-bottom:4px">朋友・其他</div>${soc.map(row).join('')}</div>` : ''}</div>`
+    : '<div class="sub">還沒有關係。可以加家人（不受國泰戶長的限制）、朋友、同事、介紹人。</div>'}</div>`;
+}
+function openRelPicker(x) {
+  let pick = null;
+  const draw = () => {
+    const q = ($('rpQ')?.value || '').trim();
+    const linked = new Set(rels().filter((r) => r.a === x.id || r.b === x.id).map((r) => (r.a === x.id ? r.b : r.a)));
+    const pool = clients().filter((c) => c.id !== x.id && (!q || (c.name || '').includes(q))).sort((a, b) => linked.has(a.id) - linked.has(b.id) || (a.name || '').localeCompare(b.name || '', 'zh-Hant')).slice(0, 40);
+    $('rpList').innerHTML = (q && !clients().some((c) => c.name === q) ? `<button class="item" data-newperson="1"><span class="t">＋ 新增「${esc(q)}」</span><span class="s">會建立一位只有名字的客戶，之後可以補資料</span></button>` : '') + pool.map((c) => `<button class="item" data-person="${c.id}"><span class="t"><span>${esc(c.name || '未填姓名')}</span>${linked.has(c.id) ? '<span class="pill p-off">已有關係</span>' : ''}</span></button>`).join('');
+  };
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>新增「${esc(x.name || '這位客戶')}」的關係</h2><button class="btn" id="rpClose">取消</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:640px;margin:0 auto;width:100%">
+   <div class="sub">對方是${esc(x.name || '他')}的…</div>
+   <div class="tags" id="rpTypes">${REL_PICK.map(([l], i) => `<button class="tag" data-ti="${i}">${l}</button>`).join('')}</div>
+   <label class="f" id="rpNoteWrap" hidden>怎麼稱呼（可不填）<input id="rpNote" placeholder="例如：阿姨、表哥、外婆"></label>
+   <input class="search" id="rpQ" placeholder="搜尋或輸入名字" autocomplete="off">
+   <div class="list" id="rpList" style="padding:0"></div></div></div>`;
+  $('rpClose').onclick = () => (ov.innerHTML = '');
+  $('rpTypes').onclick = (e) => { const b = e.target.closest('[data-ti]'); if (!b) return; pick = REL_PICK[+b.dataset.ti]; $('rpTypes').querySelectorAll('.tag').forEach((t) => t.classList.toggle('on', t === b)); $('rpNoteWrap').hidden = pick[1] !== 'relative'; $('rpQ').focus(); };
+  $('rpQ').oninput = draw;
+  $('rpList').onclick = (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (!pick) { toast('先選關係，例如「媽媽」選「父母」'); return; }
+    let other = b.dataset.person ? Vault.get('clients', b.dataset.person) : null;
+    if (b.dataset.newperson) other = Vault.put('clients', { name: $('rpQ').value.trim(), docs: [] });
+    if (!other) return;
+    const [, type, dir] = pick; const [a, bb] = dir === 'in' ? [other.id, x.id] : [x.id, other.id];
+    Vault.put('rels', { a, b: bb, type, note: type === 'relative' ? $('rpNote').value.trim() : '' });
+    ov.innerHTML = ''; App.render(); toast(`已加上：${other.name} 是 ${x.name || '他'} 的${pick[0]}`);
+  };
+  draw();
+}
+function layoutGraph(nodes, edges, W, H) { // 簡單的力導向排版
+  const P = new Map(nodes.map((n, i) => [n.id, { x: W / 2 + Math.cos(i * 2.4) * (40 + i * 6), y: H / 2 + Math.sin(i * 2.4) * (40 + i * 6), vx: 0, vy: 0, fixed: n.fixed }]));
+  for (let it = 0; it < 320; it++) {
+    const arr = [...P.values()], ids = [...P.keys()];
+    for (let i = 0; i < arr.length; i++) for (let j = i + 1; j < arr.length; j++) {
+      const p = arr[i], q = arr[j]; let dx = p.x - q.x, dy = p.y - q.y, d2 = dx * dx + dy * dy || 0.01; const f = 7000 / d2, d = Math.sqrt(d2);
+      p.vx += dx / d * f; p.vy += dy / d * f; q.vx -= dx / d * f; q.vy -= dy / d * f;
+    }
+    edges.forEach((e) => { const p = P.get(e.a), q = P.get(e.b); if (!p || !q) return; const L = FAMILY.includes(e.type) ? 115 : 175; const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1, f = (d - L) * 0.04; p.vx += dx / d * f; p.vy += dy / d * f; q.vx -= dx / d * f; q.vy -= dy / d * f; });
+    arr.forEach((p) => { p.vx += (W / 2 - p.x) * 0.004; p.vy += (H / 2 - p.y) * 0.004; if (p.fixed) { p.x = W / 2; p.y = H / 2; p.vx = p.vy = 0; return; } p.x += Math.max(-20, Math.min(20, p.vx)) ; p.y += Math.max(-20, Math.min(20, p.vy)); p.vx *= 0.55; p.vy *= 0.55; });
+    void ids;
+  }
+  return P;
+}
+function graphSVG(nodes, edges, H, focusId) {
+  const W = 760, P = layoutGraph(nodes, edges, W, H);
+  const xs = [...P.values()].map((p) => p.x), ys = [...P.values()].map((p) => p.y), pad = 50;
+  let minX = Math.min(...xs) - pad, minY = Math.min(...ys) - pad, vw = Math.max(...xs) - minX + pad, vh = Math.max(...ys) - minY + pad;
+  if (vw < 520) { minX -= (520 - vw) / 2; vw = 520; } if (vh < H * 0.6) { minY -= (H * 0.6 - vh) / 2; vh = H * 0.6; } // 人少時不要放太大
+  const name = (id) => Vault.get('clients', id)?.name || '未填姓名';
+  const merged = new Map(); // 同兩個人之間的多種關係合成一條線
+  edges.forEach((e) => { const k = [e.a, e.b].sort().join('|'); if (!merged.has(k)) merged.set(k, { ...e, extra: [] }); else merged.get(k).extra.push(e); });
+  edges = [...merged.values()];
+  const lines = edges.map((e) => { const p = P.get(e.a), q = P.get(e.b); if (!p || !q) return ''; const fam = FAMILY.includes(e.type); const lbl = e.type === 'parent' ? '親子' : e.type === 'spouse' ? '夫妻' : e.type === 'sibling' ? '手足' : e.type === 'relative' ? (e.note || '親戚') : e.type === 'friend' ? '朋友' : e.type === 'colleague' ? '同事' : '介紹';
+    const lab = [lbl, ...e.extra.map((x) => ({ parent: '親子', spouse: '夫妻', sibling: '手足', relative: x.note || '親戚', friend: '朋友', colleague: '同事', referral: '介紹' }[x.type]))].join('・');
+    return `<line x1="${p.x}" y1="${p.y}" x2="${q.x}" y2="${q.y}" class="ge ${fam ? 'fam' : e.type}"/><text x="${(p.x + q.x) / 2}" y="${(p.y + q.y) / 2 - 4}" class="gel">${esc(lab)}</text>`; }).join('');
+  const dots = nodes.map((n) => { const p = P.get(n.id); const nm = name(n.id); return `<g class="gn${n.id === focusId ? ' focus' : ''}" data-gonode="${n.id}" tabindex="0" role="button" aria-label="${esc(nm)}"><circle cx="${p.x}" cy="${p.y}" r="${n.id === focusId ? 24 : 19}"/><text x="${p.x}" y="${p.y + 4}" class="gnt">${esc(nm.slice(-2))}</text><text x="${p.x}" y="${p.y + (n.id === focusId ? 40 : 35)}" class="gnl">${esc(nm)}</text></g>`; }).join('');
+  return `<svg viewBox="${minX} ${minY} ${vw} ${vh}" class="graph" style="max-height:${H}px">${lines}${dots}</svg>`;
+}
+function drawEgo(x) {
+  const box = $('egoGraph'); if (!box) return;
+  const all = rels(), ids = new Set([x.id]);
+  all.forEach((r) => { if (r.a === x.id) ids.add(r.b); if (r.b === x.id) ids.add(r.a); });
+  const first = new Set(ids); all.forEach((r) => { if (first.has(r.a) && FAMILY.includes(r.type)) ids.add(r.b); if (first.has(r.b) && FAMILY.includes(r.type)) ids.add(r.a); }); // 家人的家人也帶進來
+  const edges = all.filter((r) => ids.has(r.a) && ids.has(r.b));
+  box.innerHTML = graphSVG([...ids].map((id) => ({ id, fixed: id === x.id })), edges, 300, x.id);
+}
+function openRelGraph() {
+  const all = rels(), ids = new Set(); all.forEach((r) => { ids.add(r.a); ids.add(r.b); });
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>關係圖</h2><span class="sub"><span class="lg fam"></span>家人　<span class="lg friend"></span>朋友　<span class="lg colleague"></span>同事　<span class="lg referral"></span>介紹</span><button class="btn pri" id="rgClose">關閉</button></div>
+   <div class="ovbody" style="justify-content:center">${ids.size ? `<div style="width:100%">${graphSVG([...ids].map((id) => ({ id })), all, Math.max(520, window.innerHeight - 140), S.csel)}</div>` : '<div class="empty">還沒有任何關係。到客戶頁按「＋ 新增關係」。</div>'}</div></div>`;
+  $('rgClose').onclick = () => (ov.innerHTML = '');
+  ov.querySelectorAll('[data-gonode]').forEach((g) => (g.onclick = () => { ov.innerHTML = ''; S.view = 'clients'; S.csel = g.dataset.gonode; S.ccat = '全部'; S.showDetail = true; S.showIds = false; App.render(); }));
+}
 function clientListHTML() {
   const q = S.q.trim();
   const list = clients().filter((x) => !q || [x.name, x.phone, x.line, x.note].join(' ').includes(q)).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-Hant'));
-  return `<section class="col"><div class="colhead"><h1>客戶 <button class="btn" data-act="newclient">＋ 新增</button></h1>
+  return `<section class="col"><div class="colhead"><h1>客戶 <span style="display:flex;gap:6px"><button class="btn" data-act="relgraph">關係圖</button><button class="btn" data-act="newclient">＋ 新增</button></span></h1>
   <div class="mobsync">${syncHTML()}</div>
   <input class="search" id="q" placeholder="搜尋姓名、電話、備註" value="${esc(S.q)}" autocomplete="off"></div>
   <div class="list">${list.length ? list.map((x) => { const n = clientCases(x).length, open = clientCases(x).filter((c) => c.status !== '已結案').length; return `<button class="item${x.id === S.csel ? ' on' : ''}" data-csel="${x.id}"><span class="t"><span>${esc(x.name || '未填姓名')}</span>${open ? `<span class="pill p-wait">${open} 件進行中</span>` : ''}</span><span class="s">${n} 個案件 · 證件 ${(x.docs || []).length} 張</span></button>`; }).join('') : `<div class="empty">${clients().length ? '沒有符合的客戶。' : '還沒有客戶。按「＋ 新增」，或在案件裡填客戶名字就會自動建立。'}</div>`}</div></section>`;
@@ -406,6 +509,7 @@ function clientDetailHTML() {
    ${f('source', '來源／介紹人')}</div>
    ${f('address', '地址')}
    <label class="f">備註<textarea id="cf_note" data-cf="note" rows="3" placeholder="家庭狀況、保單重點、喜好…">${esc(x.note)}</textarea></label></div>
+  ${relsHTML(x)}
   <div class="sec"><h2>證件與文件 <button class="btn" data-act="toggleids" style="padding:4px 10px;font-size:13px">${S.showIds ? '隱藏證件' : '顯示證件'}</button></h2>
    <div class="docs${S.showIds ? '' : ' veiled'}">${docs.map((d, i) => [d, i]).sort(([a], [b]) => (b.date || '').localeCompare(a.date || '')).map(([d, i]) => docTile(d, i, 'c', null)).join('')}
    <button class="adddoc" data-act="cscan">${ICON.scan}拍身分證、存摺<span style="font-size:11px">也可以拖曳圖片、PDF 進來</span></button><button class="adddoc" data-act="pasteimg">📋 貼上圖片</button><label class="adddoc">＋ 上傳 PDF 或圖片<input type="file" id="docUpC" accept="image/*,application/pdf,.pdf" multiple></label></div>
@@ -580,6 +684,7 @@ function drawThumbs() {
 function newCase(cat) { const c = saveCase({ date: localDay(), client: '', title: '', cat, status: '進行中', items: [], causeType: '', causeDetail: '', diag: '', next: '', cost: '', ratio: '', payout: '', notes: '', docs: [], isRef: false }); S.sel = c.id; S.showDetail = true; return c; }
 function armConfirm(b, label) { if (b.dataset.confirm) return true; b.dataset.confirm = 1; b.textContent = label; setTimeout(() => { if (b.isConnected) { delete b.dataset.confirm; App.render(); } }, 4000); return false; }
 app.addEventListener('click', async (e) => {
+  const gn = e.target.closest('[data-gonode]'); if (gn) { S.view = 'clients'; S.csel = gn.dataset.gonode; S.ccat = '全部'; S.showDetail = true; S.showIds = false; App.render(); return; }
   const b = e.target.closest('button'); if (!b) return; const d = b.dataset; const c = cur();
   if (d.nav) { S.view = d.nav; S.showDetail = false; S.q = ''; App.render(); return; }
   if (d.cat) { S.cat = d.cat; App.render(); return; }
@@ -588,6 +693,7 @@ app.addEventListener('click', async (e) => {
   if (d.ritem) { S.refItem = d.ritem; App.render(); return; }
   if (d.rcause) { S.refCause = d.rcause; App.render(); return; }
   if (d.sg) { S.sopGroup = d.sg; App.render(); return; }
+  if (d.delrel) { if (armConfirm(b, '移除？')) { Vault.del('rels', d.delrel); App.render(); } return; }
   if (d.rename != null || d.crename != null) {
     const isC = d.crename != null, rec = isC ? curClient() : c, doc = rec?.docs[+(isC ? d.crename : d.rename)]; if (!doc) return;
     const name = (prompt('文件名稱', doc.name) || '').trim(); if (!name || name === doc.name) return;
@@ -642,7 +748,7 @@ app.addEventListener('click', async (e) => {
     case 'cpdf': makePDF(ccl.docs, false, (ccl.name || '客戶') + '-證件'); break;
     case 'cshare': openShare(ccl, (ccl.name || '客戶') + '-證件'); break;
     case 'ccase': { const c = newCase(S.ccat !== '全部' ? S.ccat : '理賠'); c.client = ccl.name; c.clientId = ccl.id; saveCase(c); S.view = 'cases'; App.render(); break; }
-    case 'delclient': if (armConfirm(b, '再按一次確定刪除（證件照片也會刪掉）')) { (ccl.docs || []).forEach((doc) => Files.remove(doc.fileId)); cases().filter((c) => c.clientId === ccl.id).forEach((c) => { c.clientId = ''; saveCase(c); }); Vault.del('clients', ccl.id); S.csel = null; S.showDetail = false; App.render(); } break;
+    case 'delclient': if (armConfirm(b, '再按一次確定刪除（證件照片也會刪掉）')) { (ccl.docs || []).forEach((doc) => Files.remove(doc.fileId)); cases().filter((c) => c.clientId === ccl.id).forEach((c) => { c.clientId = ''; saveCase(c); }); Vault.all('rels').filter((r) => r.a === ccl.id || r.b === ccl.id).forEach((r) => Vault.del('rels', r.id)); Vault.del('clients', ccl.id); S.csel = null; S.showDetail = false; App.render(); } break;
     case 'newcall': { const k = Vault.put('calls', { name: '', phone: '', source: '', status: '待撥', nextDate: '', logs: [] }); S.ksel = k.id; S.kres = ''; S.showDetail = true; S.view = 'calls'; App.render(); setTimeout(() => $('kf_name')?.focus(), 50); break; }
     case 'importcalls': openCallImport(); break;
     case 'samplescript': { const n = Vault.put('notes', { kind: 'script', group: '電訪', title: '服務件電訪', body: SAMPLE_SCRIPT, images: [] }); S.script = n.id; editNote(n.id); break; }
@@ -659,6 +765,8 @@ app.addEventListener('click', async (e) => {
     case 'tocliient': { const k = curCall(); if (!k) break; let cl = clients().find((x) => x.name === k.name && k.name); if (!cl) cl = Vault.put('clients', { name: k.name, phone: k.phone, note: [k.source, k.note].filter(Boolean).join('\n'), docs: [] }); k.clientId = cl.id; Vault.put('calls', k); App.render(); toast(`已轉成客戶「${cl.name || '未填姓名'}」`); break; }
     case 'delcall': if (armConfirm(b, '再按一次確定刪除')) { Vault.del('calls', S.ksel); S.ksel = null; S.showDetail = false; App.render(); } break;
     case 'tplfor': S.view = 'tpl'; S.tplCat = c.cat; S.tplGroup = '全部'; S.q = ''; S.showDetail = false; App.render(); break;
+    case 'addrel': if (ccl) openRelPicker(ccl); break;
+    case 'relgraph': openRelGraph(); break;
     case 'pasteimg': pasteFromClipboard(); break;
     case 'editsteps': openStepEditor(c.cat); break;
     case 'linkcase': openLinkPicker(c); break;
