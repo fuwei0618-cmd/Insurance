@@ -284,7 +284,7 @@ function caseListHTML() {
   <div class="mobsync">${syncHTML()}</div>
   <input class="search" id="q" placeholder="搜尋客戶、案件、備註" value="${esc(S.q)}" autocomplete="off">
   <div class="chips">${['全部', ...CATS].map((c) => `<button class="chip${S.cat === c ? ' on' : ''}" data-cat="${c}">${c}</button>`).join('')}</div></div>
-  <div class="list">${list.length ? list.map((c) => `<button class="item${c.id === S.sel ? ' on' : ''}" data-sel="${c.id}"><span class="t"><span>${esc(c.client || '未填客戶')} · ${esc(c.title || '未命名')}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${fmtDay(caseDate(c))} · ${esc(caseSummary(c))}</span></button>`).join('') : `<div class="empty">${cases().length ? '沒有符合的案件。' : '還沒有案件。按「＋ 新增」，或按「掃描」直接拍文件建案。'}</div>`}</div></section>`;
+  <div class="list">${list.length ? list.map((c) => `<button class="item${c.id === S.sel ? ' on' : ''}" data-sel="${c.id}"><span class="t"><span>${esc(c.client || '未填客戶')} · ${esc(c.title || '未命名')}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${fmtDay(caseDate(c))} · ${esc(caseSummary(c))}${latestStep(c) ? ' · 最新：' + esc(latestStep(c).title) : ''}</span></button>`).join('') : `<div class="empty">${cases().length ? '沒有符合的案件。' : '還沒有案件。按「＋ 新增」，或按「掃描」直接拍文件建案。'}</div>`}</div></section>`;
 }
 function caseDetailHTML() {
   const c = cur();
@@ -301,6 +301,7 @@ function caseDetailHTML() {
    <label class="f">類別<select id="f_cat" data-f="cat">${CATS.map((x) => `<option${x === c.cat ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
    <label class="f">狀態<select id="f_status" data-f="status">${STATUS.map((x) => `<option${x === c.status ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
    <label class="f">下一步<input id="f_next" data-f="next" value="${esc(c.next)}" placeholder="例如：補診斷書正本"></label></div></div>
+  ${timelineHTML(c)}
   ${isClaim ? `<div class="sec"><h2>理賠分類</h2>
    <div class="sub">險種項目（可複選）</div><div class="tags">${ITEMS.map((x) => `<button class="tag${c.items.includes(x) ? ' on' : ''}" data-item="${x}">${x}</button>`).join('')}</div>
    <div class="sub">原因</div><div class="tags">${Object.keys(CAUSE).map((x) => `<button class="tag${c.causeType === x ? ' on' : ''}" data-ctype="${x}">${x}</button>`).join('')}</div>
@@ -312,6 +313,7 @@ function caseDetailHTML() {
    <span class="res">${auto ? auto.toLocaleString() : '—'}</span></div>
    <label class="f">實際理賠金額（有不同再填）<input id="f_payout" inputmode="numeric" data-f="payout" value="${esc(c.payout)}"></label></div>` : ''}
   ${caseDocsHTML(c)}
+  ${linksHTML(c)}
   <div class="sec"><h2>備註</h2><textarea id="f_notes" data-f="notes" rows="4" aria-label="備註">${esc(c.notes)}</textarea></div>
   <div class="actions">${isClaim ? `<button class="btn${c.isRef ? ' on' : ''}" data-act="ref">${c.isRef ? '✓ 已在理賠參考' : '做成理賠參考'}</button>` : ''}<button class="btn danger" data-act="delcase">刪除案件</button></div>`;
 }
@@ -358,6 +360,42 @@ function docTile(d, i, p, folders) { // p：'' 案件、'c' 客戶
   const mv = folders ? `<select class="mv" data-movedoc="${i}" aria-label="移到資料夾"><option value="">未分類</option>${folders.map((f) => `<option${f === d.folder ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select>` : '';
   const dt = `<input type="date" class="ddate" data-${p}docdate="${i}" value="${esc(d.date || '')}" aria-label="文件日期">`;
   return `<div class="doc">${media}${dt}<div class="bar"><span>${esc(d.name)}${d.masks?.length ? ' · 已遮 ' + d.masks.length : ''}</span><span><button data-${p}view="${i}">看</button>${isPdf(d) ? '' : `<button data-${p}mask="${i}">遮罩</button>`}<button data-${p}deldoc="${i}" aria-label="刪除文件">刪</button></span></div>${mv}</div>`;
+}
+const STEPS = {
+  新契約: ['建議書', 'keyman 再解說', '簽約', '送件', '文件補全', '核保通過', '簽收回條', '紙本保單'],
+  建議書: ['建議書', 'keyman 再解說', '簽約'],
+  理賠: ['收件', '送件', '補件通知', '補件完成', '給付'],
+  保全: ['收件', '送件', '補件', '完成'],
+  產險: ['報價', '投保', '送件', '保單'],
+};
+const tlSorted = (c) => (c.timeline || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.at || '').localeCompare(a.at || ''));
+const latestStep = (c) => tlSorted(c)[0];
+function timelineHTML(c) {
+  const tl = tlSorted(c), done = new Set(tl.map((e) => e.title)), steps = STEPS[c.cat] || ['聯絡', '送件', '補件', '完成'];
+  return `<div class="sec"><h2>進度 <span class="sub">${tl.length ? tl.length + ' 筆，新的在上面' : '每個時間點記一筆'}</span></h2>
+   <div class="tags">${steps.map((x) => `<button class="tag${done.has(x) ? ' did' : ''}" data-addstep="${esc(x)}">${done.has(x) ? '✓' : '＋'} ${esc(x)}</button>`).join('')}<button class="tag" data-addstep="">＋ 其他</button></div>
+   ${tl.length ? `<div class="tl">${tl.map((e) => `<div class="tli"><span class="tldot"></span><div class="tlrow"><input type="date" class="tldate" data-tldate="${e.id}" value="${esc(e.date)}" aria-label="日期"><input class="tltitle" data-tltitle="${e.id}" id="tlt_${e.id}" value="${esc(e.title)}" placeholder="做了什麼" aria-label="項目"><button class="tldel" data-tldel="${e.id}" aria-label="刪除這筆">✕</button></div><input class="tlnote" data-tlnote="${e.id}" id="tln_${e.id}" value="${esc(e.note)}" placeholder="備註（可不填）" aria-label="備註"></div>`).join('')}</div>` : ''}</div>`;
+}
+function linksHTML(c) {
+  const linked = (c.links || []).map((id) => Vault.get('cases', id)).filter(Boolean).sort(byDate);
+  return `<div class="sec"><h2>相關案件 <button class="btn" data-act="linkcase" style="padding:4px 10px;font-size:13px">＋ 連結案件</button></h2>
+   ${linked.length ? linked.map((x) => `<div class="linkrow"><button class="item" data-gocase="${x.id}"><span class="t"><span>${esc(x.client || '未填客戶')} · ${esc(x.title || '未命名')}</span><span class="pill ${pillCls(x.status)}">${x.status}</span></span><span class="s">${fmtDay(caseDate(x))} · ${esc(caseSummary(x))}</span></button><button class="linkbtn" data-unlink="${x.id}">取消連結</button></div>`).join('') : '<div class="sub">隔很久的同一件事，可以拆成新案件再連起來，例如去年的建議書和今年的新契約。</div>'}</div>`;
+}
+function openLinkPicker(c) {
+  const draw = (q = '') => {
+    const pool = cases().filter((x) => x.id !== c.id && !(c.links || []).includes(x.id) && (!q || [x.client, x.title, x.notes].join(' ').includes(q)))
+      .sort((a, b) => ((b.clientId && b.clientId === c.clientId) - (a.clientId && a.clientId === c.clientId)) || byDate(a, b));
+    $('lkList').innerHTML = pool.length ? pool.slice(0, 60).map((x) => `<button class="item" data-pick="${x.id}"><span class="t"><span>${esc(x.client || '未填客戶')} · ${esc(x.title || '未命名')}</span>${x.clientId && x.clientId === c.clientId ? '<span class="pill p-go">同一位客戶</span>' : ''}</span><span class="s">${fmtDay(caseDate(x))} · ${esc(caseSummary(x))}</span></button>`).join('') : '<div class="empty">沒有其他案件可以連結。</div>';
+    $('lkList').querySelectorAll('[data-pick]').forEach((b) => (b.onclick = () => {
+      const o = Vault.get('cases', b.dataset.pick);
+      c.links = [...new Set([...(c.links || []), o.id])]; o.links = [...new Set([...(o.links || []), c.id])];
+      saveCase(o); saveCase(c); ov.innerHTML = ''; App.render(); toast('已連結');
+    }));
+  };
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>連結案件</h2><button class="btn pri" id="lkClose">關閉</button></div><div class="ovbody" style="flex-direction:column;max-width:640px;margin:0 auto;width:100%"><input class="search" id="lkQ" placeholder="搜尋客戶、案件名稱" autocomplete="off"><div class="list" id="lkList" style="padding:0"></div></div></div>`;
+  $('lkClose').onclick = () => (ov.innerHTML = '');
+  $('lkQ').oninput = (e) => draw(e.target.value.trim());
+  draw();
 }
 function curFolder(c) { return (c?.folders || []).includes(S.folder) ? S.folder : ''; }
 function caseDocsHTML(c) {
@@ -471,7 +509,14 @@ app.addEventListener('click', async (e) => {
   if (d.cview && ccl) { openViewer(ccl.docs[+d.cview]); return; }
   if (d.cmask && ccl) { openMask(ccl, +d.cmask, 'clients'); return; }
   if (d.cdeldoc && ccl) { if (armConfirm(b, '確定？')) { const [doc] = ccl.docs.splice(+d.cdeldoc, 1); Vault.put('clients', ccl); if (doc) Files.remove(doc.fileId); App.render(); } return; }
-  if (d.gocase) { S.view = 'cases'; S.sel = d.gocase; S.showDetail = true; App.render(); return; }
+  if (d.addstep != null && c) {
+    const e = { id: uid(), date: localDay(), title: d.addstep, note: '', at: new Date().toISOString() };
+    c.timeline = [...(c.timeline || []), e]; saveCase(c); App.render();
+    setTimeout(() => (d.addstep ? $('tln_' + e.id) : $('tlt_' + e.id))?.focus(), 30); return;
+  }
+  if (d.tldel && c) { if (armConfirm(b, '刪？')) { c.timeline = (c.timeline || []).filter((x) => x.id !== d.tldel); saveCase(c); App.render(); } return; }
+  if (d.unlink && c) { const o = Vault.get('cases', d.unlink); c.links = (c.links || []).filter((x) => x !== d.unlink); saveCase(c); if (o) { o.links = (o.links || []).filter((x) => x !== c.id); saveCase(o); } App.render(); toast('已取消連結'); return; }
+  if (d.gocase) { S.folder = '全部'; S.view = 'cases'; S.sel = d.gocase; S.showDetail = true; App.render(); return; }
   if (d.item && c) { const i = c.items.indexOf(d.item); i < 0 ? c.items.push(d.item) : c.items.splice(i, 1); saveCase(c); App.render(); return; }
   if (d.ctype && c) { c.causeType = c.causeType === d.ctype ? '' : d.ctype; c.causeDetail = ''; saveCase(c); App.render(); return; }
   if (d.cdet && c) { c.causeDetail = c.causeDetail === d.cdet ? '' : d.cdet; saveCase(c); App.render(); return; }
@@ -497,6 +542,7 @@ app.addEventListener('click', async (e) => {
     case 'cshare': openShare(ccl, (ccl.name || '客戶') + '-證件'); break;
     case 'ccase': { const c = newCase(S.ccat !== '全部' ? S.ccat : '理賠'); c.client = ccl.name; c.clientId = ccl.id; saveCase(c); S.view = 'cases'; App.render(); break; }
     case 'delclient': if (armConfirm(b, '再按一次確定刪除（證件照片也會刪掉）')) { (ccl.docs || []).forEach((doc) => Files.remove(doc.fileId)); cases().filter((c) => c.clientId === ccl.id).forEach((c) => { c.clientId = ''; saveCase(c); }); Vault.del('clients', ccl.id); S.csel = null; S.showDetail = false; App.render(); } break;
+    case 'linkcase': openLinkPicker(c); break;
     case 'convert': { const t = new Date(); const day = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; c.cat = '新契約'; c.status = '進行中'; c.convertedAt = day; saveCase(c); S.cat = S.cat === '建議書' ? '新契約' : S.cat; App.render(); toast('已轉成新契約'); break; }
     case 'newfolder': { const name = (prompt('資料夾名稱（例如：體檢報告、基本資料、收據）') || '').trim(); if (!name) break; c.folders = c.folders || []; if (!c.folders.includes(name)) c.folders.push(name); saveCase(c); S.folder = name; App.render(); break; }
     case 'renfolder': { const old = S.folder; const name = (prompt('新的資料夾名稱', old) || '').trim(); if (!name || name === old) break; c.folders = c.folders.map((f) => (f === old ? name : f)); c.docs.forEach((doc) => { if (doc.folder === old) doc.folder = name; }); saveCase(c); S.folder = name; App.render(); break; }
@@ -505,7 +551,7 @@ app.addEventListener('click', async (e) => {
     case 'newcase': newCase(S.cat === '全部' ? '理賠' : S.cat); App.render(); break;
     case 'back': S.showDetail = false; App.render(); break;
     case 'ref': c.isRef = !c.isRef; saveCase(c); App.render(); toast(c.isRef ? '已加入理賠參考（不顯示客戶姓名）' : '已從理賠參考移除'); break;
-    case 'delcase': if (armConfirm(b, '再按一次確定刪除')) { c.docs.forEach((doc) => Files.remove(doc.fileId)); Vault.del('cases', c.id); S.sel = null; S.showDetail = false; App.render(); } break;
+    case 'delcase': if (armConfirm(b, '再按一次確定刪除')) { c.docs.forEach((doc) => Files.remove(doc.fileId)); (c.links || []).forEach((id) => { const o = Vault.get('cases', id); if (o) { o.links = (o.links || []).filter((x) => x !== c.id); saveCase(o); } }); Vault.del('cases', c.id); S.sel = null; S.showDetail = false; App.render(); } break;
     case 'pdf': makePDF(c.docs, false, (c.client || '案件') + '-' + (c.title || '文件')); break;
     case 'share': openShare(c); break;
     case 'rshare': openShare(Vault.get('cases', S.refSel)); break;
@@ -533,6 +579,8 @@ app.addEventListener('change', (e) => {
   }
 });
 app.addEventListener('change', (e) => {
+  const tk = ['tldate', 'tltitle', 'tlnote'].find((k) => e.target.dataset?.[k] != null);
+  if (tk) { const c = cur(); const it = c?.timeline?.find((x) => x.id === e.target.dataset[tk]); if (!it) return; it[{ tldate: 'date', tltitle: 'title', tlnote: 'note' }[tk]] = e.target.value; saveCase(c); if (tk !== 'tlnote') App.render(); return; }
   if (e.target.dataset?.docdate != null) { const c = cur(); if (!c) return; c.docs[+e.target.dataset.docdate].date = e.target.value; saveCase(c); App.render(); return; }
   if (e.target.dataset?.cdocdate != null) { const cl = curClient(); if (!cl) return; cl.docs[+e.target.dataset.cdocdate].date = e.target.value; Vault.put('clients', cl); App.render(); return; }
   if (e.target.dataset?.movedoc != null) { const c = cur(); if (!c) return; c.docs[+e.target.dataset.movedoc].folder = e.target.value; saveCase(c); App.render(); return; }

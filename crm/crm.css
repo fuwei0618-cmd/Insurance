@@ -182,3 +182,19 @@ label.adddoc{cursor:pointer;text-align:center;padding:8px}
 .chip .cnt{opacity:.6;font-size:11px}
 .ov iframe{min-height:60vh}
 .doc input.ddate{border:0;border-bottom:1px solid var(--line);background:var(--card);color:var(--muted);font-size:12px;padding:3px 6px;width:100%;font-family:var(--f-num)}
+/* 進度時間軸、相關案件 */
+.tag.did{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
+.tl{display:flex;flex-direction:column;gap:2px;margin-top:4px}
+.tli{position:relative;padding:6px 0 10px 22px;display:flex;flex-direction:column;gap:4px}
+.tli::before{content:"";position:absolute;left:5px;top:0;bottom:0;width:2px;background:var(--line)}
+.tli:first-child::before{top:14px}.tli:last-child::before{bottom:calc(100% - 14px)}
+.tldot{position:absolute;left:0;top:9px;width:12px;height:12px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.tli:first-child .tldot{background:var(--accent)}
+.tlrow{display:flex;gap:8px;align-items:center;min-width:0}
+.tli input{border:1px solid transparent;background:transparent;border-radius:6px;padding:3px 6px;color:var(--ink);min-width:0}
+.tli input:hover,.tli input:focus{border-color:var(--line);background:var(--surface)}
+.tldate{font-family:var(--f-num);font-size:13px;color:var(--muted)!important;width:140px;flex:none}
+.tltitle{font-weight:500;flex:1}
+.tlnote{font-size:13px;color:var(--muted)!important}
+.tldel{border:0;background:none;color:var(--muted);font-size:12px;padding:4px 6px;flex:none}
+.linkrow{display:flex;gap:8px;align-items:center}.linkrow .item{flex:1;min-width:0}
