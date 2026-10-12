@@ -212,3 +212,9 @@ details.sec:not([open])>summary::after{content:"▸"}
 .scripttext{margin:0;white-space:pre-wrap;font-family:var(--f-body);font-size:15px;line-height:1.75;background:var(--surface);border-radius:8px;padding:12px 14px;max-height:46vh;overflow:auto}
 details.script select{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 8px;font-size:14px;max-width:60%}
 .lognote{font-size:14px;color:var(--ink);padding:0 6px;white-space:pre-wrap}
+/* 案件裡的範本 */
+details.tplrow{border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+details.tplrow>summary{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;list-style:none}
+details.tplrow>summary::-webkit-details-marker{display:none}
+details.tplrow .tpltitle{flex:1;font-weight:500;min-width:0}
+details.tplrow pre{margin:0;padding:0 12px 12px;white-space:pre-wrap;font-family:var(--f-body);font-size:14px;line-height:1.7}
