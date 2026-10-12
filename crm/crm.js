@@ -332,7 +332,7 @@ function notesHTML(kind) {
   const groups = kind === 'sop' ? SOPGROUPS : ['簡訊', '信件', '其他'];
   const list = notes().filter((n) => n.kind === kind && (kind !== 'sop' || S.sopGroup === '全部' || n.group === S.sopGroup));
   const q = S.q.trim(); const shown = list.filter((n) => !q || (n.title + n.body).includes(q));
-  return `<h1>${kind === 'sop' ? 'SOP 作業流程' : '話術範本'}</h1>
+  return `<h1 style="display:flex;justify-content:space-between;align-items:center;gap:8px">${kind === 'sop' ? 'SOP 作業流程' : '話術範本'}<button class="btn" data-act="import">批次匯入</button></h1>
   <input class="search" id="q" placeholder="搜尋" value="${esc(S.q)}" style="max-width:420px" autocomplete="off">
   ${kind === 'sop' ? `<div class="chips">${['全部', ...groups].map((g) => `<button class="chip${S.sopGroup === g ? ' on' : ''}" data-sg="${g}">${g}</button>`).join('')}</div>` : ''}
   <div class="cards">${shown.map((n) => `<div class="card"><h3><span>${esc(n.title)}</span><span class="sub">${esc(n.group)}</span></h3><pre>${esc(n.body)}</pre><div class="mini">${kind === 'tpl' ? `<button data-copy="${n.id}">複製</button>` : ''}<button data-editnote="${n.id}">編輯</button><button data-delnote="${n.id}">刪除</button></div></div>`).join('') || `<div class="empty">${kind === 'sop' ? '還沒有流程。用下面的表單把 Notion、LINE 記事本裡的步驟加進來。' : '還沒有範本。'}</div>`}</div>
@@ -352,7 +352,7 @@ function quickHTML() {
    <div class="mini"><button data-act="addphone">＋ 新增電話</button></div></div>
   <div class="card"><h3>待辦案件 <span class="sub">${waiting.length} 件</span></h3>${waiting.slice(0, 6).map((c) => `<button class="item" data-gocase="${c.id}"><span class="t"><span>${esc(c.client)} · ${esc(c.title)}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${esc(c.next || '未填下一步')}</span></button>`).join('') || '<div class="sub">沒有待辦。</div>'}</div>
   <div class="card"><h3>同步</h3>${syncHTML()}<div class="sub">資料加密後存在 OneDrive › 應用程式 › Work › ${esc(FOLDER)}。iPad 和手機登入同一個帳號就會自動同步，不需要備份。</div>
-   <div class="actions"><button class="btn" data-act="lock">鎖定</button><button class="btn" data-act="signout">登出</button></div></div>
+   <div class="actions"><button class="btn" data-act="import">批次匯入</button><button class="btn" data-act="lock">鎖定</button><button class="btn" data-act="signout">登出</button></div></div>
   </div>`;
 }
 
@@ -403,6 +403,7 @@ app.addEventListener('click', async (e) => {
     case 'rshare': openShare(Vault.get('cases', S.refSel)); break;
     case 'gocase': S.view = 'cases'; S.sel = S.refSel; S.showDetail = true; App.render(); break;
     case 'addphone': { const n = Vault.put('notes', { kind: 'quick', group: '電話', title: '', body: '' }); editNote(n.id, true); break; }
+    case 'import': openImport(); break;
     case 'lock': lock(); break;
     case 'signout': await Vault.save(); Drive.signOut(); break;
   }
@@ -423,6 +424,40 @@ function editNote(id, isNew) {
   $('eCancel').onclick = () => { if (isNew) Vault.del('notes', id); ov.innerHTML = ''; App.render(); };
   $('eSave').onclick = () => { n.title = $('eT').value.trim() || '未命名'; n.body = $('eB').value; Vault.put('notes', n); ov.innerHTML = ''; App.render(); };
   if ($('eDel')) $('eDel').onclick = () => { Vault.del('notes', id); ov.innerHTML = ''; App.render(); };
+}
+
+/* ================= 批次匯入（Claude 整理好的匯入碼） ================= */
+const KIND_LABEL = { sop: 'SOP', quick: '電話', tpl: '範本' };
+function parseImport(text) {
+  const t = text.trim().replace(/^```[a-z]*\s*|```\s*$/g, '');
+  let arr; try { arr = JSON.parse(t); } catch (e) { return { err: '匯入碼格式不對，請整段完整複製貼上' }; }
+  if (!Array.isArray(arr)) arr = [arr];
+  const items = arr.filter((x) => x && typeof x === 'object' && KIND_LABEL[x.kind] && (x.title || x.body)).map((x) => ({
+    kind: x.kind,
+    group: x.kind === 'sop' ? (SOPGROUPS.includes(x.group) ? x.group : '壽險·其他') : x.kind === 'tpl' ? (['簡訊', '信件', '其他'].includes(x.group) ? x.group : '其他') : '電話',
+    title: String(x.title || '未命名').slice(0, 200), body: String(x.body || ''),
+  }));
+  if (!items.length) return { err: '裡面沒有可以匯入的項目' };
+  return { items };
+}
+function openImport() {
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>批次匯入</h2><button class="btn" id="imCancel">取消</button><button class="btn pri" id="imGo">檢查</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:760px;margin:0 auto;width:100%">
+   <div class="note">把 Claude 給你的匯入碼整段貼進來，按「檢查」，確認內容後再匯入。之後每一張都可以再點「編輯」修改。</div>
+   <label class="f">匯入碼<textarea id="imText" rows="12" style="font-family:var(--f-num);font-size:13px"></textarea></label>
+   <div class="err" id="imErr" style="color:var(--danger);font-size:13px"></div><div id="imPrev"></div></div></div>`;
+  $('imCancel').onclick = () => (ov.innerHTML = '');
+  $('imText').oninput = () => { $('imErr').textContent = ''; $('imPrev').innerHTML = ''; $('imGo').textContent = '檢查'; $('imGo').onclick = check; };
+  const check = () => {
+    const r = parseImport($('imText').value);
+    if (r.err) { $('imErr').textContent = r.err; return; }
+    const dup = new Set(notes().map((n) => n.kind + '|' + n.title));
+    $('imPrev').innerHTML = `<div class="sub" style="margin:4px 0 8px">共 ${r.items.length} 項${r.items.some((x) => dup.has(x.kind + '|' + x.title)) ? '（標「已有」的是同名項目，會另外新增一張，不會蓋掉）' : ''}</div><div class="cards">${r.items.map((x) => `<div class="card"><h3><span>${esc(x.title)}</span><span class="sub">${KIND_LABEL[x.kind]} · ${esc(x.group)}${dup.has(x.kind + '|' + x.title) ? ' · 已有' : ''}</span></h3><pre>${esc(x.body)}</pre></div>`).join('')}</div>`;
+    $('imGo').textContent = `匯入 ${r.items.length} 項`;
+    $('imGo').onclick = () => { r.items.forEach((x) => Vault.put('notes', { ...x })); ov.innerHTML = ''; App.render(); toast(`已匯入 ${r.items.length} 項`); };
+  };
+  $('imGo').onclick = check;
+  setTimeout(() => $('imText')?.focus(), 50);
 }
 
 /* ================= 掃描 ================= */
