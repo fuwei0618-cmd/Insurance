@@ -490,7 +490,18 @@ function caseListHTML() {
 }
 // 某些類別的案件一打開就有固定資料夾（只在還沒有任何資料夾時加，刪掉了不會再自己長回來）
 const DEFAULT_FOLDERS = { 理賠: ['理賠文件', '理賠明細'] };
-function ensureFolders(c) { const def = DEFAULT_FOLDERS[c.cat]; if (!def || c.foldersInit) return; c.foldersInit = true; c.folders = [...def, ...(c.folders || []).filter((f) => !def.includes(f))]; Vault.put('cases', c); }
+function ensureFolders(c) {
+  const def = DEFAULT_FOLDERS[c.cat]; if (!def) return;
+  if (c.foldersInit && !c.foldersV2) { // 上一版不管有沒有自己設過都加了：已經有自己資料夾的，把加進去、還是空的預設資料夾拿掉
+    c.foldersV2 = true; const own = (c.folders || []).filter((f) => !def.includes(f));
+    if (own.length) c.folders = c.folders.filter((f) => !def.includes(f) || c.docs.some((d) => d.folder === f));
+    Vault.put('cases', c); return;
+  }
+  if (c.foldersInit) return;
+  c.foldersInit = c.foldersV2 = true;
+  if (!(c.folders || []).length) c.folders = [...def]; // 只有完全沒設過資料夾的才自動建
+  Vault.put('cases', c);
+}
 function caseDetailHTML() {
   const c = cur();
   if (!c) return '<div class="empty">從左邊選一個案件，或按「掃描」直接拍文件建案。</div>';
