@@ -35,6 +35,7 @@ const Cache = {
   async get(k) { try { const db = await this.init(); return await new Promise((ok) => { const r = db.transaction('kv').objectStore('kv').get(k); r.onsuccess = () => ok(r.result); r.onerror = () => ok(undefined); }); } catch (e) { return undefined; } },
   async set(k, v) { try { const db = await this.init(); await new Promise((ok) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = ok; t.onerror = ok; }); } catch (e) { } },
   async del(k) { try { const db = await this.init(); await new Promise((ok) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').delete(k); t.oncomplete = ok; t.onerror = ok; }); } catch (e) { } },
+  async keys(prefix) { try { const db = await this.init(); const ks = await new Promise((ok) => { const r = db.transaction('kv').objectStore('kv').getAllKeys(); r.onsuccess = () => ok(r.result || []); r.onerror = () => ok([]); }); return ks.filter((k) => typeof k === 'string' && k.startsWith(prefix)); } catch (e) { return []; } },
 };
 
 /* ================= OneDrive（Microsoft Graph，應用程式資料夾） ================= */
@@ -94,6 +95,12 @@ const Drive = {
     return (await last.json()).eTag;
   },
   async remove(p) { if (MOCK) return Mock.remove(p); const r = await this.api(this.item(p), { method: 'DELETE' }); return r.ok || r.status === 404; },
+  async list(dir) { // 資料夾裡的檔名
+    if (MOCK) return Mock.list(dir);
+    const out = []; let url = this.item(dir) + '/children?select=name,size&$top=200';
+    while (url) { const r = url.startsWith('http') ? await fetch(url, { headers: { Authorization: 'Bearer ' + (await this.token()) } }) : await this.api(url); if (r.status === 404) return out; if (!r.ok) throw new Error('OneDrive ' + r.status); const j = await r.json(); (j.value || []).forEach((x) => out.push(x.name)); url = j['@odata.nextLink'] || null; }
+    return out;
+  },
 };
 /* 測試模式：假雲端，資料只存在這台裝置的瀏覽器（網址加 ?test 開啟，?real 關閉） */
 const Mock = {
@@ -101,6 +108,7 @@ const Mock = {
   async download(p) { const v = await Cache.get('mock:' + p); return v ? { bytes: v.bytes, eTag: v.eTag } : null; },
   async upload(p, bytes, eTag) { const v = await Cache.get('mock:' + p); if (eTag && v && v.eTag !== eTag) { const e = new Error('conflict'); e.conflict = true; throw e; } const t = uid(); await Cache.set('mock:' + p, { bytes, eTag: t }); return t; },
   async remove(p) { await Cache.del('mock:' + p); return true; },
+  async list(dir) { const pre = 'mock:' + dir + '/'; return (await Cache.keys(pre)).map((k) => k.slice(pre.length)).filter((n) => !n.includes('/')); },
 };
 
 /* ================= 資料庫（記憶體中明文，存檔時加密） ================= */
@@ -126,7 +134,7 @@ const Vault = {
     let plain;
     try { plain = await unseal(key, unb64(env.data)); } catch (e) { const err = new Error('密碼不正確'); err.badPassword = true; throw err; }
     this.key = key; this.salt = salt; this.db = { ...emptyDb(), ...JSON.parse(dec.decode(plain)) }; this.eTag = raw.eTag;
-    if (!fromCache) await Cache.set('data', raw);
+    if (!fromCache) { await Cache.set('data', raw); this.raw = raw; } // 留著做今天的備份
     const pend = await Cache.get('pending');
     if (pend) { try { const local = JSON.parse(dec.decode(await unseal(key, pend))); this.db = merge(this.db, local); this.markDirty(); } catch (e) { } }
     this.setState(fromCache ? 'offline' : 'synced');
@@ -203,7 +211,19 @@ const Files = {
     const u = URL.createObjectURL(new Blob([await unseal(Vault.key, sealed)], { type: meta.type || 'image/jpeg' }));
     this.mem.set(id, u); return u;
   },
-  async remove(id) { Vault.del('files', id); await Cache.del('file:' + id); Drive.remove(fpath(id)).catch(() => { }); },
+  // 刪除＝先放「最近刪除」30 天，之後才真的從 OneDrive 移除；ctx 記住原本在哪，才放得回去
+  remove(id, ctx) { const r = Vault.get('files', id); if (!r) return; r.trashedAt = new Date().toISOString(); if (ctx) r.trashCtx = ctx; Vault.put('files', r); },
+  trashed() { return Vault.all('files').filter((f) => f.trashedAt).sort((a, b) => b.trashedAt.localeCompare(a.trashedAt)); },
+  restore(id) {
+    const r = Vault.get('files', id); if (!r) return false; const x = r.trashCtx; const target = x && Vault.get(x.coll, x.recId);
+    if (!target) return false;
+    target.docs = target.docs || []; target.docs.push(x.doc); if (x.doc.folder && target.folders && !target.folders.includes(x.doc.folder)) target.folders.push(x.doc.folder);
+    delete r.trashedAt; delete r.trashCtx; Vault.put('files', r); Vault.put(x.coll, target); return true;
+  },
+  async purge() { // 超過 30 天的才真的刪
+    const cut = new Date(Date.now() - 30 * 864e5).toISOString();
+    for (const f of this.trashed().filter((f) => f.trashedAt < cut)) { try { if (await Drive.remove(fpath(f.id))) { Vault.del('files', f.id); await Cache.del('file:' + f.id); } } catch (e) { return; } }
+  },
   async retryUploads() {
     for (const f of Vault.all('files')) {
       if (await Cache.get('file-up:' + f.id)) continue;
@@ -979,7 +999,8 @@ function quickHTML() {
    <div class="mini"><button data-act="addphone">＋ 新增電話</button></div></div>
   ${(() => { const t = localDay(), due = calls().filter((k) => k.nextDate && k.nextDate <= t && k.status !== '結案').sort((a, b) => a.nextDate.localeCompare(b.nextDate)); return due.length ? `<div class="card"><h3>今天要回撥 <span class="sub">${due.length} 位</span></h3>${due.slice(0, 6).map((k) => `<button class="item" data-gocall="${k.id}"><span class="t"><span>${esc(k.name)}</span><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></span><span class="s">${k.nextDate < t ? '<span class="due">已過 ' + fmtDay(k.nextDate).slice(5) + '</span>' : '今天'}${k.source ? ' · ' + esc(k.source) : ''}</span></button>`).join('')}</div>` : ''; })()}
   <div class="card"><h3>待辦案件 <span class="sub">${waiting.length} 件</span></h3>${waiting.slice(0, 6).map((c) => `<button class="item${itemCls(c.status)}" data-gocase="${c.id}"><span class="t"><span>${esc(c.client)} · ${esc(c.title)}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${esc(c.next || '未填下一步')}</span></button>`).join('') || '<div class="sub">沒有待辦。</div>'}</div>
-  <div class="card"><h3>同步</h3>${syncHTML()}<div class="sub">資料加密後存在 OneDrive › 應用程式 › Work › ${esc(FOLDER)}。iPad 和手機登入同一個帳號就會自動同步，不需要備份。</div>
+  <div class="card"><h3>同步</h3>${syncHTML()}<div class="sub">資料加密後存在 OneDrive › 應用程式 › Work › ${esc(FOLDER)}。iPad 和手機登入同一個帳號就會自動同步。每天第一次打開會自動備份一份，保留 30 天。</div>
+   <div class="actions"><button class="btn" data-act="backups">備份與還原</button><button class="btn" data-act="trash">最近刪除${Files.trashed().filter((f) => f.trashCtx).length ? ' ' + Files.trashed().filter((f) => f.trashCtx).length : ''}</button></div>
    <div class="actions"><button class="btn" data-act="import">批次匯入</button><button class="btn" data-act="exportnotes">複製新契約備註（去掉姓名）</button><button class="btn" data-act="lock">鎖定</button><button class="btn" data-act="signout">登出</button></div></div>
   </div>`;
 }
@@ -1044,7 +1065,7 @@ app.addEventListener('click', async (e) => {
   const ccl = curClient();
   if (d.cview && ccl) { openGallery(b, ccl.docs, 'cview'); return; }
   if (d.cmask && ccl) { openMask(ccl, +d.cmask, 'clients'); return; }
-  if (d.cdeldoc && ccl) { if (armConfirm(b, '確定？')) { const [doc] = ccl.docs.splice(+d.cdeldoc, 1); Vault.put('clients', ccl); if (doc) Files.remove(doc.fileId); App.render(); } return; }
+  if (d.cdeldoc && ccl) { if (armConfirm(b, '確定？')) { const [doc] = ccl.docs.splice(+d.cdeldoc, 1); Vault.put('clients', ccl); if (doc) { Files.remove(doc.fileId, { coll: 'clients', recId: ccl.id, doc }); toast('已移到「最近刪除」，30 天內可以救回'); } App.render(); } return; }
   if (d.addstep != null && c) {
     const e = { id: uid(), date: localDay(), title: d.addstep, note: '', at: new Date().toISOString() };
     c.timeline = [...(c.timeline || []), e]; saveCase(c); App.render();
@@ -1060,7 +1081,7 @@ app.addEventListener('click', async (e) => {
   if (d.cdet && c) { c.causeDetail = c.causeDetail === d.cdet ? '' : d.cdet; saveCase(c); App.render(); return; }
   if (d.mask && c) { openMask(c, +d.mask); return; }
   if (d.view && c) { openGallery(b, c.docs, 'view'); return; }
-  if (d.deldoc && c) { if (armConfirm(b, '確定？')) { const [doc] = c.docs.splice(+d.deldoc, 1); saveCase(c); if (doc) Files.remove(doc.fileId); App.render(); } return; }
+  if (d.deldoc && c) { if (armConfirm(b, '確定？')) { const [doc] = c.docs.splice(+d.deldoc, 1); saveCase(c); if (doc) { Files.remove(doc.fileId, { coll: 'cases', recId: c.id, doc }); toast('已移到「最近刪除」，30 天內可以救回'); } App.render(); } return; }
   if (d.copy) { e.preventDefault(); const n = Vault.get('notes', d.copy); const txt = fillTpl(n.body, d.forcase ? c : null); try { await navigator.clipboard.writeText(txt); toast('已複製' + (d.forcase && c?.client ? `（已帶入 ${c.client}）` : '')); } catch (err) { toast('無法自動複製，請長按文字選取'); } return; }
   if (d.tg) { S.tplGroup = d.tg; App.render(); return; }
   if (d.tc) { S.tplCat = d.tc; App.render(); return; }
@@ -1106,6 +1127,8 @@ app.addEventListener('click', async (e) => {
     case 'crmimportnew': openCrmImport(null); break;
     case 'addrel': if (ccl) openRelPicker(ccl); break;
     case 'relgraph': openRelGraph(); break;
+    case 'backups': openBackups(); break;
+    case 'trash': openTrash(); break;
     case 'exportnotes': {
       const names = clients().map((x) => x.name).filter((n) => n && n.length >= 2).sort((a2, b2) => b2.length - a2.length);
       const clean = (t) => { let o = String(t || ''); names.forEach((n) => { o = o.split(n).join('○○'); }); return o.replace(/[A-Z][12]\d{8}/g, '［身分證］').replace(/09\d{2}[-\s]?\d{3}[-\s]?\d{3}/g, '［電話］').replace(/[\w.+-]+@[\w.-]+/g, '［Email］'); };
@@ -1576,6 +1599,77 @@ async function makePDF(docs, mask, name) {
 const gate = $('gate');
 function showGate(html) { app.hidden = true; gate.hidden = false; gate.innerHTML = `<div class="gate-card"><h1><i></i>工作手冊</h1>${html}</div>`; }
 function gateLoading(msg) { showGate(`<p>${esc(msg)}</p>`); }
+/* ================= 自動備份（每天一份 data.enc，保留 30 天） ================= */
+const KEEP_DAYS = 30;
+const Backup = {
+  async daily() {
+    const raw = Vault.raw; Vault.raw = null; if (!raw) return; // 只用剛從雲端讀到的版本（離線開啟就不備份）
+    try {
+      const name = 'backup/' + localDay() + '.enc';
+      if (await Drive.getMeta(name)) return;
+      await Drive.upload(name, raw.bytes);
+      await this.prune();
+    } catch (e) { console.warn('備份失敗', e); }
+  },
+  async list() { return (await Drive.list('backup')).filter((n) => /^\d{4}-\d{2}-\d{2}.*\.enc$/.test(n)).sort().reverse(); },
+  async prune() {
+    const all = await this.list(), daily = all.filter((n) => /^\d{4}-\d{2}-\d{2}\.enc$/.test(n)), before = all.filter((n) => !/^\d{4}-\d{2}-\d{2}\.enc$/.test(n));
+    for (const n of [...daily.slice(KEEP_DAYS), ...before.slice(5)]) await Drive.remove('backup/' + n).catch(() => { });
+  },
+  async read(name) {
+    const r = await Drive.download('backup/' + name); if (!r) throw new Error('找不到這份備份');
+    const env = JSON.parse(dec.decode(r.bytes));
+    if (env.salt !== b64(Vault.salt)) throw new Error('這份備份用的是不同的密碼，無法直接還原');
+    return JSON.parse(dec.decode(await unseal(Vault.key, unb64(env.data))));
+  },
+  async restore(name) {
+    const old = { ...emptyDb(), ...(await this.read(name)) };
+    // 還原前先把現在的資料另存一份，還原錯了也能再回來
+    const t = new Date(), hm = String(t.getHours()).padStart(2, '0') + String(t.getMinutes()).padStart(2, '0');
+    await Drive.upload(`backup/${localDay()}-還原前-${hm}.enc`, await Vault.envelope());
+    const now = t.toISOString(), db = emptyDb();
+    COLLS.forEach((c) => {
+      const cur = Vault.db[c] || {}, o = old[c] || {};
+      Object.keys(cur).forEach((id) => { if (!o[id]) db[c][id] = { id, deleted: true, updatedAt: now }; });
+      Object.entries(o).forEach(([id, r]) => { db[c][id] = { ...r, updatedAt: now }; });
+    });
+    Vault.db = db; Vault.markDirty(); await Vault.save(true);
+    await this.prune();
+  },
+};
+const bkLabel = (n) => { const m = n.match(/^(\d{4})-(\d{2})-(\d{2})(?:-還原前-(\d{2})(\d{2}))?\.enc$/); if (!m) return n; const day = `${m[1]}/${m[2]}/${m[3]}`; return m[4] ? `${day} ${m[4]}:${m[5]} 還原前的資料` : day + (n.startsWith(localDay()) ? '（今天開啟時）' : ''); };
+async function openBackups() {
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>備份與還原</h2><button class="btn pri" id="bkX">關閉</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:600px;margin:0 auto;width:100%">
+   <div class="note">每天第一次打開 App，會把前一次的資料另存一份到 OneDrive，保留最近 ${KEEP_DAYS} 天。只備份文字資料（案件、客戶、進度、備註…），照片本來就不會被改動，刪掉的照片在「最近刪除」放 30 天。</div>
+   <div class="warnbox">還原會把<b>全部資料</b>變回那一天的樣子，之後新增或修改的會不見。所以還原前會自動把現在的資料再存一份，還原錯了可以再還原回來。</div>
+   <div class="list" id="bkList" style="padding:0"><div class="sub">讀取中…</div></div></div></div>`;
+  $('bkX').onclick = () => (ov.innerHTML = '');
+  let names; try { names = await Backup.list(); } catch (e) { $('bkList').innerHTML = '<div class="sub">連不上 OneDrive，請確認網路。</div>'; return; }
+  if (!$('bkList')) return;
+  $('bkList').innerHTML = names.length ? names.map((n) => `<div class="linkrow"><span class="item" style="cursor:default"><span class="t">${esc(bkLabel(n))}</span></span><button class="btn" data-bk="${esc(n)}">還原到這份</button></div>`).join('') : '<div class="sub">還沒有備份。明天第一次打開 App 時會自動建立第一份。</div>';
+  $('bkList').querySelectorAll('[data-bk]').forEach((b) => (b.onclick = async () => {
+    if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = '確定？再按一次'; b.classList.add('danger'); setTimeout(() => { if (b.isConnected) { delete b.dataset.sure; b.textContent = '還原到這份'; b.classList.remove('danger'); } }, 4000); return; }
+    b.disabled = true; b.textContent = '還原中…';
+    try { await Backup.restore(b.dataset.bk); ov.innerHTML = ''; S.sel = null; S.csel = null; S.showDetail = false; App.render(); toast('已還原。還原前的資料也另存了一份'); }
+    catch (e) { b.disabled = false; b.textContent = '還原到這份'; toast('還原失敗：' + (e.message || e)); }
+  }));
+}
+function openTrash() {
+  const draw = () => {
+    const list = Files.trashed().filter((f) => f.trashCtx);
+    const where = (x) => { const r = Vault.get(x.coll, x.recId); return r ? (x.coll === 'clients' ? '客戶 ' + (r.name || '') : '案件 ' + [r.client, r.title].filter(Boolean).join(' · ')) : '（原本的案件／客戶已刪除）'; };
+    const left = (f) => Math.max(0, 30 - Math.floor((Date.now() - new Date(f.trashedAt)) / 864e5));
+    $('trList').innerHTML = list.length ? `<div class="docs">${list.map((f) => `<div class="doc">${f.trashCtx.doc.type === 'pdf' ? `<div class="pdftile">PDF<small>${esc(f.trashCtx.doc.name)}</small></div>` : `<img data-trimg="${f.id}" alt="">`}<div class="bar" style="flex-direction:column;align-items:stretch;gap:2px"><b style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.trashCtx.doc.name)}</b><span class="sub" style="font-size:11px">${esc(where(f.trashCtx))}</span><span class="sub" style="font-size:11px">還有 ${left(f)} 天</span><button class="btn" data-trback="${f.id}" style="padding:3px 8px;font-size:12px;margin-top:4px">放回去</button></div></div>`).join('')}</div>` : '<div class="sub">沒有最近刪除的文件。</div>';
+    $('trList').querySelectorAll('[data-trimg]').forEach((im) => Files.url(im.dataset.trimg).then((u) => { if (u) im.src = u; }));
+    $('trList').querySelectorAll('[data-trback]').forEach((b) => (b.onclick = () => { if (Files.restore(b.dataset.trback)) { toast('已放回原本的地方'); draw(); App.render(); } else toast('原本的案件或客戶已經刪除，放不回去'); }));
+  };
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>最近刪除</h2><button class="btn pri" id="trX">關閉</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:900px;margin:0 auto;width:100%"><div class="note">刪掉的文件會在這裡放 30 天，之後才真的刪除。按「放回去」會回到原本的案件或客戶。</div><div id="trList"></div></div></div>`;
+  $('trX').onclick = () => (ov.innerHTML = '');
+  draw();
+}
+
 async function boot() {
   gateLoading('載入中…');
   if (!CFG.CLIENT_ID && !MOCK) { showGate(`<p>還差一步：把 Azure「Work」應用程式的用戶端識別碼填進 <b>crm/config.js</b>。</p><p>想先試用，可以開測試模式，資料只會存在這台裝置。</p><a class="btn" href="?test">先用測試模式</a>`); return; }
@@ -1627,6 +1721,7 @@ function enter() {
   const first = cases().slice().sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))[0];
   S.sel = first?.id || null; S.refSel = cases().find((c) => c.isRef)?.id || null; S.showDetail = false;
   lastAct = Date.now(); App.render(); Files.retryUploads();
+  Backup.daily().then(() => Files.purge());
 }
 async function lock() {
   if (Vault.dirty) await Vault.save();
