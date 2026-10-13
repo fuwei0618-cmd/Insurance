@@ -1180,7 +1180,7 @@ app.addEventListener('input', (e) => {
   const ds = e.target.dataset || {}; if (ds.f || ds.cf || ds.kf || ds.tltitle || ds.tlnote || ds.pprod) savePill('editing');
   if (e.target.classList?.contains('grow')) fitNote(e.target);
   if (e.target.classList?.contains('tlnote')) { fitNote(e.target); return; }
-  if (e.target.id === 'q') { S.q = e.target.value; App.render(); }
+  if (e.target.id === 'q') { S.q = e.target.value; if (!e.isComposing) App.render(); } // 注音選字中不要重畫，否則會打斷輸入法
   if (e.target.id === 'qq') {
     const q = e.target.value.trim(); const box = $('qres'); if (!q) { box.innerHTML = ''; return; }
     const cls = clients().filter((x) => [x.name, x.phone, x.line, x.note].join(' ').includes(q)).slice(0, 6);
@@ -1189,6 +1189,7 @@ app.addEventListener('input', (e) => {
     box.innerHTML = `<div class="cards" style="margin-bottom:6px">${ks.map((x) => `<button class="item" data-gocall="${x.id}"><span class="t">${esc(x.name || '未填姓名')}</span><span class="s">電訪 · ${esc(x.status)}</span></button>`).join('')}${cls.map((x) => `<button class="item" data-goclient="${x.id}"><span class="t">${esc(x.name || '未填姓名')}</span><span class="s">客戶</span></button>`).join('')}${ns.map((n) => `<div class="card"><h3><span>${esc(n.title)}</span><span class="sub">${esc(n.group)}</span></h3><pre>${esc(n.body)}</pre></div>`).join('')}${cs.map((c) => `<button class="item${itemCls(c.status)}" data-gocase="${c.id}"><span class="t">${esc(c.client)} · ${esc(c.title)}</span><span class="s">${esc(caseSummary(c))}</span></button>`).join('')}</div>${!ks.length && !cls.length && !ns.length && !cs.length ? '<div class="sub">找不到。</div>' : ''}`;
   }
 });
+app.addEventListener('compositionend', (e) => { if (e.target.id === 'q') { S.q = e.target.value; App.render(); } });
 const ov = $('ovRoot');
 let NE = null; // 正在編輯的筆記（拖曳／貼上圖片會加到這裡）
 async function shrink(file, max = 2400, q = 0.85) { // 截圖縮到合理大小，文字仍清楚
