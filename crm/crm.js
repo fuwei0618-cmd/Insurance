@@ -488,9 +488,13 @@ function caseListHTML() {
   ${caseChipsHTML()}</div>
   <div class="list">${list.length ? list.map((c) => `<button class="item${c.id === S.sel ? ' on' : ''}${itemCls(c.status)}" data-sel="${c.id}" title="${esc((c.client || '') + ' · ' + (c.title || ''))}"><span class="t"><span>${esc(c.client || '未填客戶')} · ${esc(c.title || '未命名')}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${fmtDay(caseDate(c))} · ${esc(caseSummary(c))}${latestStep(c) ? ' · 最新：' + esc(latestStep(c).title) : ''}</span></button>`).join('') : `<div class="empty">${cases().length ? '沒有符合的案件。' : '還沒有案件。按「＋ 新增」，或按「掃描」直接拍文件建案。'}</div>`}</div></section>`;
 }
+// 某些類別的案件一打開就有固定資料夾（只在還沒有任何資料夾時加，刪掉了不會再自己長回來）
+const DEFAULT_FOLDERS = { 理賠: ['理賠文件', '理賠明細'] };
+function ensureFolders(c) { const def = DEFAULT_FOLDERS[c.cat]; if (!def || c.foldersInit) return; c.foldersInit = true; c.folders = [...def, ...(c.folders || []).filter((f) => !def.includes(f))]; Vault.put('cases', c); }
 function caseDetailHTML() {
   const c = cur();
   if (!c) return '<div class="empty">從左邊選一個案件，或按「掃描」直接拍文件建案。</div>';
+  ensureFolders(c);
   const isClaim = c.cat === '理賠';
   const cost = +c.cost || 0, ratio = +c.ratio || 0, auto = cost && ratio ? Math.round(cost * ratio / 100) : 0;
   return `<button class="back" data-act="back">‹ 案件列表</button>
