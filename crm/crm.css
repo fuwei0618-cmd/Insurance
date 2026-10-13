@@ -318,3 +318,11 @@ details.sec.fold>summary::-webkit-details-marker{display:none}
 details.sec.fold>summary h2::after{content:" ▸";color:var(--muted)}
 details.sec.fold[open]>summary h2::after{content:" ▾"}
 .card pre a{color:var(--info);word-break:break-all}
+/* 狀態：點一下切換 */
+.stseg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.stseg button{flex:1;border:0;background:transparent;padding:9px 4px;font-size:14px;color:var(--muted);cursor:pointer;white-space:nowrap}
+.stseg button+button{border-left:1px solid var(--line)}
+.stseg button.on{font-weight:600}
+.stseg button.on.st-go{background:var(--info-soft);color:var(--info)}
+.stseg button.on.st-wait{background:var(--warn-soft);color:var(--warn)}
+.stseg button.on.st-done{background:var(--line);color:var(--ink)}

@@ -358,7 +358,7 @@ function caseDetailHTML() {
    <label class="f">客戶${c.clientId && Vault.get('clients', c.clientId) ? ` <button class="clientchip" data-goclient="${c.clientId}">👤 看客戶資料 ›</button>` : ''}<input id="f_client" data-f="client" list="clientNames" autocomplete="off" value="${esc(c.client)}" placeholder="打名字，會自動帶出或建立客戶"><datalist id="clientNames">${clients().map((x) => `<option value="${esc(x.name)}">`).join('')}</datalist></label>
    <label class="f">日期<input type="date" id="f_date" data-f="date" value="${esc(caseDate(c))}"></label>
    <label class="f">類別<select id="f_cat" data-f="cat">${(CATS.includes(c.cat) ? CATS : [c.cat, ...CATS]).map((x) => `<option${x === c.cat ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
-   <label class="f">狀態<select id="f_status" data-f="status">${STATUS.map((x) => `<option${x === c.status ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
+   <div class="f">狀態<div class="stseg" role="group" aria-label="狀態">${STATUS.map((x) => `<button class="${x === c.status ? 'on ' + pillCls(x) : ''}" data-setst="${x}" aria-pressed="${x === c.status}">${x}</button>`).join('')}</div></div>
    <label class="f">下一步<input id="f_next" data-f="next" value="${esc(c.next)}" placeholder="例如：補診斷書正本"></label></div></div>
   ${peopleHTML(c)}
   ${timelineHTML(c)}
@@ -1034,6 +1034,7 @@ app.addEventListener('click', async (e) => {
     setTimeout(() => (d.addstep ? $('tln_' + e.id) : $('tlt_' + e.id))?.focus(), 30); return;
   }
   if (d.favstep && c) { setSteps(c.cat, [...getSteps(c.cat), d.favstep]); App.render(); toast(`「${d.favstep}」已加到常用`); return; }
+  if (d.setst && c) { if (c.status !== d.setst) { c.status = d.setst; saveCase(c); App.render(); } return; }
   if (d.tldel && c) { if (armConfirm(b, '刪？')) { c.timeline = (c.timeline || []).filter((x) => x.id !== d.tldel); saveCase(c); App.render(); } return; }
   if (d.unlink && c) { const o = Vault.get('cases', d.unlink); c.links = (c.links || []).filter((x) => x !== d.unlink); saveCase(c); if (o) { o.links = (o.links || []).filter((x) => x !== c.id); saveCase(o); } App.render(); toast('已取消連結'); return; }
   if (d.gocase) { S.folder = '全部'; S.view = 'cases'; S.sel = d.gocase; S.showDetail = true; App.render(); return; }
