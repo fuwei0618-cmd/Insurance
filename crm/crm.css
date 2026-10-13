@@ -406,3 +406,5 @@ summary .tagpill{margin-left:4px}
 .mkcolor{width:30px;height:30px;border-radius:50%;border:3px solid var(--card);box-shadow:0 0 0 1px var(--line)}
 .mkcolor.on{box-shadow:0 0 0 2px var(--ink)}
 .doc.refview{cursor:zoom-in}
+.catpick{display:flex;gap:6px}
+.catpick select{flex:1;min-width:0}
