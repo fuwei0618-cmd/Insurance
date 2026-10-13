@@ -350,3 +350,18 @@ body.dragging-doc,body.dragging-doc *{cursor:grabbing!important}
 .gvside{position:fixed;top:50%;transform:translateY(-50%);width:44px;height:64px;border:0;border-radius:10px;background:rgba(0,0,0,.35);color:#fff;font-size:32px;line-height:1;z-index:5}
 .gvside.l{left:10px}.gvside.r{right:10px}
 @media (max-width:700px){.gv .ovhead #gvPrev,.gv .ovhead #gvNext{display:none}}
+/* 兩層分類編輯 */
+.cegroup{border:1px solid var(--line);border-radius:10px;padding:6px 10px 8px;margin-bottom:10px;background:var(--card)}
+.cerow.cehead input{font-weight:700;background:var(--accent-soft);border-color:transparent}
+.cerow.cesub{grid-template-columns:minmax(0,1fr) auto auto auto auto auto;padding-left:14px}
+.cerow.cesub:last-child{grid-template-columns:1fr}
+.cerow select{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 4px;font-size:13px;color:var(--ink);max-width:110px}
+.cerow.cesub input[data-cadd]{border-style:dashed;background:transparent;font-size:14px}
+@media (max-width:600px){.cerow.cesub{grid-template-columns:minmax(0,1fr) auto auto auto;}.cerow.cesub .sub,.cerow.cesub select{display:none}}
+/* SOP 標籤、範本 */
+.chips.subchips{padding-left:12px;border-left:2px solid var(--accent-soft)}
+.tagpills{display:flex;flex-wrap:wrap;gap:4px;margin:-2px 0 6px}
+.tagpill{font-size:11px;border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--muted);background:var(--surface)}
+summary .tagpill{margin-left:4px}
+.soptpls{border-top:1px dashed var(--line);margin-top:8px;padding-top:6px;display:flex;flex-direction:column;gap:4px}
+.soptpls .linkbtn{align-self:flex-start}
