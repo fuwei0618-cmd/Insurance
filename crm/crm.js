@@ -1068,7 +1068,7 @@ function caseDocsHTML(c) {
    <button class="adddoc" data-act="scan">${ICON.scan}拍照／掃描<span style="font-size:11px">也可以拖曳圖片、PDF 進來</span></button>
    <button class="adddoc" data-act="pasteimg">📋 貼上圖片<span style="font-size:11px">電腦可直接按 Ctrl+V</span></button>
    <label class="adddoc">＋ 上傳 PDF 或圖片<input type="file" id="docUp" accept="image/*,application/pdf,.pdf" multiple></label></div>
-   ${hasImg ? '<div class="actions"><button class="btn" data-act="pdf">圖片合成 PDF</button><button class="btn" data-act="share">匯出分享版</button></div>' : ''}</div>`;
+   ${hasImg ? `<div class="actions"><button class="btn" data-act="pdf">圖片合成 PDF</button><button class="btn" data-act="share">匯出分享版</button>${c.isRef ? `<button class="btn" data-act="pickref">選理賠參考要放的文件（已選 ${refDocs(c).length} 張）</button>` : ''}</div>` : ''}</div>`;
 }
 async function addPdfs(rec, coll, files, folder) {
   let n = 0;
@@ -1305,6 +1305,7 @@ app.addEventListener('click', async (e) => {
     case 'delcall': if (armConfirm(b, '再按一次確定刪除')) { Vault.del('calls', S.ksel); S.ksel = null; S.showDetail = false; App.render(); } break;
     case 'newtpl': { const ch = S.tplGroup !== '全部' ? S.tplGroup : 'LINE', tg = GROUPS.find((x) => x.name === S.tg); const n = Vault.put('notes', { kind: 'tpl', group: ch, channels: [ch], cat: S.tplCat !== '全部' ? S.tplCat : tg?.cats[0] || '', title: '', body: '', images: [] }); editNote(n.id, true); break; }
     case 'edititems': editItems(); break;
+    case 'pickref': S.view = 'refs'; S.refSel = c.id; S.refItem = '全部'; S.refCause = '全部'; S.refDet = ''; S.showDetail = true; App.render(); break;
     case 'newsop': { const g = GROUPS.find((x) => x.name === S.sg); const n = Vault.put('notes', { kind: 'sop', v2: true, cat: S.sc !== '全部' ? S.sc : g?.cats[0] || '', kinds: S.sk ? [S.sk] : [], tools: S.st ? [S.st] : [], title: '', body: '', images: [] }); editNote(n.id, true); break; }
     case 'sopfor': S.view = 'sop'; S.sg = groupOf(c.cat) || '全部'; S.sc = groupOf(c.cat) ? c.cat : '全部'; S.sk = ''; S.st = ''; S.q = ''; S.showDetail = false; App.render(); break;
     case 'tplfor': S.view = 'tpl'; S.tg = groupOf(c.cat) || '全部'; S.tplCat = groupOf(c.cat) ? c.cat : '全部'; S.tplGroup = '全部'; S.q = ''; S.showDetail = false; App.render(); break;
@@ -1792,7 +1793,25 @@ document.addEventListener('keydown', (e) => { if (!GV || !ov.querySelector('.gv'
 
 /* ================= 遮罩 ================= */
 let MK = null;
-async function openMask(c, i, coll = 'cases') { const d = c.docs[i]; const im = await getImg(d.fileId); if (!im) { toast('圖片讀取失敗，請確認網路'); return; } MK = { c, coll, d, im, masks: d.masks.map((m) => ({ ...m })), marks: (d.marks || []).map((m) => ({ ...m, pts: m.pts ? m.pts.map((p) => [...p]) : undefined })), tool: 'mask', color: MARK_COLORS[0], sel: -1, mode: null, start: null, preview: false }; renderMask(); }
+async function openMask(c, i, coll = 'cases') { const d = c.docs[i]; const im = await getImg(d.fileId); if (!im) { toast('圖片讀取失敗，請確認網路'); return; } MK = { c, coll, d, im, masks: d.masks.map((m) => ({ ...m })), marks: (d.marks || []).map((m) => ({ ...m, pts: m.pts ? m.pts.map((p) => [...p]) : undefined })), tool: 'mask', color: MARK_COLORS[0], hist: [], sel: -1, mode: null, start: null, preview: false }; renderMask(); }
+// 遮罩畫面：復原（Ctrl+Z）、刪除鍵、Ctrl+滾輪／雙指縮放
+const mkState = () => JSON.stringify({ masks: MK.masks, marks: MK.marks });
+function mkCommit(pre) { if (pre && pre !== mkState()) { MK.hist.push(pre); if (MK.hist.length > 80) MK.hist.shift(); } }
+function mkUndo() { const h = MK?.hist.pop(); if (!h) { toast('沒有可以復原的'); return; } const o = JSON.parse(h); MK.masks = o.masks; MK.marks = o.marks; MK.sel = -1; renderMask(); }
+function mkDelSel() { if (MK.sel < 0) { toast('先點選一個框'); return; } const pre = mkState(); MK.masks.splice(MK.sel, 1); MK.sel = -1; mkCommit(pre); renderMask(); }
+document.addEventListener('keydown', (e) => {
+  if (!MK || !$('mkCv') || /^(TEXTAREA|INPUT)$/.test(e.target.tagName)) return;
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') { e.preventDefault(); mkUndo(); }
+  else if ((e.key === 'Delete' || e.key === 'Backspace') && MK.sel >= 0) { e.preventDefault(); mkDelSel(); }
+});
+let mkWheelT = null;
+document.addEventListener('wheel', (e) => {
+  if (!MK || !e.ctrlKey || !e.target.closest?.('#ovRoot .stage')) return;
+  e.preventDefault();
+  const cv = $('mkCv'); MK.zoom = Math.max(1, Math.min(6, MK.zoom * Math.exp(-e.deltaY * 0.002)));
+  if (MK.fit) cv.style.cssText += `;max-width:none;max-height:none;width:${MK.fit * MK.zoom}px`;
+  clearTimeout(mkWheelT); mkWheelT = setTimeout(() => { if (MK) renderMask(); }, 250);
+}, { passive: false });
 function renderMask() {
   const st0 = document.querySelector('#ovRoot .stage'), keepScroll = st0 ? [st0.scrollLeft, st0.scrollTop] : null; // 重畫後留在原本放大的位置
   if (MK.note == null) MK.note = MK.d.note || ''; MK.zoom = MK.zoom || 1;
@@ -1802,7 +1821,7 @@ function renderMask() {
   <div class="mktools">${[['mask', '▭ 遮罩'], ['pen', '✏️ 畫筆'], ['circle', '◯ 圈選'], ['erase', '⌫ 橡皮擦']].map(([k, l]) => `<button class="btn${MK.tool === k && !MK.pan ? ' on' : ''}" data-mktool="${k}">${l}</button>`).join('')}</div>
   ${MK.tool === 'pen' || MK.tool === 'circle' ? `<div class="mkcolors">${MARK_COLORS.map((c) => `<button class="mkcolor${MK.color === c ? ' on' : ''}" data-mkcolor="${c}" style="background:${c}" aria-label="顏色"></button>`).join('')}</div>` : ''}
   <div class="note">${MK.tool === 'mask' ? '在要遮的地方拖曳畫框。點一下框可以選取、拖曳移動。' : MK.tool === 'pen' ? '直接在圖上畫。' : MK.tool === 'circle' ? '拖曳畫出圈圈，把重點圈起來。' : '在畫過的記號上點或拖，就會擦掉。'}原圖不會被改動。${MK.zoom > 1 ? '放大後要移動畫面，按「✋ 移動畫面」再拖。' : ''}</div>
-  ${MK.marks.length ? `<div class="actions" style="margin:0"><button class="btn" id="mkUndo">↶ 復原上一筆</button><span class="sub">記號 ${MK.marks.length} 個</span></div>` : ''}
+  <div class="actions" style="margin:0;align-items:center"><button class="btn" id="mkUndo" ${MK.hist.length ? '' : 'disabled'}>↶ 復原</button><span class="sub">Ctrl+Z 也可以${MK.marks.length ? `・記號 ${MK.marks.length} 個` : ''}</span></div>
   <label class="f">筆記<textarea id="mkNote" class="grow" rows="3" placeholder="這份文件的重點，例如：急診 2 天、住院日額可申請">${esc(MK.note)}</textarea></label>
   <div class="actions"><button class="btn${MK.preview ? ' on' : ''}" id="mkPrev">${MK.preview ? '回到編輯' : '看分享版效果'}</button></div>
   <div class="actions"><button class="btn danger" id="mkDel">刪除選取的框</button><button class="btn" id="mkClear">全部清除</button></div>
@@ -1814,29 +1833,43 @@ function renderMask() {
   if ($('mkPan')) $('mkPan').onclick = () => { MK.pan = !MK.pan; renderMask(); };
   ov.querySelectorAll('[data-mktool]').forEach((b) => (b.onclick = () => { MK.tool = b.dataset.mktool; MK.pan = false; MK.sel = -1; renderMask(); }));
   ov.querySelectorAll('[data-mkcolor]').forEach((b) => (b.onclick = () => { MK.color = b.dataset.mkcolor; renderMask(); }));
-  if ($('mkUndo')) $('mkUndo').onclick = () => { MK.marks.pop(); renderMask(); };
+  $('mkUndo').onclick = mkUndo;
   $('mkSave').onclick = () => { MK.d.masks = MK.masks; MK.d.marks = MK.marks; MK.d.note = MK.note.trim(); Vault.put(MK.coll, MK.c); ov.innerHTML = ''; MK = null; App.render(); toast('已儲存，原圖保留'); };
   $('mkPrev').onclick = () => { MK.preview = !MK.preview; renderMask(); };
-  $('mkDel').onclick = () => { if (MK.sel >= 0) { MK.masks.splice(MK.sel, 1); MK.sel = -1; renderMask(); } else toast('先點選一個框'); };
-  $('mkClear').onclick = () => { MK.masks = []; MK.sel = -1; renderMask(); };
+  $('mkDel').onclick = mkDelSel;
+  $('mkClear').onclick = () => { const pre = mkState(); MK.masks = []; MK.sel = -1; mkCommit(pre); renderMask(); };
   const cv = $('mkCv'); cv.width = MK.im.width; cv.height = MK.im.height; const x = cv.getContext('2d'); const W = cv.width, H = cv.height;
   const draw = (tmp) => { x.drawImage(MK.im, 0, 0); const all = tmp ? [...MK.masks, tmp] : MK.masks; all.forEach((m, i) => { if (MK.preview) { x.fillStyle = '#111'; x.fillRect(m.x * W, m.y * H, m.w * W, m.h * H); } else { x.fillStyle = 'rgba(17,17,17,.6)'; x.fillRect(m.x * W, m.y * H, m.w * W, m.h * H); x.lineWidth = Math.max(2, W / 300); x.strokeStyle = i === MK.sel ? '#E2B56A' : '#9DBA88'; x.strokeRect(m.x * W, m.y * H, m.w * W, m.h * H); } }); drawMarks(x, MK.cur ? [...MK.marks, MK.cur] : MK.marks, 0, 0, W, H); };
   draw();
-  if (MK.zoom > 1) { const fit = cv.getBoundingClientRect().width; cv.style.maxWidth = 'none'; cv.style.maxHeight = 'none'; cv.style.width = fit * MK.zoom + 'px'; }
+  MK.fit = cv.getBoundingClientRect().width;
+  if (MK.zoom > 1) { cv.style.maxWidth = 'none'; cv.style.maxHeight = 'none'; cv.style.width = MK.fit * MK.zoom + 'px'; }
+  // 雙指縮放（iPad）：第二根手指放上來就取消正在畫的那筆，改成縮放
+  const ptrs = new Map(); let pinch = null;
+  const dist = () => { const [a, b] = [...ptrs.values()]; return Math.hypot(a[0] - b[0], a[1] - b[1]); };
+  cv.addEventListener('pointerdown', (e) => {
+    ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+    if (ptrs.size === 2) { e.stopImmediatePropagation(); if (MK.pre) { const o = JSON.parse(MK.pre); MK.masks = o.masks; MK.marks = o.marks; } MK.mode = null; MK.cur = null; MK.pre = null; pinch = { d0: dist(), z0: MK.zoom }; draw(); }
+  }, true);
+  cv.addEventListener('pointermove', (e) => {
+    if (!ptrs.has(e.pointerId)) return; ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pinch && ptrs.size >= 2) { e.stopImmediatePropagation(); MK.zoom = Math.max(1, Math.min(6, pinch.z0 * dist() / pinch.d0)); cv.style.maxWidth = 'none'; cv.style.maxHeight = 'none'; cv.style.width = MK.fit * MK.zoom + 'px'; }
+  }, true);
+  const up = (e) => { ptrs.delete(e.pointerId); if (pinch) { e.stopImmediatePropagation(); if (!ptrs.size) { pinch = null; if (MK.zoom < 1.05) MK.zoom = 1; renderMask(); } } };
+  cv.addEventListener('pointerup', up, true); cv.addEventListener('pointercancel', up, true);
   if (keepScroll) { const st = ov.querySelector('.stage'); st.scrollLeft = keepScroll[0]; st.scrollTop = keepScroll[1]; }
   if (MK.preview || MK.pan) return;
   const pt = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]; };
   let tmp = null;
   if (MK.tool !== 'mask') {
-    const eraseAt = (px, py) => { const n = MK.marks.length; MK.marks = MK.marks.filter((m) => { if (m.t === 'pen') return !m.pts.some(([a, b]) => Math.hypot(a - px, b - py) < 0.025); const rx = m.w / 2, ry = m.h / 2, v = ((px - m.x - rx) / (rx || 1e-3)) ** 2 + ((py - m.y - ry) / (ry || 1e-3)) ** 2; return !(v > 0.55 && v < 1.6); }); if (MK.marks.length !== n) draw(); };
-    cv.onpointerdown = (e) => { const [px, py] = pt(e); cv.setPointerCapture(e.pointerId); MK.mode = MK.tool; if (MK.tool === 'pen') MK.cur = { t: 'pen', c: MK.color, pts: [[px, py]] }; else if (MK.tool === 'circle') { MK.cur = { t: 'circle', c: MK.color, x: px, y: py, w: 0, h: 0 }; MK.start = [px, py]; } else eraseAt(px, py); draw(); };
+    const eraseAt = (px, py) => { const n = MK.marks.length; MK.marks = MK.marks.filter((m) => { if (m.t === 'pen') return !m.pts.some(([a, b]) => Math.hypot(a - px, b - py) < 0.025); const rx = m.w / 2, ry = m.h / 2, v = ((px - m.x - rx) / (rx || 1e-3)) ** 2 + ((py - m.y - ry) / (ry || 1e-3)) ** 2; return !(v > 0.55 && v < 1.6); }); const k = MK.masks.length; MK.masks = MK.masks.filter((m) => !(px >= m.x && px <= m.x + m.w && py >= m.y && py <= m.y + m.h)); if (MK.marks.length !== n || MK.masks.length !== k) { MK.sel = -1; draw(); } };
+    cv.onpointerdown = (e) => { const [px, py] = pt(e); cv.setPointerCapture(e.pointerId); MK.pre = mkState(); MK.mode = MK.tool; if (MK.tool === 'pen') MK.cur = { t: 'pen', c: MK.color, pts: [[px, py]] }; else if (MK.tool === 'circle') { MK.cur = { t: 'circle', c: MK.color, x: px, y: py, w: 0, h: 0 }; MK.start = [px, py]; } else eraseAt(px, py); draw(); };
     cv.onpointermove = (e) => { if (!MK.mode) return; const [px, py] = pt(e); if (MK.mode === 'pen') { MK.cur.pts.push([+px.toFixed(4), +py.toFixed(4)]); draw(); } else if (MK.mode === 'circle') { const [sx, sy] = MK.start; Object.assign(MK.cur, { x: Math.min(sx, px), y: Math.min(sy, py), w: Math.abs(px - sx), h: Math.abs(py - sy) }); draw(); } else eraseAt(px, py); };
-    cv.onpointerup = cv.onpointercancel = () => { if (MK.cur && (MK.cur.t === 'pen' || MK.cur.w > 0.01 || MK.cur.h > 0.01)) MK.marks.push(MK.cur); MK.cur = null; MK.mode = null; renderMask(); };
+    cv.onpointerup = cv.onpointercancel = () => { if (!MK.mode) return; if (MK.cur && (MK.cur.t === 'pen' || MK.cur.w > 0.01 || MK.cur.h > 0.01)) MK.marks.push(MK.cur); MK.cur = null; MK.mode = null; mkCommit(MK.pre); MK.pre = null; renderMask(); };
     return;
   }
-  cv.onpointerdown = (e) => { const [px, py] = pt(e); cv.setPointerCapture(e.pointerId); const hit = MK.masks.findIndex((m) => px >= m.x && px <= m.x + m.w && py >= m.y && py <= m.y + m.h); if (hit >= 0) { MK.sel = hit; MK.mode = 'move'; MK.start = [px, py, { ...MK.masks[hit] }]; } else { MK.sel = -1; MK.mode = 'draw'; MK.start = [px, py]; } draw(); };
+  cv.onpointerdown = (e) => { const [px, py] = pt(e); cv.setPointerCapture(e.pointerId); MK.pre = mkState(); const hit = MK.masks.findIndex((m) => px >= m.x && px <= m.x + m.w && py >= m.y && py <= m.y + m.h); if (hit >= 0) { MK.sel = hit; MK.mode = 'move'; MK.start = [px, py, { ...MK.masks[hit] }]; } else { MK.sel = -1; MK.mode = 'draw'; MK.start = [px, py]; } draw(); };
   cv.onpointermove = (e) => { if (!MK.mode) return; const [px, py] = pt(e); if (MK.mode === 'move') { const [sx, sy, o] = MK.start; const m = MK.masks[MK.sel]; m.x = Math.max(0, Math.min(1 - m.w, o.x + px - sx)); m.y = Math.max(0, Math.min(1 - m.h, o.y + py - sy)); draw(); } else { const [sx, sy] = MK.start; tmp = { x: Math.min(sx, px), y: Math.min(sy, py), w: Math.abs(px - sx), h: Math.abs(py - sy) }; draw(tmp); } };
-  cv.onpointerup = cv.onpointercancel = () => { if (MK.mode === 'draw' && tmp && tmp.w > 0.01 && tmp.h > 0.008) { MK.masks.push(tmp); MK.sel = MK.masks.length - 1; } MK.mode = null; tmp = null; renderMask(); };
+  cv.onpointerup = cv.onpointercancel = () => { if (!MK.mode) return; if (MK.mode === 'draw' && tmp && tmp.w > 0.01 && tmp.h > 0.008) { MK.masks.push(tmp); MK.sel = MK.masks.length - 1; } MK.mode = null; tmp = null; mkCommit(MK.pre); MK.pre = null; renderMask(); };
 }
 
 /* ================= 分享版 / PDF ================= */
