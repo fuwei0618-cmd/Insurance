@@ -276,7 +276,8 @@ details.disc>summary{list-style:none;cursor:pointer}details.disc>summary::-webki
 .dtwrap input.dtin{flex:1;min-width:0;font-family:var(--f-num);font-variant-numeric:tabular-nums}
 .dtpick{border:0;background:none;padding:2px 4px;font-size:15px;line-height:1;cursor:pointer;flex:none;opacity:.7}
 .dthidden{position:absolute;left:0;bottom:0;width:1px;height:1px;opacity:0;border:0;padding:0}
-.tldate+.dtpick,.dtwrap:has(.tldate){width:150px;flex:none}
+.dtwrap:has(.tldate){width:150px;flex:none}
+.dtwrap .tldate{width:auto;flex:1}
 .doc .dtwrap{border-bottom:1px solid var(--line);background:var(--card)}
 .doc .dtwrap input.ddate{border:0}
 /* 儲存狀態 */
