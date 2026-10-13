@@ -980,8 +980,8 @@ app.addEventListener('click', async (e) => {
   if (d.ritem) { S.refItem = d.ritem; App.render(); return; }
   if (d.rcause) { S.refCause = d.rcause; App.render(); return; }
   if (d.sg) { S.sopGroup = d.sg; App.render(); return; }
-  if (d.editdisc && ccl) { openDisclosure(ccl, d.editdisc, ''); return; }
-  if (d.deldisc && ccl) { if (armConfirm(b, '再按一次刪除')) { const r = (ccl.disclosures || []).find((x) => x.id === d.deldisc); (r?.files || []).forEach((f) => Files.remove(f.fileId)); ccl.disclosures = (ccl.disclosures || []).filter((x) => x.id !== d.deldisc); Vault.put('clients', ccl); App.render(); } return; }
+  if (d.editdisc) { const cl0 = curClient(); if (cl0) openDisclosure(cl0, d.editdisc, ''); return; }
+  if (d.deldisc) { const ccl = curClient(); if (!ccl) return; if (armConfirm(b, '再按一次刪除')) { const r = (ccl.disclosures || []).find((x) => x.id === d.deldisc); (r?.files || []).forEach((f) => Files.remove(f.fileId)); ccl.disclosures = (ccl.disclosures || []).filter((x) => x.id !== d.deldisc); Vault.put('clients', ccl); App.render(); } return; }
   if (d.discfile) { const [rid, i] = d.discfile.split(':'); const r = (curClient()?.disclosures || []).find((x) => x.id === rid); const f = r?.files?.[+i]; if (f) openViewer({ ...f, masks: [] }); return; }
   if (d.prole && c) { const [i, r] = d.prole.split(':'); const p = c.people[+i]; p.roles = p.roles.includes(r) ? p.roles.filter((x) => x !== r) : [...p.roles, r]; saveCase(c); App.render(); return; }
   if (d.pdel && c) { if (armConfirm(b, '移除？')) { c.people.splice(+d.pdel, 1); saveCase(c); App.render(); } return; }
