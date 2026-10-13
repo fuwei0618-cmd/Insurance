@@ -436,7 +436,7 @@ function openCallImport() {
   setTimeout(() => $('ciText')?.focus(), 50);
 }
 /* 一個案件多位要保人／被保險人 */
-const ROLES = ['要保人', '被保險人', '受益人'];
+const ROLES = ['要保人', '被保險人', '受益人', '授權人'];
 function casePeople(c) { // 包含主要客戶
   const ppl = (c.people || []).filter((p) => Vault.get('clients', p.clientId));
   if (c.clientId && Vault.get('clients', c.clientId) && !ppl.some((p) => p.clientId === c.clientId)) ppl.unshift({ clientId: c.clientId, roles: [], primary: true });
