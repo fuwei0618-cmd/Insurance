@@ -312,7 +312,10 @@ const App = {
     else if (v === 'tpl') h += '<section class="wide">' + notesHTML('tpl') + '</section>';
     h += tabsHTML();
     const keep = document.activeElement?.id, pos = document.activeElement?.selectionStart;
+    const sc = [...app.querySelectorAll('section, .list')].map((el) => [el.className, el.scrollTop]), wy = window.scrollY; // 重畫後回到原本的捲動位置
     app.innerHTML = h;
+    const pk = [S.view, S.sel, S.csel, S.ksel, S.rsel, S.showDetail].join('|'), same = App._pk === pk; App._pk = pk;
+    if (same) { const els = [...app.querySelectorAll('section, .list')]; sc.forEach(([cn, t]) => { const el = els.find((e) => e.className === cn); if (el && t) el.scrollTop = t; }); if (wy) window.scrollTo(0, wy); }
     if (keep && (keep === 'q')) { const el = $(keep); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) { } } }
     drawThumbs(); fitNotes();
     if (v === 'clients' && curClient()) drawEgo(curClient());
