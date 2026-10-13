@@ -363,8 +363,53 @@ function openTagEditor(key) {
   };
 }
 const STATUS = ['進行中', '待回覆', '已結案'];
-const ITEMS = ['住院醫療', '實支實付', '住院日額', '手術', '意外醫療', '意外失能', '骨折', '重大傷病', '癌症', '長照失能', '門診', '產險-車險', '產險-住火', '產險-旅平'];
-const CAUSE = { '疾病': ['感染症（病毒、細菌）', '消化系統', '呼吸系統', '心血管', '腦血管／神經', '骨科／肌肉骨骼', '泌尿／腎臟', '婦科／產科', '內分泌／代謝', '腫瘤', '眼耳鼻喉', '皮膚', '牙科', '身心科', '其他疾病'], '意外': ['交通事故', '跌倒／滑倒', '運動傷害', '職業傷害', '燒燙傷', '割傷／刺傷', '撞擊／夾傷', '動物咬抓傷', '其他意外'] };
+const DEFAULT_ITEMS = ['住院醫療', '實支實付', '住院日額', '手術', '意外醫療', '意外失能', '骨折', '重大傷病', '癌症', '長照失能', '門診', '產險-車險', '產險-住火', '產險-旅平'];
+const DEFAULT_CAUSE = { '疾病': ['感染症（病毒、細菌）', '消化系統', '呼吸系統', '心血管', '腦血管／神經', '骨科／肌肉骨骼', '泌尿／腎臟', '婦科／產科', '內分泌／代謝', '腫瘤', '眼耳鼻喉', '皮膚', '牙科', '身心科', '其他疾病'], '意外': ['交通事故', '跌倒／滑倒', '運動傷害', '職業傷害', '燒燙傷', '割傷／刺傷', '撞擊／夾傷', '動物咬抓傷', '其他意外'] };
+const ITEMS = [...DEFAULT_ITEMS], CAUSE = Object.fromEntries(Object.entries(DEFAULT_CAUSE).map(([k, v]) => [k, [...v]]));
+function syncRefLists() { // 險種項目、原因可以自己改，存在設定裡
+  const set = (arr, l) => { const next = l?.length ? l : null; if (next && next.join('|') !== arr.join('|')) arr.splice(0, arr.length, ...next); };
+  set(ITEMS, Vault.get('settings', 'items')?.list || DEFAULT_ITEMS);
+  Object.keys(CAUSE).forEach((k) => set(CAUSE[k], Vault.get('settings', 'cause-' + k)?.list || DEFAULT_CAUSE[k]));
+}
+// 通用的清單編輯器（改名會一起改到用到它的資料；有在用的不能刪）
+function openListEditor({ title, note, list, used, rename, save }) {
+  let rows = list.map((n) => ({ old: n, name: n }));
+  const draw = () => { $('ceList').innerHTML = rows.map((r, i) => `<div class="cerow"><input data-ci="${i}" value="${esc(r.name)}" aria-label="名稱"><span class="sub">${r.old ? used(r.old) + ' 筆' : '新的'}</span><button class="btn" data-cu="${i}" aria-label="上移" ${i ? '' : 'disabled'}>↑</button><button class="btn" data-cd="${i}" aria-label="下移" ${i < rows.length - 1 ? '' : 'disabled'}>↓</button><button class="btn" data-cx="${i}" aria-label="刪除">✕</button></div>`).join(''); };
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${esc(title)}</h2><button class="btn" id="ceX">取消</button><button class="btn pri" id="ceSave">儲存</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:560px;margin:0 auto;width:100%"><div class="note">${note || '改名字，用到它的資料會一起改過去；還有資料在用的不能刪。'}</div><div id="ceList"></div>
+   <div class="actions"><input class="search" id="ceNew" placeholder="新增一項，打完按 Enter" style="flex:1"><button class="btn" id="ceAdd">＋ 新增</button></div></div></div>`;
+  draw();
+  $('ceList').oninput = (e) => { const i = e.target.dataset.ci; if (i != null) rows[+i].name = e.target.value; };
+  $('ceList').onclick = (e) => {
+    const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
+    if (d.cu) { const i = +d.cu; [rows[i - 1], rows[i]] = [rows[i], rows[i - 1]]; }
+    if (d.cd) { const i = +d.cd; [rows[i + 1], rows[i]] = [rows[i], rows[i + 1]]; }
+    if (d.cx) { const r = rows[+d.cx]; if (r.old && used(r.old)) { toast(`還有 ${used(r.old)} 筆在用「${r.old}」，先把它們改掉`); return; } rows.splice(+d.cx, 1); }
+    draw();
+  };
+  const add = () => { const v = $('ceNew').value.trim(); if (!v) return; if (rows.some((r) => r.name.trim() === v)) { toast('已經有了'); return; } rows.push({ old: '', name: v }); $('ceNew').value = ''; draw(); };
+  $('ceAdd').onclick = add; $('ceNew').onkeydown = (e) => { if (e.key === 'Enter') add(); };
+  $('ceX').onclick = () => (ov.innerHTML = '');
+  $('ceSave').onclick = () => {
+    const names = rows.map((r) => r.name.trim());
+    if (!names.length) { toast('至少要留一項'); return; }
+    if (names.some((n) => !n)) { toast('名稱不能空白'); return; }
+    if (new Set(names).size !== names.length) { toast('有重複的名稱'); return; }
+    const m = new Map(rows.filter((r) => r.old && r.old !== r.name.trim()).map((r) => [r.old, r.name.trim()]));
+    if (m.size) rename(m);
+    save(names); ov.innerHTML = ''; App.render(); toast(title.replace(/^編輯/, '') + '已更新');
+  };
+}
+function editItems() {
+  openListEditor({ title: '編輯險種項目', list: ITEMS, used: (n) => cases().filter((c) => (c.items || []).includes(n)).length,
+    rename: (m) => cases().forEach((c) => { if ((c.items || []).some((x) => m.has(x))) { c.items = c.items.map((x) => m.get(x) || x); saveCase(c); } }),
+    save: (names) => { Vault.put('settings', { id: 'items', list: names }); syncRefLists(); } });
+}
+function editCause(type) {
+  openListEditor({ title: `編輯「${type}」的原因`, list: CAUSE[type], used: (n) => cases().filter((c) => c.causeType === type && c.causeDetail === n).length,
+    rename: (m) => cases().forEach((c) => { if (c.causeType === type && m.has(c.causeDetail)) { c.causeDetail = m.get(c.causeDetail); saveCase(c); } }),
+    save: (names) => { Vault.put('settings', { id: 'cause-' + type, list: names }); syncRefLists(); } });
+}
 const TPLGROUPS = ['LINE', '簡訊', '信件', '通話', '其他'];
 const linkify = (html) => html.replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.length > 60 ? u.slice(0, 57) + '…' : u}</a>`);
 
@@ -388,7 +433,7 @@ const syncHTML = (cls = '') => `<span class="sync ${cls}" data-s="${Vault.state}
 const App = {
   render() {
     if (!Vault.db) return;
-    syncCats(); if (S.cat !== '全部' && !CATS.includes(S.cat)) S.cat = '全部'; if (S.cg !== '全部' && !GROUPS.some((g) => g.name === S.cg)) S.cg = '全部';
+    syncCats(); syncRefLists(); if (S.cat !== '全部' && !CATS.includes(S.cat)) S.cat = '全部'; if (S.cg !== '全部' && !GROUPS.some((g) => g.name === S.cg)) S.cg = '全部';
     const v = S.view;
     app.className = 'app' + ((v === 'cases' || v === 'refs' || v === 'clients' || v === 'calls') ? '' : ' single') + (S.showDetail ? ' showdetail' : '') + (MOCK ? ' test' : '');
     let h = MOCK ? '<div class="testbar">測試模式：資料只存在這台裝置，不會上傳 OneDrive</div>' : '';
@@ -464,9 +509,9 @@ function caseDetailHTML() {
   ${peopleHTML(c)}
   ${timelineHTML(c)}
   ${isClaim ? `<div class="sec"><h2>理賠分類</h2>
-   <div class="sub">險種項目（可複選）</div><div class="tags">${ITEMS.map((x) => `<button class="tag${c.items.includes(x) ? ' on' : ''}" data-item="${x}">${x}</button>`).join('')}</div>
+   <div class="sub">險種項目（可複選）</div><div class="tags">${[...ITEMS, ...c.items.filter((x) => !ITEMS.includes(x))].map((x) => `<button class="tag${c.items.includes(x) ? ' on' : ''}" data-item="${esc(x)}">${esc(x)}</button>`).join('')}<button class="tag tagedit" data-act="edititems">⚙ 編輯</button></div>
    <div class="sub">原因</div><div class="tags">${Object.keys(CAUSE).map((x) => `<button class="tag${c.causeType === x ? ' on' : ''}" data-ctype="${x}">${x}</button>`).join('')}</div>
-   ${c.causeType ? `<div class="tags">${CAUSE[c.causeType].map((x) => `<button class="tag${c.causeDetail === x ? ' on' : ''}" data-cdet="${x}">${x}</button>`).join('')}</div>` : ''}
+   ${c.causeType && CAUSE[c.causeType] ? `<div class="tags">${[...CAUSE[c.causeType], ...(c.causeDetail && !CAUSE[c.causeType].includes(c.causeDetail) ? [c.causeDetail] : [])].map((x) => `<button class="tag${c.causeDetail === x ? ' on' : ''}" data-cdet="${esc(x)}">${esc(x)}</button>`).join('')}<button class="tag tagedit" data-editcause="${esc(c.causeType)}">⚙ 編輯</button></div>` : ''}
    <label class="f">診斷／受傷情況<input id="f_diag" data-f="diag" value="${esc(c.diag)}" placeholder="例如：腳踝扭傷併骨裂，打石膏"></label></div>
   <div class="sec"><h2>理賠計算</h2><div class="calc">
    <label class="f">實際花費<input id="f_cost" inputmode="numeric" data-f="cost" value="${esc(c.cost)}" placeholder="76600"></label><span class="op">×</span>
@@ -1034,18 +1079,20 @@ async function addPdfs(rec, coll, files, folder) {
   }
   if (n) { Vault.put(coll, rec); App.render(); toast(`已加入 ${n} 個 PDF`); }
 }
-function refCases() { return cases().filter((c) => c.isRef && (S.refItem === '全部' || c.items.includes(S.refItem)) && (S.refCause === '全部' || c.causeType === S.refCause)).sort(byDate); }
+function refCases() { return cases().filter((c) => c.isRef && (S.refItem === '全部' || c.items.includes(S.refItem)) && (S.refCause === '全部' || c.causeType === S.refCause) && (!S.refDet || c.causeDetail === S.refDet)).sort(byDate); }
 const refTitle = (c) => c.diag || c.causeDetail || c.causeType || '未分類';
 function refListHTML() {
   const list = refCases(); const used = [...new Set(cases().filter((c) => c.isRef).flatMap((c) => c.items))];
   return `<section class="col"><div class="colhead"><h1>理賠參考</h1>
   <div class="sub">險種</div><div class="chips">${['全部', ...used].map((x) => `<button class="chip${S.refItem === x ? ' on' : ''}" data-ritem="${x}">${x}</button>`).join('')}</div>
-  <div class="sub">原因</div><div class="chips">${['全部', '疾病', '意外'].map((x) => `<button class="chip${S.refCause === x ? ' on' : ''}" data-rcause="${x}">${x}</button>`).join('')}</div></div>
+  <div class="sub">原因</div><div class="chips">${['全部', ...Object.keys(CAUSE)].map((x) => `<button class="chip${S.refCause === x ? ' on' : ''}" data-rcause="${x}">${x}</button>`).join('')}</div>
+  ${S.refCause !== '全部' ? (() => { const used = [...new Set(cases().filter((c) => c.isRef && c.causeType === S.refCause && c.causeDetail).map((c) => c.causeDetail))]; return used.length ? `<div class="chips subchips">${used.map((x) => `<button class="chip${S.refDet === x ? ' on' : ''}" data-rdet="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : ''; })() : ''}</div>
   <div class="list">${list.length ? list.map((c) => `<button class="item${c.id === S.refSel ? ' on' : ''}" data-rsel="${c.id}"><span class="t"><span>${esc(refTitle(c))}</span></span><span class="s">${esc(c.items.join('、') || '未選險種')} · ${esc(c.causeType)}${c.causeDetail ? '›' + esc(c.causeDetail) : ''}</span></button>`).join('') : '<div class="empty">還沒有理賠參考。在理賠案件裡按「做成理賠參考」就會出現在這裡。</div>'}</div></section>`;
 }
 // 理賠參考要放哪些文件：可以選資料夾；沒選過的話，有「理賠」字樣的資料夾就只放那些，否則全部
 function refFolderSel(c) { if (c.refFolders === 'all') return null; if (c.refFolders) return c.refFolders; const fs = (c.folders || []).filter((f) => f.includes('理賠') && c.docs.some((d) => d.folder === f)); return fs.length ? fs : null; }
-const refDocs = (c) => { const sel = refFolderSel(c); return c.docs.map((d, i) => [d, i]).filter(([d]) => !isPdf(d) && (!sel || sel.includes(d.folder || ''))); };
+const dkey = (d) => d.id || d.fileId;
+const refDocs = (c) => { const sel = refFolderSel(c), pick = c.refDocIds; return c.docs.map((d, i) => [d, i]).filter(([d]) => !isPdf(d) && (pick ? pick.includes(dkey(d)) : !sel || sel.includes(d.folder || ''))); };
 function refDetailHTML() {
   const c = cases().find((x) => x.id === S.refSel && x.isRef);
   if (!c) return '<div class="empty">選一則理賠參考。這裡不會顯示客戶姓名。</div>';
@@ -1054,9 +1101,9 @@ function refDetailHTML() {
   <div class="dhead"><h1 style="margin:0;font-size:20px">${esc(refTitle(c))}</h1></div>
   <div class="sec"><h2>分類</h2><div class="reftop">${c.items.map((x) => `<span class="pill p-go">${esc(x)}</span>`).join('')}${c.causeType ? `<span class="pill p-wait">${esc(c.causeType)}${c.causeDetail ? ' › ' + esc(c.causeDetail) : ''}</span>` : ''}</div></div>
   ${cost ? `<div class="sec"><h2>理賠金額</h2><div class="calcline">花費 ${cost.toLocaleString()} × ${ratio || '—'}% = ${auto ? auto.toLocaleString() : '—'}${c.payout ? `　實際理賠 ${(+c.payout).toLocaleString()}` : ''}</div></div>` : ''}
-  ${c.docs.length ? (() => { const sel = refFolderSel(c), fs = [...(c.folders || []).filter((f) => c.docs.some((d) => d.folder === f)), ...(c.docs.some((d) => !d.folder) ? [''] : [])], rd = refDocs(c); return `<div class="sec"><h2>文件（遮罩版）<span class="sub">${rd.length} 張</span></h2>
-   ${fs.length > 1 ? `<div class="chips"><span class="sub" style="align-self:center">要放的資料夾</span><button class="chip${!sel ? ' on' : ''}" data-reff="*">全部</button>${fs.map((f) => `<button class="chip${sel && sel.includes(f) ? ' on' : ''}" data-reff="${esc(f)}">${esc(f || '未分類')}</button>`).join('')}</div>` : ''}
-   <div class="docs">${rd.map(([d, i]) => `<div class="doc"><canvas data-rthumb="${i}" width="240" height="320"></canvas>${d.note ? `<div class="docnote">${esc(d.note)}</div>` : ''}</div>`).join('') || '<div class="sub">沒有選到文件。</div>'}</div><div class="actions"><button class="btn pri" data-act="rshare">匯出分享版</button></div></div>`; })() : ''}
+  ${c.docs.some((d) => !isPdf(d)) ? (() => { const on = new Set(refDocs(c).map(([d]) => dkey(d))), all = c.docs.map((d, i) => [d, i]).filter(([d]) => !isPdf(d)); return `<div class="sec"><h2>文件（遮罩版）<span class="sub">選了 ${on.size} / ${all.length} 張</span></h2>
+   <div class="actions" style="margin:0 0 8px"><span class="sub">點文件可以選或取消，只有選的會放進參考和分享版</span><button class="linkbtn" data-refpick="all">全選</button><button class="linkbtn" data-refpick="none">全不選</button>${(c.folders || []).some((f) => f.includes('理賠')) ? '<button class="linkbtn" data-refpick="claim">只選理賠資料夾</button>' : ''}</div>
+   <div class="docs">${all.map(([d, i]) => `<div class="doc refpick${on.has(dkey(d)) ? ' on' : ''}" data-refdoc="${esc(dkey(d))}"><canvas data-rthumb="${i}" width="240" height="320"></canvas><span class="sdcheck">✓</span>${d.note ? `<div class="docnote">${esc(d.note)}</div>` : ''}</div>`).join('')}</div>${on.size ? '<div class="actions"><button class="btn pri" data-act="rshare">匯出分享版</button></div>' : ''}</div>`; })() : ''}
   <div class="note">這頁只顯示分類、計算和遮罩後的文件，不顯示客戶姓名。要修改內容請回到「案件」。</div>
   <div class="actions"><button class="btn" data-act="gocase">打開原案件</button>${c.clientId && Vault.get('clients', c.clientId) ? `<button class="btn" data-goclient="${c.clientId}">打開客戶資料</button>` : ''}</div>`;
 }
@@ -1120,6 +1167,16 @@ function quickHTML() {
 }
 
 /* ---------- 縮圖 ---------- */
+// 文件上用筆畫的記號（畫筆、圈選），座標都是 0~1 的比例，跟原圖分開存
+const MARK_COLORS = ['#E53935', '#1E6FD9', '#2E9E4F', '#F2A900', '#111111'];
+function drawMarks(x, marks, ox, oy, w, h) {
+  (marks || []).forEach((m) => {
+    x.save(); x.strokeStyle = m.c; x.lineWidth = Math.max(2, Math.max(w, h) * 0.004); x.lineCap = 'round'; x.lineJoin = 'round';
+    if (m.t === 'pen' && m.pts.length) { x.beginPath(); m.pts.forEach(([px, py], i) => (i ? x.lineTo(ox + px * w, oy + py * h) : x.moveTo(ox + px * w, oy + py * h))); if (m.pts.length === 1) x.lineTo(ox + m.pts[0][0] * w + 0.5, oy + m.pts[0][1] * h); x.stroke(); }
+    if (m.t === 'circle') { x.beginPath(); x.ellipse(ox + (m.x + m.w / 2) * w, oy + (m.y + m.h / 2) * h, Math.max(1, m.w * w / 2), Math.max(1, m.h * h / 2), 0, 0, Math.PI * 2); x.stroke(); }
+    x.restore();
+  });
+}
 async function drawThumbTo(cv, d, solid) {
   if (isPdf(d)) return;
   const im = await getImg(d.fileId); if (!im || !cv.isConnected) return;
@@ -1127,6 +1184,7 @@ async function drawThumbTo(cv, d, solid) {
   x.drawImage(im, (cv.width - w) / 2, (cv.height - h) / 2, w, h);
   x.fillStyle = solid ? '#111' : 'rgba(17,17,17,.82)';
   d.masks.forEach((m) => x.fillRect((cv.width - w) / 2 + m.x * w, (cv.height - h) / 2 + m.y * h, m.w * w, m.h * h));
+  drawMarks(x, d.marks, (cv.width - w) / 2, (cv.height - h) / 2, w, h);
 }
 function nimgsHTML(n, max) { const all = n.images || [], cut = max && all.length > max ? max - 1 : all.length; return all.length ? `<div class="nimgs">${all.slice(0, cut).map((f) => `<button class="nimg" data-nimg="${f}" data-ntitle="${esc(n.title)}" aria-label="放大看圖"><img data-fid="${f}" alt=""></button>`).join('')}${cut < all.length ? `<button class="nimg more" data-sopopen="${n.id}">＋${all.length - cut}</button>` : ''}</div>` : ''; }
 function drawThumbs() {
@@ -1140,6 +1198,8 @@ function drawThumbs() {
 function newCase(cat) { const c = saveCase({ date: localDay(), client: '', title: '', cat, status: '進行中', items: [], causeType: '', causeDetail: '', diag: '', next: '', cost: '', ratio: '', payout: '', notes: '', docs: [], isRef: false }); S.sel = c.id; S.showDetail = true; return c; }
 function armConfirm(b, label) { if (b.dataset.confirm) return true; b.dataset.confirm = 1; b.textContent = label; setTimeout(() => { if (b.isConnected) { delete b.dataset.confirm; App.render(); } }, 4000); return false; }
 app.addEventListener('click', async (e) => {
+  const rdoc = e.target.closest('[data-refdoc]'); // 理賠參考：點文件選／取消
+  if (rdoc) { const rc = Vault.get('cases', S.refSel); if (!rc) return; const cur = rc.refDocIds || refDocs(rc).map(([x]) => dkey(x)), k = rdoc.dataset.refdoc; rc.refDocIds = cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]; saveCase(rc); App.render(); return; }
   const gn = e.target.closest('[data-gonode]'); if (gn) { S.view = 'clients'; S.csel = gn.dataset.gonode; S.ccat = '全部'; S.showDetail = true; S.showIds = false; App.render(); return; }
   const tileImg = e.target.closest('.doc[data-di] canvas, .doc[data-di] .pdftile'); // 點圖片＝看
   if (tileImg) { tileImg.closest('.doc').querySelector('[data-view],[data-cview]')?.click(); return; }
@@ -1150,10 +1210,11 @@ app.addEventListener('click', async (e) => {
   if (d.sel) { S.folder = '全部'; S.sel = d.sel; S.showDetail = true; App.render(); return; }
   if (d.rsel) { S.refSel = d.rsel; S.showDetail = true; App.render(); return; }
   if (d.ritem) { S.refItem = d.ritem; App.render(); return; }
-  if (d.rcause) { S.refCause = d.rcause; App.render(); return; }
+  if (d.rcause) { S.refCause = d.rcause; S.refDet = ''; App.render(); return; }
+  if (d.rdet) { S.refDet = S.refDet === d.rdet ? '' : d.rdet; App.render(); return; }
   if (d.sg) { S.sg = d.sg; S.sc = '全部'; if (d.sg === '全部') { S.sk = ''; S.st = ''; } App.render(); return; } // 點「全部」＝清掉所有篩選
   if (d.sc) { S.sc = d.sc; App.render(); return; }
-  if (d.reff != null) { const rc = Vault.get('cases', S.refSel); if (!rc) return; if (d.reff === '*') rc.refFolders = 'all'; else { const cur = refFolderSel(rc) || []; rc.refFolders = cur.includes(d.reff) ? cur.filter((x) => x !== d.reff) : [...cur, d.reff]; if (!rc.refFolders.length) rc.refFolders = 'all'; } saveCase(rc); App.render(); return; }
+  if (d.refpick) { const rc = Vault.get('cases', S.refSel); if (!rc) return; if (d.refpick === 'all') rc.refDocIds = rc.docs.filter((x) => !isPdf(x)).map(dkey); else if (d.refpick === 'none') rc.refDocIds = []; else { delete rc.refDocIds; delete rc.refFolders; } saveCase(rc); App.render(); return; }
   if (d.sopopen) { S.sopOpen = S.sopOpen === d.sopopen ? null : d.sopopen; App.render(); return; }
   if (d.sk != null && S.view === 'sop') { S.sk = S.sk === d.sk ? '' : d.sk; App.render(); return; }
   if (d.st != null && S.view === 'sop') { S.st = S.st === d.st ? '' : d.st; App.render(); return; }
@@ -1199,6 +1260,7 @@ app.addEventListener('click', async (e) => {
   if (d.gocase) { S.folder = '全部'; S.view = 'cases'; S.sel = d.gocase; S.showDetail = true; App.render(); return; }
   if (d.item && c) { const i = c.items.indexOf(d.item); i < 0 ? c.items.push(d.item) : c.items.splice(i, 1); saveCase(c); App.render(); return; }
   if (d.ctype && c) { c.causeType = c.causeType === d.ctype ? '' : d.ctype; c.causeDetail = ''; saveCase(c); App.render(); return; }
+  if (d.editcause) { editCause(d.editcause); return; }
   if (d.cdet && c) { c.causeDetail = c.causeDetail === d.cdet ? '' : d.cdet; saveCase(c); App.render(); return; }
   if (d.mask && c) { openMask(c, +d.mask); return; }
   if (d.view && c) { openGallery(b, c.docs, 'view'); return; }
@@ -1242,6 +1304,7 @@ app.addEventListener('click', async (e) => {
     case 'tocliient': { const k = curCall(); if (!k) break; let cl = clients().find((x) => x.name === k.name && k.name); if (!cl) cl = Vault.put('clients', { name: k.name, phone: k.phone, note: [k.source, k.note].filter(Boolean).join('\n'), docs: [] }); k.clientId = cl.id; Vault.put('calls', k); App.render(); toast(`已轉成客戶「${cl.name || '未填姓名'}」`); break; }
     case 'delcall': if (armConfirm(b, '再按一次確定刪除')) { Vault.del('calls', S.ksel); S.ksel = null; S.showDetail = false; App.render(); } break;
     case 'newtpl': { const ch = S.tplGroup !== '全部' ? S.tplGroup : 'LINE', tg = GROUPS.find((x) => x.name === S.tg); const n = Vault.put('notes', { kind: 'tpl', group: ch, channels: [ch], cat: S.tplCat !== '全部' ? S.tplCat : tg?.cats[0] || '', title: '', body: '', images: [] }); editNote(n.id, true); break; }
+    case 'edititems': editItems(); break;
     case 'newsop': { const g = GROUPS.find((x) => x.name === S.sg); const n = Vault.put('notes', { kind: 'sop', v2: true, cat: S.sc !== '全部' ? S.sc : g?.cats[0] || '', kinds: S.sk ? [S.sk] : [], tools: S.st ? [S.st] : [], title: '', body: '', images: [] }); editNote(n.id, true); break; }
     case 'sopfor': S.view = 'sop'; S.sg = groupOf(c.cat) || '全部'; S.sc = groupOf(c.cat) ? c.cat : '全部'; S.sk = ''; S.st = ''; S.q = ''; S.showDetail = false; App.render(); break;
     case 'tplfor': S.view = 'tpl'; S.tg = groupOf(c.cat) || '全部'; S.tplCat = groupOf(c.cat) ? c.cat : '全部'; S.tplGroup = '全部'; S.q = ''; S.showDetail = false; App.render(); break;
@@ -1729,14 +1792,17 @@ document.addEventListener('keydown', (e) => { if (!GV || !ov.querySelector('.gv'
 
 /* ================= 遮罩 ================= */
 let MK = null;
-async function openMask(c, i, coll = 'cases') { const d = c.docs[i]; const im = await getImg(d.fileId); if (!im) { toast('圖片讀取失敗，請確認網路'); return; } MK = { c, coll, d, im, masks: d.masks.map((m) => ({ ...m })), sel: -1, mode: null, start: null, preview: false }; renderMask(); }
+async function openMask(c, i, coll = 'cases') { const d = c.docs[i]; const im = await getImg(d.fileId); if (!im) { toast('圖片讀取失敗，請確認網路'); return; } MK = { c, coll, d, im, masks: d.masks.map((m) => ({ ...m })), marks: (d.marks || []).map((m) => ({ ...m, pts: m.pts ? m.pts.map((p) => [...p]) : undefined })), tool: 'mask', color: MARK_COLORS[0], sel: -1, mode: null, start: null, preview: false }; renderMask(); }
 function renderMask() {
   const st0 = document.querySelector('#ovRoot .stage'), keepScroll = st0 ? [st0.scrollLeft, st0.scrollTop] : null; // 重畫後留在原本放大的位置
   if (MK.note == null) MK.note = MK.d.note || ''; MK.zoom = MK.zoom || 1;
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>遮罩 · ${esc(MK.d.name)}</h2><button class="btn" id="mkCancel">取消</button><button class="btn pri" id="mkSave">儲存</button></div>
   <div class="ovbody"><div class="stage${MK.zoom > 1 ? ' zoomed' : ''}${MK.pan ? ' panning' : ''}"><canvas id="mkCv"></canvas></div>
   <div class="side"><div class="actions zoombar" style="margin:0"><button class="btn" id="mkZo" aria-label="縮小" ${MK.zoom > 1 ? '' : 'disabled'}>－</button><span class="sub">${Math.round(MK.zoom * 100)}%</span><button class="btn" id="mkZi" aria-label="放大" ${MK.zoom < 4 ? '' : 'disabled'}>＋</button>${MK.zoom > 1 ? `<button class="btn${MK.pan ? ' on' : ''}" id="mkPan">${MK.pan ? '✋ 移動中' : '✋ 移動畫面'}</button>` : ''}</div>
-  <div class="note">在要遮的地方拖曳畫框。點一下框可以選取、拖曳移動。原圖不會被改動。${MK.zoom > 1 ? '放大後要移動畫面，按「✋ 移動畫面」再拖。' : ''}</div>
+  <div class="mktools">${[['mask', '▭ 遮罩'], ['pen', '✏️ 畫筆'], ['circle', '◯ 圈選'], ['erase', '⌫ 橡皮擦']].map(([k, l]) => `<button class="btn${MK.tool === k && !MK.pan ? ' on' : ''}" data-mktool="${k}">${l}</button>`).join('')}</div>
+  ${MK.tool === 'pen' || MK.tool === 'circle' ? `<div class="mkcolors">${MARK_COLORS.map((c) => `<button class="mkcolor${MK.color === c ? ' on' : ''}" data-mkcolor="${c}" style="background:${c}" aria-label="顏色"></button>`).join('')}</div>` : ''}
+  <div class="note">${MK.tool === 'mask' ? '在要遮的地方拖曳畫框。點一下框可以選取、拖曳移動。' : MK.tool === 'pen' ? '直接在圖上畫。' : MK.tool === 'circle' ? '拖曳畫出圈圈，把重點圈起來。' : '在畫過的記號上點或拖，就會擦掉。'}原圖不會被改動。${MK.zoom > 1 ? '放大後要移動畫面，按「✋ 移動畫面」再拖。' : ''}</div>
+  ${MK.marks.length ? `<div class="actions" style="margin:0"><button class="btn" id="mkUndo">↶ 復原上一筆</button><span class="sub">記號 ${MK.marks.length} 個</span></div>` : ''}
   <label class="f">筆記<textarea id="mkNote" class="grow" rows="3" placeholder="這份文件的重點，例如：急診 2 天、住院日額可申請">${esc(MK.note)}</textarea></label>
   <div class="actions"><button class="btn${MK.preview ? ' on' : ''}" id="mkPrev">${MK.preview ? '回到編輯' : '看分享版效果'}</button></div>
   <div class="actions"><button class="btn danger" id="mkDel">刪除選取的框</button><button class="btn" id="mkClear">全部清除</button></div>
@@ -1746,18 +1812,28 @@ function renderMask() {
   $('mkZi').onclick = () => { MK.zoom = Math.min(4, MK.zoom * 1.5); renderMask(); };
   $('mkZo').onclick = () => { MK.zoom = Math.max(1, MK.zoom / 1.5); if (MK.zoom < 1.05) { MK.zoom = 1; MK.pan = false; } renderMask(); };
   if ($('mkPan')) $('mkPan').onclick = () => { MK.pan = !MK.pan; renderMask(); };
-  $('mkSave').onclick = () => { MK.d.masks = MK.masks; MK.d.note = MK.note.trim(); Vault.put(MK.coll, MK.c); ov.innerHTML = ''; MK = null; App.render(); toast('已儲存，原圖保留'); };
+  ov.querySelectorAll('[data-mktool]').forEach((b) => (b.onclick = () => { MK.tool = b.dataset.mktool; MK.pan = false; MK.sel = -1; renderMask(); }));
+  ov.querySelectorAll('[data-mkcolor]').forEach((b) => (b.onclick = () => { MK.color = b.dataset.mkcolor; renderMask(); }));
+  if ($('mkUndo')) $('mkUndo').onclick = () => { MK.marks.pop(); renderMask(); };
+  $('mkSave').onclick = () => { MK.d.masks = MK.masks; MK.d.marks = MK.marks; MK.d.note = MK.note.trim(); Vault.put(MK.coll, MK.c); ov.innerHTML = ''; MK = null; App.render(); toast('已儲存，原圖保留'); };
   $('mkPrev').onclick = () => { MK.preview = !MK.preview; renderMask(); };
   $('mkDel').onclick = () => { if (MK.sel >= 0) { MK.masks.splice(MK.sel, 1); MK.sel = -1; renderMask(); } else toast('先點選一個框'); };
   $('mkClear').onclick = () => { MK.masks = []; MK.sel = -1; renderMask(); };
   const cv = $('mkCv'); cv.width = MK.im.width; cv.height = MK.im.height; const x = cv.getContext('2d'); const W = cv.width, H = cv.height;
-  const draw = (tmp) => { x.drawImage(MK.im, 0, 0); const all = tmp ? [...MK.masks, tmp] : MK.masks; all.forEach((m, i) => { if (MK.preview) { x.fillStyle = '#111'; x.fillRect(m.x * W, m.y * H, m.w * W, m.h * H); } else { x.fillStyle = 'rgba(17,17,17,.6)'; x.fillRect(m.x * W, m.y * H, m.w * W, m.h * H); x.lineWidth = Math.max(2, W / 300); x.strokeStyle = i === MK.sel ? '#E2B56A' : '#9DBA88'; x.strokeRect(m.x * W, m.y * H, m.w * W, m.h * H); } }); };
+  const draw = (tmp) => { x.drawImage(MK.im, 0, 0); const all = tmp ? [...MK.masks, tmp] : MK.masks; all.forEach((m, i) => { if (MK.preview) { x.fillStyle = '#111'; x.fillRect(m.x * W, m.y * H, m.w * W, m.h * H); } else { x.fillStyle = 'rgba(17,17,17,.6)'; x.fillRect(m.x * W, m.y * H, m.w * W, m.h * H); x.lineWidth = Math.max(2, W / 300); x.strokeStyle = i === MK.sel ? '#E2B56A' : '#9DBA88'; x.strokeRect(m.x * W, m.y * H, m.w * W, m.h * H); } }); drawMarks(x, MK.cur ? [...MK.marks, MK.cur] : MK.marks, 0, 0, W, H); };
   draw();
   if (MK.zoom > 1) { const fit = cv.getBoundingClientRect().width; cv.style.maxWidth = 'none'; cv.style.maxHeight = 'none'; cv.style.width = fit * MK.zoom + 'px'; }
   if (keepScroll) { const st = ov.querySelector('.stage'); st.scrollLeft = keepScroll[0]; st.scrollTop = keepScroll[1]; }
   if (MK.preview || MK.pan) return;
   const pt = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]; };
   let tmp = null;
+  if (MK.tool !== 'mask') {
+    const eraseAt = (px, py) => { const n = MK.marks.length; MK.marks = MK.marks.filter((m) => { if (m.t === 'pen') return !m.pts.some(([a, b]) => Math.hypot(a - px, b - py) < 0.025); const rx = m.w / 2, ry = m.h / 2, v = ((px - m.x - rx) / (rx || 1e-3)) ** 2 + ((py - m.y - ry) / (ry || 1e-3)) ** 2; return !(v > 0.55 && v < 1.6); }); if (MK.marks.length !== n) draw(); };
+    cv.onpointerdown = (e) => { const [px, py] = pt(e); cv.setPointerCapture(e.pointerId); MK.mode = MK.tool; if (MK.tool === 'pen') MK.cur = { t: 'pen', c: MK.color, pts: [[px, py]] }; else if (MK.tool === 'circle') { MK.cur = { t: 'circle', c: MK.color, x: px, y: py, w: 0, h: 0 }; MK.start = [px, py]; } else eraseAt(px, py); draw(); };
+    cv.onpointermove = (e) => { if (!MK.mode) return; const [px, py] = pt(e); if (MK.mode === 'pen') { MK.cur.pts.push([+px.toFixed(4), +py.toFixed(4)]); draw(); } else if (MK.mode === 'circle') { const [sx, sy] = MK.start; Object.assign(MK.cur, { x: Math.min(sx, px), y: Math.min(sy, py), w: Math.abs(px - sx), h: Math.abs(py - sy) }); draw(); } else eraseAt(px, py); };
+    cv.onpointerup = cv.onpointercancel = () => { if (MK.cur && (MK.cur.t === 'pen' || MK.cur.w > 0.01 || MK.cur.h > 0.01)) MK.marks.push(MK.cur); MK.cur = null; MK.mode = null; renderMask(); };
+    return;
+  }
   cv.onpointerdown = (e) => { const [px, py] = pt(e); cv.setPointerCapture(e.pointerId); const hit = MK.masks.findIndex((m) => px >= m.x && px <= m.x + m.w && py >= m.y && py <= m.y + m.h); if (hit >= 0) { MK.sel = hit; MK.mode = 'move'; MK.start = [px, py, { ...MK.masks[hit] }]; } else { MK.sel = -1; MK.mode = 'draw'; MK.start = [px, py]; } draw(); };
   cv.onpointermove = (e) => { if (!MK.mode) return; const [px, py] = pt(e); if (MK.mode === 'move') { const [sx, sy, o] = MK.start; const m = MK.masks[MK.sel]; m.x = Math.max(0, Math.min(1 - m.w, o.x + px - sx)); m.y = Math.max(0, Math.min(1 - m.h, o.y + py - sy)); draw(); } else { const [sx, sy] = MK.start; tmp = { x: Math.min(sx, px), y: Math.min(sy, py), w: Math.abs(px - sx), h: Math.abs(py - sy) }; draw(tmp); } };
   cv.onpointerup = cv.onpointercancel = () => { if (MK.mode === 'draw' && tmp && tmp.w > 0.01 && tmp.h > 0.008) { MK.masks.push(tmp); MK.sel = MK.masks.length - 1; } MK.mode = null; tmp = null; renderMask(); };
@@ -1768,6 +1844,7 @@ async function renderDoc(d, mask) { // 回傳 canvas
   const im = await getImg(d.fileId); if (!im) throw new Error('圖片讀取失敗');
   const cv = document.createElement('canvas'); cv.width = im.width; cv.height = im.height; const x = cv.getContext('2d'); x.drawImage(im, 0, 0);
   if (mask) { x.fillStyle = '#111'; d.masks.forEach((m) => x.fillRect(m.x * cv.width, m.y * cv.height, m.w * cv.width, m.h * cv.height)); }
+  drawMarks(x, d.marks, 0, 0, cv.width, cv.height);
   return cv;
 }
 const toBlob = (cv, type = 'image/jpeg') => new Promise((ok) => cv.toBlob((b) => ok(b), type, 0.85));

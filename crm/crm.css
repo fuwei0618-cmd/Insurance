@@ -396,3 +396,12 @@ summary .tagpill{margin-left:4px}
 .zoombar .btn{padding:5px 12px}
 .zoombar .btn:disabled{opacity:.35}
 .docnote{font-size:11px;color:var(--muted);padding:3px 6px;border-bottom:1px solid var(--line);background:var(--card);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.doc.refpick{cursor:pointer;position:relative}
+.doc.refpick:not(.on) canvas{opacity:.3;filter:grayscale(1)}
+.doc.refpick .sdcheck{z-index:1}
+.doc.refpick.on .sdcheck{background:var(--accent);border-color:var(--accent);color:#fff}
+.mktools{display:flex;flex-wrap:wrap;gap:6px}
+.mktools .btn{padding:6px 10px;font-size:13px}
+.mkcolors{display:flex;gap:8px}
+.mkcolor{width:30px;height:30px;border-radius:50%;border:3px solid var(--card);box-shadow:0 0 0 1px var(--line)}
+.mkcolor.on{box-shadow:0 0 0 2px var(--ink)}
