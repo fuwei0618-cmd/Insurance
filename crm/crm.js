@@ -295,7 +295,44 @@ const STATUS = ['進行中', '待回覆', '已結案'];
 const ITEMS = ['住院醫療', '實支實付', '住院日額', '手術', '意外醫療', '意外失能', '骨折', '重大傷病', '癌症', '長照失能', '門診', '產險-車險', '產險-住火', '產險-旅平'];
 const CAUSE = { '疾病': ['消化系統', '呼吸系統', '心血管', '骨科', '婦科', '腫瘤', '眼耳鼻喉', '其他疾病'], '意外': ['交通事故', '跌倒', '運動傷害', '職業傷害', '燒燙傷', '其他意外'] };
 const TPLGROUPS = ['LINE', '簡訊', '信件', '其他'];
-const SOPGROUPS = ['壽險·新契約', '壽險·保全', '壽險·保費', '壽險·保校', '壽險·理賠', '壽險·房貸', '壽險·服務', '壽險·其他', '產險', '商品·T字障', '推薦連結'];
+const DEFAULT_SOPGROUPS = ['壽險·新契約', '壽險·保全', '壽險·保費', '壽險·保校', '壽險·理賠', '壽險·房貸', '壽險·服務', '壽險·其他', '產險', '商品·T字障', '推薦連結'];
+const SOPGROUPS = [...DEFAULT_SOPGROUPS];
+function syncSopGroups() { const list = Vault.get('settings', 'sopgroups')?.list; const next = list?.length ? list : DEFAULT_SOPGROUPS; if (next.join('|') !== SOPGROUPS.join('|')) SOPGROUPS.splice(0, SOPGROUPS.length, ...next); }
+const sopFallback = () => (SOPGROUPS.includes('壽險·其他') ? '壽險·其他' : SOPGROUPS[SOPGROUPS.length - 1]);
+function openSopGroupEditor() { // 跟案件類別一樣：改名會把舊的 SOP 一起改過去；有 SOP 在用的分類不能刪
+  let rows = SOPGROUPS.map((n) => ({ old: n, name: n }));
+  const used = (n) => notes().filter((x) => x.kind === 'sop' && x.group === n).length;
+  const draw = () => {
+    $('ceList').innerHTML = rows.map((r, i) => `<div class="cerow"><input data-ci="${i}" value="${esc(r.name)}" aria-label="分類名稱"><span class="sub">${r.old ? used(r.old) + ' 筆' : '新的'}</span><button class="btn" data-cu="${i}" aria-label="上移" ${i ? '' : 'disabled'}>↑</button><button class="btn" data-cd="${i}" aria-label="下移" ${i < rows.length - 1 ? '' : 'disabled'}>↓</button><button class="btn" data-cx="${i}" aria-label="刪除">✕</button></div>`).join('');
+  };
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>編輯 SOP 分類</h2><button class="btn" id="ceX">取消</button><button class="btn pri" id="ceSave">儲存</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:560px;margin:0 auto;width:100%">
+   <div class="note">改名字，原本在這個分類的 SOP 會一起改過去。裡面還有 SOP 的分類不能刪，要先把那些 SOP 改到別的分類。</div>
+   <div id="ceList"></div>
+   <div class="actions"><input class="search" id="ceNew" placeholder="新分類名稱，例如：商品·行銷" style="flex:1"><button class="btn" id="ceAdd">＋ 新增</button></div></div></div>`;
+  draw();
+  $('ceList').oninput = (e) => { const i = e.target.dataset.ci; if (i != null) rows[+i].name = e.target.value; };
+  $('ceList').onclick = (e) => {
+    const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
+    if (d.cu) { const i = +d.cu; [rows[i - 1], rows[i]] = [rows[i], rows[i - 1]]; }
+    if (d.cd) { const i = +d.cd; [rows[i + 1], rows[i]] = [rows[i], rows[i + 1]]; }
+    if (d.cx) { const r = rows[+d.cx]; if (r.old && used(r.old)) { toast(`「${r.old}」裡還有 ${used(r.old)} 筆 SOP，先把它們改到別的分類`); return; } rows.splice(+d.cx, 1); }
+    draw();
+  };
+  const add = () => { const v = $('ceNew').value.trim(); if (!v) return; if (rows.some((r) => r.name.trim() === v)) { toast('已經有這個分類'); return; } rows.push({ old: '', name: v }); $('ceNew').value = ''; draw(); };
+  $('ceAdd').onclick = add; $('ceNew').onkeydown = (e) => { if (e.key === 'Enter') add(); };
+  $('ceX').onclick = () => (ov.innerHTML = '');
+  $('ceSave').onclick = () => {
+    const names = rows.map((r) => r.name.trim());
+    if (!names.length) { toast('至少要留一個分類'); return; }
+    if (names.some((n) => !n)) { toast('分類名稱不能空白'); return; }
+    if (new Set(names).size !== names.length) { toast('有重複的分類名稱'); return; }
+    const m = new Map(rows.filter((r) => r.old && r.old !== r.name.trim()).map((r) => [r.old, r.name.trim()]));
+    if (m.size) { notes().forEach((n) => { if (n.kind === 'sop' && m.has(n.group)) { n.group = m.get(n.group); Vault.put('notes', n); } }); if (m.has(S.sopGroup)) S.sopGroup = m.get(S.sopGroup); }
+    if (S.sopGroup !== '全部' && !names.includes(S.sopGroup)) S.sopGroup = '全部';
+    Vault.put('settings', { id: 'sopgroups', list: names }); syncSopGroups(); ov.innerHTML = ''; App.render(); toast('SOP 分類已更新');
+  };
+}
 const linkify = (html) => html.replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.length > 60 ? u.slice(0, 57) + '…' : u}</a>`);
 
 /* ================= 狀態與畫面 ================= */
@@ -318,7 +355,7 @@ const syncHTML = (cls = '') => `<span class="sync ${cls}" data-s="${Vault.state}
 const App = {
   render() {
     if (!Vault.db) return;
-    syncCats(); if (S.cat !== '全部' && !CATS.includes(S.cat)) S.cat = '全部';
+    syncCats(); syncSopGroups(); if (S.cat !== '全部' && !CATS.includes(S.cat)) S.cat = '全部';
     const v = S.view;
     app.className = 'app' + ((v === 'cases' || v === 'refs' || v === 'clients' || v === 'calls') ? '' : ' single') + (S.showDetail ? ' showdetail' : '') + (MOCK ? ' test' : '');
     let h = MOCK ? '<div class="testbar">測試模式：資料只存在這台裝置，不會上傳 OneDrive</div>' : '';
@@ -977,7 +1014,7 @@ function notesHTML(kind) {
   const q = S.q.trim(); const shown = list.filter((n) => !q || (n.title + n.body).includes(q));
   return `<h1 style="display:flex;justify-content:space-between;align-items:center;gap:8px">${kind === 'sop' ? 'SOP 作業流程' : '話術範本'}<button class="btn" data-act="import">批次匯入</button></h1>
   <input class="search" id="q" placeholder="搜尋" value="${esc(S.q)}" style="max-width:420px" autocomplete="off">
-  ${kind === 'sop' ? `<div class="chips">${['全部', ...groups].map((g) => `<button class="chip${S.sopGroup === g ? ' on' : ''}" data-sg="${g}">${g}</button>`).join('')}</div>` : ''}
+  ${kind === 'sop' ? `<div class="chips">${['全部', ...groups].map((g) => `<button class="chip${S.sopGroup === g ? ' on' : ''}" data-sg="${esc(g)}">${esc(g)}</button>`).join('')}<button class="chip chipedit" data-act="editsopgroups">⚙ 編輯</button></div>` : ''}
   ${kind === 'tpl' ? `<div class="chips">${['全部', ...groups].map((g) => `<button class="chip${S.tplGroup === g ? ' on' : ''}" data-tg="${g}">${g}</button>`).join('')}</div>
    <div class="chips"><span class="sub" style="align-self:center">相關案件</span>${['全部', '通用', ...usedCats].map((g) => `<button class="chip${S.tplCat === g ? ' on' : ''}" data-tc="${g}">${g}</button>`).join('')}</div>` : ''}
   <div class="cards">${shown.map((n) => `<div class="card"><h3><span>${esc(n.title)}</span><span class="sub">${esc(n.group)}${n.cat ? ' · ' + esc(n.cat) : ''}</span></h3><pre>${linkify(esc(n.body))}</pre>${nimgsHTML(n)}<div class="mini">${kind === 'tpl' || /https?:\/\//.test(n.body) ? `<button data-copy="${n.id}">複製</button>` : ''}<button data-editnote="${n.id}">編輯</button><button data-delnote="${n.id}">刪除</button></div></div>`).join('') || `<div class="empty">${kind === 'sop' ? '還沒有流程。用下面的表單把 Notion、LINE 記事本裡的步驟加進來。' : '還沒有範本。'}</div>`}</div>
@@ -1145,6 +1182,7 @@ app.addEventListener('click', async (e) => {
       break;
     }
     case 'editcats': openCatEditor(); break;
+    case 'editsopgroups': openSopGroupEditor(); break;
     case 'pasteimg': pasteFromClipboard(); break;
     case 'editsteps': openStepEditor(c.cat); break;
     case 'linkcase': openLinkPicker(c); break;
@@ -1268,7 +1306,7 @@ function parseImport(text) {
   if (!Array.isArray(arr)) arr = [arr];
   const items = arr.filter((x) => x && typeof x === 'object' && KIND_LABEL[x.kind] && (x.title || x.body)).map((x) => ({
     kind: x.kind,
-    group: x.kind === 'sop' ? (SOPGROUPS.includes(x.group) ? x.group : '壽險·其他') : x.kind === 'tpl' ? (TPLGROUPS.includes(x.group) ? x.group : '其他') : '電話',
+    group: x.kind === 'sop' ? (SOPGROUPS.includes(x.group) ? x.group : sopFallback()) : x.kind === 'tpl' ? (TPLGROUPS.includes(x.group) ? x.group : '其他') : '電話',
     title: String(x.title || '未命名').slice(0, 200), body: String(x.body || ''), cat: x.kind === 'tpl' && CATS.includes(x.cat) ? x.cat : '',
   }));
   if (!items.length) return { err: '裡面沒有可以匯入的項目' };
@@ -1357,7 +1395,7 @@ function takeImages(files) {
   if (!imgs.length) { if (files.length && !pdfs.length) toast('只能放圖片或 PDF'); return; }
   if (NE) { toast('加入中…'); addNoteImages(NE, imgs).then(() => NE?.refresh?.()); return; }
   if (!SC && S.view === 'clients') { const cl = curClient(); if (!cl) { toast('先選一位客戶，再把證件拖進來'); return; } addImagesDirect(cl, 'clients', imgs, ''); return; }
-  if (!SC && (S.view === 'sop' || S.view === 'tpl')) { const n = Vault.put('notes', { kind: S.view, group: S.view === 'sop' ? (S.sopGroup === '全部' ? '壽險·其他' : S.sopGroup) : '其他', title: '', body: '', images: [] }); editNote(n.id, true); toast('加入中…'); addNoteImages(n, imgs).then(() => NE?.refresh?.()); return; }
+  if (!SC && (S.view === 'sop' || S.view === 'tpl')) { const n = Vault.put('notes', { kind: S.view, group: S.view === 'sop' ? (S.sopGroup === '全部' ? sopFallback() : S.sopGroup) : '其他', title: '', body: '', images: [] }); editNote(n.id, true); toast('加入中…'); addNoteImages(n, imgs).then(() => NE?.refresh?.()); return; }
   if (!SC) { let t = S.view === 'cases' ? cur() : null; if (!t) { t = newCase('理賠'); S.view = 'cases'; } addImagesDirect(t, 'cases', imgs, curFolder(t)); return; }
   if (SC.img) SC.queue.push(...imgs); else onFiles(imgs);
   if (imgs.length > 1) toast(`收到 ${imgs.length} 張，一張一張對齊後按「加入這頁」`);
