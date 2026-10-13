@@ -1116,9 +1116,12 @@ function refDetailHTML() {
   <div class="dhead"><h1 style="margin:0;font-size:20px">${esc(refTitle(c))}</h1></div>
   <div class="sec"><h2>分類</h2><div class="reftop">${c.items.map((x) => `<span class="pill p-go">${esc(x)}</span>`).join('')}${c.causeType ? `<span class="pill p-wait">${esc(c.causeType)}${c.causeDetail ? ' › ' + esc(c.causeDetail) : ''}</span>` : ''}</div></div>
   ${cost ? `<div class="sec"><h2>理賠金額</h2><div class="calcline">花費 ${cost.toLocaleString()} × ${ratio || '—'}% = ${auto ? auto.toLocaleString() : '—'}${c.payout ? `　實際理賠 ${(+c.payout).toLocaleString()}` : ''}</div></div>` : ''}
-  ${c.docs.some((d) => !isPdf(d)) ? (() => { const on = new Set(refDocs(c).map(([d]) => dkey(d))), all = c.docs.map((d, i) => [d, i]).filter(([d]) => !isPdf(d)); return `<div class="sec"><h2>文件（遮罩版）<span class="sub">選了 ${on.size} / ${all.length} 張</span></h2>
-   <div class="actions" style="margin:0 0 8px"><span class="sub">點文件可以選或取消，只有選的會放進參考和分享版</span><button class="linkbtn" data-refpick="all">全選</button><button class="linkbtn" data-refpick="none">全不選</button>${(c.folders || []).some((f) => f.includes('理賠')) ? '<button class="linkbtn" data-refpick="claim">只選理賠資料夾</button>' : ''}</div>
-   <div class="docs">${all.map(([d, i]) => `<div class="doc refpick${on.has(dkey(d)) ? ' on' : ''}" data-refdoc="${esc(dkey(d))}"><canvas data-rthumb="${i}" width="240" height="320"></canvas><span class="sdcheck">✓</span>${d.note ? `<div class="docnote">${esc(d.note)}</div>` : ''}</div>`).join('')}</div>${on.size ? '<div class="actions"><button class="btn pri" data-act="rshare">匯出分享版</button></div>' : ''}</div>`; })() : ''}
+  ${c.docs.some((d) => !isPdf(d)) ? (() => { const rd = refDocs(c), on = new Set(rd.map(([d]) => dkey(d))), all = c.docs.map((d, i) => [d, i]).filter(([d]) => !isPdf(d));
+   if (!S.refPick) return `<div class="sec"><h2>文件（遮罩版）<span class="sub">${rd.length} 張・點圖片可以放大、左右滑</span><button class="linkbtn" data-act="refpickmode">選擇要放的文件</button></h2>
+     <div class="docs">${rd.map(([d, i], k) => `<div class="doc refview" data-refview="${k}"><canvas data-rthumb="${i}" width="240" height="320"></canvas>${d.note ? `<div class="docnote">${esc(d.note)}</div>` : ''}</div>`).join('') || '<div class="sub">還沒有選文件，按右上「選擇要放的文件」。</div>'}</div>${rd.length ? '<div class="actions"><button class="btn pri" data-act="rshare">匯出分享版</button></div>' : ''}</div>`;
+   return `<div class="sec"><h2>選擇要放的文件<span class="sub">選了 ${on.size} / ${all.length} 張</span><button class="btn pri" data-act="refpickmode" style="padding:4px 12px;font-size:13px">完成</button></h2>
+   <div class="actions" style="margin:0 0 8px"><span class="sub">點文件選或取消</span><button class="linkbtn" data-refpick="all">全選</button><button class="linkbtn" data-refpick="none">全不選</button>${(c.folders || []).some((f) => f.includes('理賠')) ? '<button class="linkbtn" data-refpick="claim">只選理賠資料夾</button>' : ''}</div>
+   <div class="docs">${all.map(([d, i]) => `<div class="doc refpick${on.has(dkey(d)) ? ' on' : ''}" data-refdoc="${esc(dkey(d))}"><canvas data-rthumb="${i}" width="240" height="320"></canvas><span class="sdcheck">✓</span>${d.note ? `<div class="docnote">${esc(d.note)}</div>` : ''}</div>`).join('')}</div></div>`; })() : ''}
   <div class="note">這頁只顯示分類、計算和遮罩後的文件，不顯示客戶姓名。要修改內容請回到「案件」。</div>
   <div class="actions"><button class="btn" data-act="gocase">打開原案件</button></div>`;
 }
@@ -1213,6 +1216,8 @@ function drawThumbs() {
 function newCase(cat) { const c = saveCase({ date: localDay(), client: '', title: '', cat, status: '進行中', items: [], causeType: '', causeDetail: '', diag: '', next: '', cost: '', ratio: '', payout: '', notes: '', docs: [], isRef: false }); S.sel = c.id; S.showDetail = true; return c; }
 function armConfirm(b, label) { if (b.dataset.confirm) return true; b.dataset.confirm = 1; b.textContent = label; setTimeout(() => { if (b.isConnected) { delete b.dataset.confirm; App.render(); } }, 4000); return false; }
 app.addEventListener('click', async (e) => {
+  const rview = e.target.closest('[data-refview]'); // 理賠參考：點圖片看遮罩版，可以左右翻
+  if (rview) { const rc = Vault.get('cases', S.refSel); if (!rc) return; const list = refDocs(rc).map(([x]) => x); showGallery({ list, i: +rview.dataset.refview, masked: true }); return; }
   const rdoc = e.target.closest('[data-refdoc]'); // 理賠參考：點文件選／取消
   if (rdoc) { const rc = Vault.get('cases', S.refSel); if (!rc) return; const cur = rc.refDocIds || refDocs(rc).map(([x]) => dkey(x)), k = rdoc.dataset.refdoc; rc.refDocIds = cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]; saveCase(rc); App.render(); return; }
   const gn = e.target.closest('[data-gonode]'); if (gn) { S.view = 'clients'; S.csel = gn.dataset.gonode; S.ccat = '全部'; S.showDetail = true; S.showIds = false; App.render(); return; }
@@ -1223,6 +1228,7 @@ app.addEventListener('click', async (e) => {
   if (d.cat) { S.cat = d.cat; App.render(); return; }
   if (d.cg) { S.cg = d.cg; S.cat = '全部'; const g = GROUPS.find((x) => x.name === d.cg); if (g) { const has = g.cats.filter((k) => cases().some((c) => c.cat === k)); if (has.length === 1) S.cat = has[0]; } App.render(); return; }
   if (d.sel) { S.folder = '全部'; S.sel = d.sel; S.showDetail = true; App.render(); return; }
+  if (d.rsel) { S.refPick = false; }
   if (d.rsel) { S.refSel = d.rsel; S.showDetail = true; App.render(); return; }
   if (d.ritem) { S.refItem = d.ritem; App.render(); return; }
   if (d.rcause) { S.refCause = d.rcause; S.refDet = ''; App.render(); return; }
@@ -1320,7 +1326,8 @@ app.addEventListener('click', async (e) => {
     case 'delcall': if (armConfirm(b, '再按一次確定刪除')) { Vault.del('calls', S.ksel); S.ksel = null; S.showDetail = false; App.render(); } break;
     case 'newtpl': { const ch = S.tplGroup !== '全部' ? S.tplGroup : 'LINE', tg = GROUPS.find((x) => x.name === S.tg); const n = Vault.put('notes', { kind: 'tpl', group: ch, channels: [ch], cat: S.tplCat !== '全部' ? S.tplCat : tg?.cats[0] || '', title: '', body: '', images: [] }); editNote(n.id, true); break; }
     case 'edititems': editItems(); break;
-    case 'pickref': S.view = 'refs'; S.refSel = c.id; S.refItem = '全部'; S.refCause = '全部'; S.refDet = ''; S.showDetail = true; App.render(); break;
+    case 'refpickmode': S.refPick = !S.refPick; App.render(); break;
+    case 'pickref': S.refPick = true; S.view = 'refs'; S.refSel = c.id; S.refItem = '全部'; S.refCause = '全部'; S.refDet = ''; S.showDetail = true; App.render(); break;
     case 'newsop': { const g = GROUPS.find((x) => x.name === S.sg); const n = Vault.put('notes', { kind: 'sop', v2: true, cat: S.sc !== '全部' ? S.sc : g?.cats[0] || '', kinds: S.sk ? [S.sk] : [], tools: S.st ? [S.st] : [], title: '', body: '', images: [] }); editNote(n.id, true); break; }
     case 'sopfor': S.view = 'sop'; S.sg = groupOf(c.cat) || '全部'; S.sc = groupOf(c.cat) ? c.cat : '全部'; S.sk = ''; S.st = ''; S.q = ''; S.showDetail = false; App.render(); break;
     case 'tplfor': S.view = 'tpl'; S.tg = groupOf(c.cat) || '全部'; S.tplCat = groupOf(c.cat) ? c.cat : '全部'; S.tplGroup = '全部'; S.q = ''; S.showDetail = false; App.render(); break;
@@ -1726,7 +1733,7 @@ function openGallery(btn, docs, key) {
   openViewer(list[i], false, { list, i });
 }
 async function openViewer(d, overEdit, nav) {
-  if (nav && nav.list.length > 1) return showGallery(nav);
+  if (nav && (nav.list.length > 1 || nav.masked)) return showGallery(nav);
   const url = await Files.url(d.fileId); if (!url) { toast('檔案讀取失敗，請確認網路'); return; }
   if (isPdf(d)) {
     ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${esc(d.name)}</h2><button class="btn" id="vShare">分享／儲存</button><button class="btn pri" id="vClose">關閉</button></div><div class="sub" style="padding:6px 16px">如果只看到第一頁，按「分享／儲存」用「檔案」或 PDF 閱讀器打開。</div><iframe src="${url}" title="${esc(d.name)}" style="flex:1;width:100%;border:0;background:#fff"></iframe></div>`;
@@ -1787,11 +1794,12 @@ async function openSend(n, c) { // 傳送前可以微調文字、勾選要附的
 let GV = null;
 async function showGallery(nav) {
   GV = nav; const d = nav.list[nav.i], n = nav.list.length;
-  const url = await Files.url(d.fileId); if (GV !== nav) return; if (!url) { toast('檔案讀取失敗，請確認網路'); return; }
+  let url = null; try { url = nav.masked && !isPdf(d) ? (await renderDoc(d, true)).toDataURL('image/jpeg', 0.9) : await Files.url(d.fileId); } catch (e) { } // 理賠參考：看的是遮罩版
+  if (GV !== nav) return; if (!url) { toast('檔案讀取失敗，請確認網路'); return; }
   const body = isPdf(d) ? `<iframe src="${url}" title="${esc(d.name)}" style="flex:1;width:100%;border:0;background:#fff;min-height:70vh"></iframe>` : `<img src="${url}" alt="${esc(d.name)}" class="gvimg">`;
   ov.innerHTML = `<div class="ov gv"><div class="ovhead"><h2>${esc(d.name)}</h2><span class="gvcnt">${nav.i + 1} / ${n}</span><button class="btn" id="gvPrev" ${nav.i ? '' : 'disabled'} aria-label="上一張">‹ 上一張</button><button class="btn" id="gvNext" ${nav.i < n - 1 ? '' : 'disabled'} aria-label="下一張">下一張 ›</button>${isPdf(d) ? '<button class="btn" id="vShare">分享／儲存</button>' : ''}<button class="btn pri" id="vClose">關閉</button></div>
    <div class="ovbody gvbody">${body}<button class="gvside l" id="gvL" ${nav.i ? '' : 'hidden'} aria-label="上一張">‹</button><button class="gvside r" id="gvR" ${nav.i < n - 1 ? '' : 'hidden'} aria-label="下一張">›</button></div></div>`;
-  const go = (k) => { const j = nav.i + k; if (j < 0 || j >= n) return; showGallery({ list: nav.list, i: j }); };
+  const go = (k) => { const j = nav.i + k; if (j < 0 || j >= n) return; showGallery({ ...nav, i: j }); };
   $('gvPrev').onclick = $('gvL').onclick = () => go(-1);
   $('gvNext').onclick = $('gvR').onclick = () => go(1);
   $('vClose').onclick = () => { ov.innerHTML = ''; GV = null; };
