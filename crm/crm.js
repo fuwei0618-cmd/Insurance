@@ -1192,7 +1192,7 @@ app.addEventListener('click', async (e) => {
   if (d.mask && c) { openMask(c, +d.mask); return; }
   if (d.view && c) { openGallery(b, c.docs, 'view'); return; }
   if (d.deldoc && c) { if (armConfirm(b, '確定？')) { const [doc] = c.docs.splice(+d.deldoc, 1); saveCase(c); if (doc) { Files.remove(doc.fileId, { coll: 'cases', recId: c.id, doc }); toast('已移到「最近刪除」，30 天內可以救回'); } App.render(); } return; }
-  if (d.copy && Vault.get('notes', d.copy)?.images?.length) { e.preventDefault(); openSend(Vault.get('notes', d.copy), d.forcase ? c : null); return; }
+  if (d.copy && Vault.get('notes', d.copy)) { e.preventDefault(); openSend(Vault.get('notes', d.copy), d.forcase ? c : null); return; }
   if (d.copy) { e.preventDefault(); const n = Vault.get('notes', d.copy); const txt = fillTpl(n.body, d.forcase ? c : null); try { await navigator.clipboard.writeText(txt); toast('已複製' + (d.forcase && c?.client ? `（已帶入 ${c.client}）` : '')); } catch (err) { toast('無法自動複製，請長按文字選取'); } return; }
   if (d.tg) { S.tplGroup = S.tplGroup === d.tg ? '全部' : d.tg; App.render(); return; }
   if (d.tgg) { S.tg = d.tgg; S.tplCat = '全部'; if (d.tgg === '全部') S.tplGroup = '全部'; App.render(); return; }
@@ -1656,25 +1656,40 @@ async function pngBlob(fileId) {
   const cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = bmp.height; cv.getContext('2d').drawImage(bmp, 0, 0);
   return await new Promise((ok) => cv.toBlob(ok, 'image/png'));
 }
-async function openSend(n, c) {
+async function openSend(n, c) { // 傳送前可以微調文字、勾選要附的圖片
   const txt = fillTpl(n.body, c), imgs = n.images || [];
   const canShare = !!navigator.canShare;
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>傳送 · ${esc(n.title)}</h2><button class="btn pri" id="sdX">關閉</button></div>
-  <div class="ovbody" style="flex-direction:column;max-width:640px;margin:0 auto;width:100%">
-   ${canShare ? `<button class="btn pri" id="sdShare" style="align-self:flex-start">分享（文字＋${imgs.length} 張圖）</button><div class="sub">會跳出分享選單，選 LINE 或要傳的人。LINE 有時只收圖片、沒帶到文字，那就再按下面的「複製文字」貼上。</div>` : '<div class="sub">電腦上剪貼簿一次只能放一樣：先複製文字貼上，再一張一張複製圖片貼上。</div>'}
-   <div class="sendbox"><pre>${esc(txt)}</pre><button class="btn" id="sdText">複製文字</button></div>
-   <div class="sendimgs">${imgs.map((f, i) => `<div class="sendimg"><img data-sdimg="${f}" alt=""><button class="btn" data-sdcopy="${i}">複製這張</button></div>`).join('')}</div></div></div>`;
+  <div class="ovbody" style="flex-direction:column;max-width:680px;margin:0 auto;width:100%">
+   <div class="sendbox"><div class="sub">可以直接在這裡改，改的只用在這次，不會動到範本${c?.client ? `（已帶入 ${esc(c.client)}）` : ''}</div>
+    <textarea id="sdTxt" class="grow" rows="6">${esc(txt)}</textarea>
+    <div class="actions" style="margin:0"><button class="btn pri" id="sdText">複製文字</button><button class="linkbtn" id="sdReset">恢復原文</button><button class="linkbtn" id="sdSave">把修改存回範本</button></div></div>
+   ${imgs.length ? `<div class="sub">圖片 · 點圖片可以取消勾選，只傳要的</div>
+   <div class="sendimgs">${imgs.map((f, i) => `<div class="sendimg on" data-sdi="${i}"><img data-sdimg="${f}" alt=""><span class="sdcheck">✓</span><button class="btn" data-sdcopy="${i}">複製這張</button></div>`).join('')}</div>` : ''}
+   ${canShare ? `<button class="btn pri" id="sdShare" style="align-self:flex-start">分享（文字${imgs.length ? '＋勾選的圖片' : ''}）</button><div class="sub">會跳出分享選單，選 LINE 或要傳的人。LINE 有時只收圖片、沒帶到文字，那就再按「複製文字」貼上。</div>` : imgs.length ? '<div class="sub">電腦上剪貼簿一次只能放一樣：先複製文字貼上，再一張一張複製圖片貼上。</div>' : ''}
+  </div></div>`;
+  fitNotes();
   ov.querySelectorAll('[data-sdimg]').forEach((im) => Files.url(im.dataset.sdimg).then((u) => { if (u) im.src = u; }));
+  ov.querySelectorAll('.sendimg').forEach((el) => (el.onclick = (e) => { if (e.target.closest('button')) return; el.classList.toggle('on'); }));
+  const picked = () => [...ov.querySelectorAll('.sendimg.on')].map((el) => imgs[+el.dataset.sdi]);
+  $('sdTxt').oninput = (e) => fitNote(e.target);
   $('sdX').onclick = () => (ov.innerHTML = '');
-  $('sdText').onclick = async () => { try { await navigator.clipboard.writeText(txt); toast('文字已複製'); } catch (e) { toast('無法自動複製，請長按文字選取'); } };
+  $('sdReset').onclick = () => { $('sdTxt').value = txt; fitNote($('sdTxt')); };
+  $('sdSave').onclick = () => {
+    let body = $('sdTxt').value; if (c?.client) body = body.split(c.client.trim()).join('{客戶}'); body = body.split(fmtDay(localDay())).join('{日期}');
+    n.body = body; Vault.put('notes', n); App.render(); toast('已存回範本');
+  };
+  $('sdText').onclick = async () => { try { await navigator.clipboard.writeText($('sdTxt').value); toast('文字已複製'); } catch (e) { toast('無法自動複製，請長按文字選取'); } };
   ov.querySelectorAll('[data-sdcopy]').forEach((b) => (b.onclick = async () => {
     try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob(imgs[+b.dataset.sdcopy]) })]); toast('圖片已複製，到 LINE 貼上'); }
     catch (e) { toast('這個瀏覽器不能複製圖片，請用「分享」或長按圖片儲存'); }
   }));
   if ($('sdShare')) $('sdShare').onclick = async () => {
     try {
-      const files = await Promise.all(imgs.map(async (f, i) => new File([await pngBlob(f)], `${(n.title || '圖片').replace(/[\\/:*?"<>|]/g, '_')}-${i + 1}.png`, { type: 'image/png' })));
-      const data = { text: txt, files }; if (!navigator.canShare(data)) { toast('這台裝置不能一次分享圖片，請一張一張複製'); return; }
+      const sel = picked();
+      const files = await Promise.all(sel.map(async (f, i) => new File([await pngBlob(f)], `${(n.title || '圖片').replace(/[\\/:*?"<>|]/g, '_')}-${i + 1}.png`, { type: 'image/png' })));
+      const data = files.length ? { text: $('sdTxt').value, files } : { text: $('sdTxt').value };
+      if (!navigator.canShare(data)) { toast('這台裝置不能一次分享圖片，請一張一張複製'); return; }
       await navigator.share(data);
     } catch (e) { if (e.name !== 'AbortError') toast('分享失敗，請改用複製'); }
   };
