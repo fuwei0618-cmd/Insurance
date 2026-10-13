@@ -106,6 +106,14 @@ const Mock = {
 /* ================= 資料庫（記憶體中明文，存檔時加密） ================= */
 const COLLS = ['cases', 'notes', 'files', 'clients', 'settings', 'calls', 'rels'];
 const emptyDb = () => Object.fromEntries([['v', 1], ...COLLS.map((c) => [c, {}])]);
+const PILL_LABEL = { synced: '✓ 已儲存', saving: '儲存中…', pending: '儲存中…', offline: '⚠ 離線，已存在這台裝置', editing: '編輯中…（離開欄位就會儲存）' };
+function savePill(s) {
+  let el = document.getElementById('savePill');
+  if (!el) { el = document.createElement('div'); el.id = 'savePill'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite'); document.body.appendChild(el); }
+  if (!Vault.key) { el.hidden = true; return; }
+  el.hidden = false; el.dataset.s = s; el.textContent = PILL_LABEL[s] || '';
+  clearTimeout(savePill.t); if (s === 'synced') savePill.t = setTimeout(() => { el.dataset.s = 'idle'; }, 2500);
+}
 const SYNC_LABEL = { synced: '已同步 OneDrive', saving: '同步中…', pending: '待同步…', offline: '離線中，連上網路會自動同步', idle: '—' };
 const Vault = {
   key: null, salt: null, db: null, eTag: null, dirty: false, saving: false, state: 'idle',
@@ -161,7 +169,7 @@ const Vault = {
       App.render();
     } catch (e) { if (force) throw e; }
   },
-  setState(s) { this.state = s; document.querySelectorAll('.sync').forEach((el) => { el.textContent = SYNC_LABEL[s] || s; el.dataset.s = s; }); },
+  setState(s) { this.state = s; document.querySelectorAll('.sync').forEach((el) => { el.textContent = SYNC_LABEL[s] || s; el.dataset.s = s; }); savePill(s); },
   lock() { this.key = null; this.db = null; this.salt = null; this.eTag = null; this.dirty = false; },
   put(coll, rec) { const now = new Date().toISOString(); if (!rec.id) rec.id = uid(); if (!rec.createdAt) rec.createdAt = now; rec.updatedAt = now; this.db[coll][rec.id] = rec; this.markDirty(); return rec; },
   del(coll, id) { if (!this.db[coll][id]) return; this.db[coll][id] = { id, deleted: true, updatedAt: new Date().toISOString() }; this.markDirty(); },
@@ -330,7 +338,7 @@ function caseListHTML() {
   <div class="mobsync">${syncHTML()}</div>
   <input class="search" id="q" placeholder="搜尋客戶、案件、備註" value="${esc(S.q)}" autocomplete="off">
   <div class="chips">${['全部', ...CATS].map((c) => `<button class="chip${S.cat === c ? ' on' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}<button class="chip chipedit" data-act="editcats" aria-label="編輯案件類別">⚙ 編輯</button></div></div>
-  <div class="list">${list.length ? list.map((c) => `<button class="item${c.id === S.sel ? ' on' : ''}" data-sel="${c.id}"><span class="t"><span>${esc(c.client || '未填客戶')} · ${esc(c.title || '未命名')}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${fmtDay(caseDate(c))} · ${esc(caseSummary(c))}${latestStep(c) ? ' · 最新：' + esc(latestStep(c).title) : ''}</span></button>`).join('') : `<div class="empty">${cases().length ? '沒有符合的案件。' : '還沒有案件。按「＋ 新增」，或按「掃描」直接拍文件建案。'}</div>`}</div></section>`;
+  <div class="list">${list.length ? list.map((c) => `<button class="item${c.id === S.sel ? ' on' : ''}" data-sel="${c.id}" title="${esc((c.client || '') + ' · ' + (c.title || ''))}"><span class="t"><span>${esc(c.client || '未填客戶')} · ${esc(c.title || '未命名')}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${fmtDay(caseDate(c))} · ${esc(caseSummary(c))}${latestStep(c) ? ' · 最新：' + esc(latestStep(c).title) : ''}</span></button>`).join('') : `<div class="empty">${cases().length ? '沒有符合的案件。' : '還沒有案件。按「＋ 新增」，或按「掃描」直接拍文件建案。'}</div>`}</div></section>`;
 }
 function caseDetailHTML() {
   const c = cur();
@@ -362,7 +370,7 @@ function caseDetailHTML() {
   ${caseDocsHTML(c)}
   ${linksHTML(c)}
   ${caseTplHTML(c)}
-  <div class="sec"><h2>備註</h2><textarea id="f_notes" data-f="notes" rows="4" aria-label="備註">${esc(c.notes)}</textarea></div>
+  <div class="sec"><h2>備註</h2><textarea id="f_notes" class="grow" data-f="notes" rows="4" aria-label="備註">${esc(c.notes)}</textarea></div>
   <div class="actions">${isClaim ? `<button class="btn${c.isRef ? ' on' : ''}" data-act="ref">${c.isRef ? '✓ 已在理賠參考' : '做成理賠參考'}</button>` : ''}${c.clientId && ['新契約', '建議書', '保全', '產險'].includes(c.cat) ? '<button class="btn" data-act="casedisc">存成客戶告知資料</button>' : ''}<button class="btn danger" data-act="delcase">刪除案件</button></div>`;
 }
 /* ================= 電訪 ================= */
@@ -397,7 +405,7 @@ function callDetailHTML() {
    <label class="f">狀態<select id="kf_status" data-kf="status">${CALL_ST.map((x) => `<option${x === k.status ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
    <label class="f">下次聯絡<input type="date" id="kf_nextDate" data-kf="nextDate" value="${esc(k.nextDate)}"></label>
    <label class="f">來源／名單<input id="kf_source" data-kf="source" value="${esc(k.source)}" placeholder="例如：10 月服務件"></label></div>
-   <label class="f">備註<textarea id="kf_note" data-kf="note" rows="2" placeholder="家庭、保單、個性…">${esc(k.note)}</textarea></label></div>
+   <label class="f">備註<textarea id="kf_note" class="grow" data-kf="note" rows="2" placeholder="家庭、保單、個性…">${esc(k.note)}</textarea></label></div>
   <details class="sec script" open><summary><h2 style="display:inline">話術 SOP</h2></summary>
    ${scs.length ? `<div class="actions" style="align-items:center"><select id="kScript" aria-label="選擇話術">${scs.map((x) => `<option value="${x.id}"${x.id === S.script ? ' selected' : ''}>${esc(x.title)}</option>`).join('')}</select><button class="linkbtn" data-act="editscript">編輯</button><button class="linkbtn" data-act="newscript">＋ 新話術</button></div><pre class="scripttext">${esc(sc?.body || '')}</pre>${nimgsHTML(sc || {})}`
     : `<div class="sub">還沒有話術。可以先用範例改成你自己的說法。</div><div class="actions"><button class="btn pri" data-act="samplescript">用範例開始</button><button class="btn" data-act="newscript">自己寫</button></div>`}</details>
@@ -792,7 +800,7 @@ function clientDetailHTML() {
    ${f('source', '來源／介紹人')}</div>
    ${f('address', '地址')}
    ${x.billAddress || x.workAddress ? `<div class="grid2">${f('billAddress', '收費地址')}${f('workAddress', '公司地址')}</div>` : ''}
-   <label class="f">備註<textarea id="cf_note" data-cf="note" rows="3" placeholder="家庭狀況、保單重點、喜好…">${esc(x.note)}</textarea></label></div>
+   <label class="f">備註<textarea id="cf_note" class="grow" data-cf="note" rows="3" placeholder="家庭狀況、保單重點、喜好…">${esc(x.note)}</textarea></label></div>
   ${disclosureHTML(x)}
   ${relsHTML(x)}
   <div class="sec"><h2>證件與文件 <button class="btn" data-act="toggleids" style="padding:4px 10px;font-size:13px">${S.showIds ? '隱藏證件' : '顯示證件'}</button></h2>
@@ -839,8 +847,8 @@ function openStepEditor(cat) {
   $('stSave').onclick = () => { const list = [...new Set($('stText').value.split('\n').map((x) => x.trim()).filter(Boolean))]; setSteps(cat, list); ov.innerHTML = ''; App.render(); toast('常用步驟已更新'); };
   setTimeout(() => $('stText')?.focus(), 50);
 }
-function fitNote(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 2 + 'px'; }
-function fitNotes() { document.querySelectorAll('textarea.tlnote').forEach(fitNote); }
+function fitNote(el) { if (el.dataset.manual) return; el.style.height = 'auto'; el.style.height = el.scrollHeight + 2 + 'px'; }
+function fitNotes() { document.querySelectorAll('textarea.tlnote, textarea.grow').forEach(fitNote); }
 const tlSorted = (c) => (c.timeline || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.at || '').localeCompare(a.at || ''));
 const latestStep = (c) => tlSorted(c)[0];
 function timelineHTML(c) {
@@ -1117,6 +1125,8 @@ app.addEventListener('change', (e) => {
 });
 app.addEventListener('change', (e) => { if (e.target.dataset?.f === 'client') { const c = cur(); if (!c) return; c.client = e.target.value; const made = linkClient(c); saveCase(c); App.render(); if (made) toast(`已建立客戶「${made.name}」`); return; } if (e.target.id === 'nImgs') { const k = e.target.files.length; $('nImgsN').textContent = k ? `已選 ${k} 張` : ''; return; } const f = e.target.dataset?.f; const c = cur(); if (!f || !c) return; c[f] = e.target.value; saveCase(c); if (['cat', 'status', 'cost', 'ratio', 'client', 'title', 'date'].includes(f)) App.render(); });
 app.addEventListener('input', (e) => {
+  const ds = e.target.dataset || {}; if (ds.f || ds.cf || ds.kf || ds.tltitle || ds.tlnote || ds.pprod) savePill('editing');
+  if (e.target.classList?.contains('grow')) fitNote(e.target);
   if (e.target.classList?.contains('tlnote')) { fitNote(e.target); return; }
   if (e.target.id === 'q') { S.q = e.target.value; App.render(); }
   if (e.target.id === 'qq') {
