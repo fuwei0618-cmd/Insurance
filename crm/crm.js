@@ -1489,6 +1489,57 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 window.addEventListener('online', () => { if (Vault.key) { Vault.save(); Files.retryUploads(); } });
 window.addEventListener('beforeunload', (e) => { if (Vault.dirty) { Vault.save(); e.preventDefault(); e.returnValue = ''; } });
 
+/* ================= 好打的日期欄位 =================
+ * 原生日期欄位打一位數就跳格，改成一般文字欄位：
+ * 8/21、0821（今年）、115/8/21、1150821（民國）、2026/8/21、20260821 都可以，離開欄位時自動整理成 2026-08-21。 */
+function parseDay(raw, fallbackYear) {
+  let t = String(raw || '').trim().replace(/[\uFF10-\uFF19]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/\s+/g, '');
+  if (!t) return '';
+  t = t.replace(/[年月.\-]/g, '/').replace(/日$/, '').replace(/^民國/, '');
+  let y, m, d; const now = new Date(), Y = fallbackYear || now.getFullYear();
+  if (/^\d+$/.test(t)) {
+    if (t.length === 8) [y, m, d] = [t.slice(0, 4), t.slice(4, 6), t.slice(6)];
+    else if (t.length === 7) [y, m, d] = [t.slice(0, 3), t.slice(3, 5), t.slice(5)];
+    else if (t.length === 6) [y, m, d] = [t.slice(0, 2), t.slice(2, 4), t.slice(4)];
+    else if (t.length === 4) [y, m, d] = [Y, t.slice(0, 2), t.slice(2)];
+    else if (t.length === 3) [y, m, d] = [Y, t.slice(0, 1), t.slice(1)];
+    else return null;
+  } else {
+    const p = t.split('/').filter(Boolean);
+    if (p.length === 3) [y, m, d] = p; else if (p.length === 2) [y, m, d] = [Y, ...p]; else return null;
+  }
+  y = +y; m = +m; d = +d;
+  if (y < 1911) y += 1911;
+  const dt = new Date(y, m - 1, d);
+  if (!(m >= 1 && m <= 12 && d >= 1 && d <= 31) || dt.getMonth() !== m - 1 || y < 1900 || y > 2200) return null;
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+function upgradeDate(el) {
+  if (el.dataset.dt) return; el.dataset.dt = '1';
+  el.type = 'text'; el.setAttribute('inputmode', 'decimal'); el.setAttribute('autocomplete', 'off');
+  if (!el.placeholder) el.placeholder = '例：8/21、115/8/21';
+  el.classList.add('dtin');
+  const wrap = document.createElement('span'); wrap.className = 'dtwrap'; el.parentNode.insertBefore(wrap, el); wrap.appendChild(el);
+  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'dtpick'; btn.setAttribute('aria-label', '選日期'); btn.textContent = '📅'; wrap.appendChild(btn);
+  btn.addEventListener('click', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const h = document.createElement('input'); h.type = 'date'; h.className = 'dthidden'; h.value = parseDay(el.value) || localDay();
+    wrap.appendChild(h);
+    h.addEventListener('change', () => { el.value = h.value; h.remove(); el.dispatchEvent(new Event('change', { bubbles: true })); });
+    h.addEventListener('blur', () => setTimeout(() => h.remove(), 300));
+    try { h.showPicker(); } catch (err) { h.focus(); h.click(); }
+  });
+}
+new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) { if (n.nodeType !== 1) continue; if (n.matches?.('input[type=date]')) upgradeDate(n); n.querySelectorAll?.('input[type=date]').forEach(upgradeDate); } }).observe(document.body, { childList: true, subtree: true });
+document.addEventListener('focusin', (e) => { if (e.target.classList?.contains('dtin')) e.target.dataset.prev = e.target.value; }, true);
+document.addEventListener('change', (e) => { // 先整理日期，再交給原本的處理
+  const el = e.target; if (!el.classList?.contains('dtin')) return;
+  const v = parseDay(el.value);
+  if (v === null) { toast('看不懂這個日期，可以打 8/21、115/8/21 或 2026/8/21'); el.value = el.dataset.prev || ''; e.stopImmediatePropagation(); return; }
+  el.value = v; el.dataset.prev = v;
+}, true);
+document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.classList?.contains('dtin')) { e.preventDefault(); e.target.blur(); } }, true);
+
 /* 有新版本時提示更新（不會自動重新整理，以免打到一半的字不見） */
 if ('serviceWorker' in navigator) {
   const hadController = !!navigator.serviceWorker.controller;
