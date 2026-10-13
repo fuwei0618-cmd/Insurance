@@ -1006,6 +1006,8 @@ function newCase(cat) { const c = saveCase({ date: localDay(), client: '', title
 function armConfirm(b, label) { if (b.dataset.confirm) return true; b.dataset.confirm = 1; b.textContent = label; setTimeout(() => { if (b.isConnected) { delete b.dataset.confirm; App.render(); } }, 4000); return false; }
 app.addEventListener('click', async (e) => {
   const gn = e.target.closest('[data-gonode]'); if (gn) { S.view = 'clients'; S.csel = gn.dataset.gonode; S.ccat = '全部'; S.showDetail = true; S.showIds = false; App.render(); return; }
+  const tileImg = e.target.closest('.doc[data-di] canvas, .doc[data-di] .pdftile'); // 點圖片＝看
+  if (tileImg) { tileImg.closest('.doc').querySelector('[data-view],[data-cview]')?.click(); return; }
   const b = e.target.closest('button'); if (!b) return; const d = b.dataset; const c = cur();
   if (d.nav) { S.view = d.nav; S.showDetail = false; S.q = ''; App.render(); return; }
   if (d.cat) { S.cat = d.cat; App.render(); return; }

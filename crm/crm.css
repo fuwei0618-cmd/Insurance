@@ -340,3 +340,4 @@ body.dragging-doc,body.dragging-doc *{cursor:grabbing!important}
 .ppline>span{color:var(--ink);font-weight:500}
 .ppline>span.me{color:var(--muted);font-weight:400}
 .ppline small{margin-left:4px;font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 6px}
+.doc[data-di] canvas,.doc[data-di] .pdftile{cursor:zoom-in}
