@@ -450,7 +450,7 @@ function peopleHTML(c) {
   const ppl = c.people || [];
   const main = c.clientId && !ppl.some((p) => p.clientId === c.clientId) ? Vault.get('clients', c.clientId) : null;
   return `<div class="sec"><h2>要保人／被保險人 <button class="btn" data-act="addperson" style="padding:4px 10px;font-size:13px">＋ 加人</button></h2>
-   ${main ? `<div class="sub">主要客戶「${esc(main.name)}」也可以按「＋ 加人」加進來標角色。</div>` : ''}
+   ${main ? `<div class="sub">主要關係人「${esc(main.name)}」也可以按「＋ 加人」加進來標角色。</div>` : ''}
    ${ppl.length ? ppl.map((p, i) => { const x = Vault.get('clients', p.clientId); if (!x) return ''; return `<div class="prow"><button class="linkbtn relname" data-goclient="${x.id}">${esc(x.name || '未填姓名')}</button><span class="tags">${ROLES.map((r) => `<button class="tag sm${p.roles.includes(r) ? ' on' : ''}" data-prole="${i}:${r}">${r}</button>`).join('')}</span><input class="pprod" data-pprod="${i}" value="${esc(p.product)}" placeholder="險種／商品"><button class="tldel" data-pdel="${i}" aria-label="移除">✕</button></div>`; }).join('')
     : '<div class="sub">一個家庭一起投保時，把每個人加進來，標出誰是要保人、誰是被保險人。案件會出現在每個人的客戶頁。</div>'}</div>`;
 }
@@ -461,7 +461,7 @@ function openPersonPicker(c) {
   const draw = () => {
     const q = ($('ppQ')?.value || '').trim();
     const pool = clients().filter((x) => !inCase.has(x.id) && (!q || (x.name || '').includes(q))).sort((a, b) => (b.id === main) - (a.id === main) || fam.has(b.id) - fam.has(a.id) || (a.name || '').localeCompare(b.name || '', 'zh-Hant')).slice(0, 40);
-    $('ppList').innerHTML = (q && !clients().some((x) => x.name === q) ? `<button class="item" data-newp="1"><span class="t">＋ 新增「${esc(q)}」</span></button>` : '') + pool.map((x) => `<button class="item" data-pp="${x.id}"><span class="t"><span>${esc(x.name || '未填姓名')}</span>${x.id === main ? '<span class="pill p-go">主要客戶</span>' : fam.has(x.id) ? '<span class="pill p-go">家人</span>' : ''}</span></button>`).join('');
+    $('ppList').innerHTML = (q && !clients().some((x) => x.name === q) ? `<button class="item" data-newp="1"><span class="t">＋ 新增「${esc(q)}」</span></button>` : '') + pool.map((x) => `<button class="item" data-pp="${x.id}"><span class="t"><span>${esc(x.name || '未填姓名')}</span>${x.id === main ? '<span class="pill p-go">主要關係人</span>' : fam.has(x.id) ? '<span class="pill p-go">家人</span>' : ''}</span></button>`).join('');
   };
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>加入要保人／被保險人</h2><button class="btn pri" id="ppX">完成</button></div>
   <div class="ovbody" style="flex-direction:column;max-width:640px;margin:0 auto;width:100%">
@@ -492,8 +492,8 @@ function openWhoPicker(c, ppl) {
 function casePeopleLine(c, meId) {
   const ppl = (c.people || []).filter((p) => Vault.get('clients', p.clientId));
   const list = [];
-  if (c.clientId && !ppl.some((p) => p.clientId === c.clientId)) list.push({ id: c.clientId, name: c.client, roles: ['主要客戶'] });
-  ppl.forEach((p) => list.push({ id: p.clientId, name: Vault.get('clients', p.clientId).name || '未填姓名', roles: p.roles.length ? p.roles : (p.clientId === c.clientId ? ['主要客戶'] : []) }));
+  if (c.clientId && !ppl.some((p) => p.clientId === c.clientId)) list.push({ id: c.clientId, name: c.client, roles: ['主要關係人'] });
+  ppl.forEach((p) => list.push({ id: p.clientId, name: Vault.get('clients', p.clientId).name || '未填姓名', roles: p.roles.length ? p.roles : (p.clientId === c.clientId ? ['主要關係人'] : []) }));
   if (!list.length || (list.length === 1 && list[0].id === meId)) return '';
   return `<span class="ppline">${list.map((p) => `<span class="${p.id === meId ? 'me' : ''}">${esc(p.name)}${p.roles.length ? `<small>${esc(p.roles.join('、'))}</small>` : ''}</span>`).join('')}</span>`;
 }
