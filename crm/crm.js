@@ -668,20 +668,25 @@ async function crmFromImage(f) {
 }
 function showCrmForm(data) {
   if (!CRMI) return;
-  let tgt = CRMI.target; if (!tgt) tgt = clients().find((c) => (data.idNo && c.idNo === data.idNo) || (data.name && c.name === data.name)) || null;
+  // 同一個身分證字號＝同一人；只有名字一樣時，身分證不能互相矛盾。也可以手動改成建立新客戶
+  let tgt = CRMI.target; if (!tgt && !CRMI.forceNew) tgt = clients().find((c) => (data.idNo && c.idNo === data.idNo) || (data.name && c.name === data.name && !(data.idNo && c.idNo && c.idNo !== data.idNo))) || null;
+  CRMI.data = data;
   CRMI.resolved = tgt;
-  const keys = CRM_FIELDS.filter(([k]) => data[k]);
-  if (!keys.length) { $('ciForm').innerHTML = '<div class="note" style="color:var(--warn);background:var(--warn-soft)">沒有讀到資料。截圖請包含「姓名」「ID」「手機」那一區，或改用複製文字。</div>'; return; }
-  $('ciForm').innerHTML = `<div class="sec"><h2>確認要帶入的資料 <span class="sub">${tgt ? `會更新「${esc(tgt.name)}」` : '會建立新客戶'}</span></h2>
+  const keys = CRM_FIELDS.filter(([k]) => data[k] || (k === 'name' && !tgt)); // 沒讀到姓名也留一格讓你填
+  if (!keys.some(([k]) => data[k])) { $('ciForm').innerHTML = '<div class="note" style="color:var(--warn);background:var(--warn-soft)">沒有讀到資料。截圖請包含「姓名」「ID」「手機」那一區，或改用複製文字。</div>'; return; }
+  $('ciForm').innerHTML = `<div class="sec"><h2>確認要帶入的資料 <span class="sub">${tgt ? `會更新現有客戶「${esc(tgt.name)}」${CRMI.target ? '' : ' <button class="linkbtn" id="ciNew">不是同一人，改成建立新客戶</button>'}` : '會建立新客戶'}</span></h2>
    ${keys.map(([k, l]) => { const old = tgt?.[k]; return `<div class="cirow"><label class="cichk"><input type="checkbox" data-cik="${k}" ${!old || old !== data[k] ? 'checked' : ''}> ${l}</label><input class="ciin" id="ci_${k}" value="${esc(data[k])}">${old && old !== data[k] ? `<span class="sub">目前：${esc(k === 'idNo' ? old.slice(0, 3) + '…' : old)}</span>` : old ? '<span class="sub">相同</span>' : ''}</div>`; }).join('')}
    ${CRMI.shot ? '<label class="cichk" style="margin-top:6px"><input type="checkbox" id="ciKeep"> 把這張截圖也存進「證件與文件」</label>' : ''}
    <div class="note">地址、姓名請特別看一下，辨識偶爾會錯一兩個字。</div>
    <div class="actions"><button class="btn pri" id="ciApply">${tgt ? '更新資料' : '建立客戶'}</button></div></div>`;
+  if ($('ciNew')) $('ciNew').onclick = () => { CRMI.forceNew = true; showCrmForm(CRMI.data); };
   $('ciApply').onclick = async () => {
     const isNew = !CRMI.resolved, rec = CRMI.resolved || { name: '', docs: [] };
     ov.querySelectorAll('[data-cik]').forEach((cb) => { if (cb.checked) rec[cb.dataset.cik] = $('ci_' + cb.dataset.cik).value.trim(); });
+    if (isNew && !rec.name) { toast('沒有姓名，請在「姓名」欄填上並勾選'); return; }
     const saved = Vault.put('clients', rec); const keep = $('ciKeep')?.checked, shot = CRMI.shot;
-    closeCrmImport(); S.view = 'clients'; S.csel = saved.id; S.showDetail = true; S.showIds = false; App.render();
+    closeCrmImport(); S.view = 'clients'; S.csel = saved.id; S.q = ''; S.ccat = '全部'; S.showDetail = true; S.showIds = false; App.render(); // 清掉搜尋，新客戶才不會被篩掉
+    document.querySelector(`[data-csel="${saved.id}"]`)?.scrollIntoView({ block: 'nearest' });
     if (keep && shot) addImagesDirect(saved, 'clients', [shot], '');
     toast(`已${isNew ? '建立' : '更新'}「${saved.name || '客戶'}」`);
   };
@@ -1208,7 +1213,7 @@ app.addEventListener('click', async (e) => {
     App.render(); toast('已新增'); return;
   }
   switch (d.act) {
-    case 'newclient': { const n = Vault.put('clients', { name: '', docs: [] }); S.csel = n.id; S.showDetail = true; S.showIds = false; S.view = 'clients'; App.render(); setTimeout(() => $('cf_name')?.focus(), 50); break; }
+    case 'newclient': { const n = Vault.put('clients', { name: '', docs: [] }); S.csel = n.id; S.q = ''; S.showDetail = true; S.showIds = false; S.view = 'clients'; App.render(); setTimeout(() => $('cf_name')?.focus(), 50); break; }
     case 'cscan': scanForClient(ccl); break;
     case 'toggleids': S.showIds = !S.showIds; App.render(); break;
     case 'cpdf': makePDF(ccl.docs, false, (ccl.name || '客戶') + '-證件'); break;
