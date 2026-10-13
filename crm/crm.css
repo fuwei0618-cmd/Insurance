@@ -3,16 +3,18 @@
   --bg:#ECEBE6;--surface:#F6F5F1;--card:#FFFFFF;--ink:#23251F;--muted:#6B6D63;--line:#D8D7D0;
   --accent:#647F52;--accent-ink:#3E5432;--accent-soft:#E2EADA;
   --warn:#8C5E14;--warn-soft:#F3E7CF;--ok:#3E6B3A;--ok-soft:#DEEBD8;--danger:#A2412F;--danger-soft:#F4DDD6;
-  --mask:#111;
+  --mask:#111;--info:#2F5F8A;--info-soft:#DCE8F3;
   --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
   --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
   --r:10px;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --info:#8DB8E0;--info-soft:#1F2D3A;
   --bg:#191A17;--surface:#21221E;--card:#292A25;--ink:#ECECE5;--muted:#A3A598;--line:#3A3B34;
   --accent:#9DBA88;--accent-ink:#C9DDBA;--accent-soft:#2E3A27;
   --warn:#E2B56A;--warn-soft:#3B3121;--ok:#9FCB93;--ok-soft:#263424;--danger:#E99A88;--danger-soft:#3E2722;color-scheme:dark}}
 :root[data-theme="dark"]{
+  --info:#8DB8E0;--info-soft:#1F2D3A;
   --bg:#191A17;--surface:#21221E;--card:#292A25;--ink:#ECECE5;--muted:#A3A598;--line:#3A3B34;
   --accent:#9DBA88;--accent-ink:#C9DDBA;--accent-soft:#2E3A27;
   --warn:#E2B56A;--warn-soft:#3B3121;--ok:#9FCB93;--ok-soft:#263424;--danger:#E99A88;--danger-soft:#3E2722;color-scheme:dark}
@@ -291,3 +293,12 @@ textarea.grow{resize:vertical;overflow:hidden;min-height:96px;line-height:1.6}
 .item .t>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .item .s{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .actions .savebtn{min-width:96px;justify-content:center}
+
+/* 案件狀態顏色 */
+.st-go{background:var(--info-soft);color:var(--info)}
+.st-wait{background:var(--warn-soft);color:var(--warn)}
+.st-done{background:var(--line);color:var(--muted)}
+.item.is-go{border-left:4px solid var(--info)}
+.item.is-wait{border-left:4px solid var(--warn)}
+.item.is-done{border-left:4px solid var(--line)}
+.item.is-done .t>span:first-child{color:var(--muted)}
