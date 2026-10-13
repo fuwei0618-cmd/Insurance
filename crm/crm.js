@@ -330,6 +330,8 @@ const catOf = (n) => (n.kind === 'sop' && !n.v2 ? mapGroup(n.group) : n.cat || '
 const kindsOf = (n) => n.kinds || [];
 const toolsOf = (n) => n.tools || (n.kind === 'sop' && !n.v2 && n.group === LEGACY_T ? ['T字障'] : []);
 const TAGS = { kinds: { label: '險種', def: ['壽險', '醫療', '儲蓄', '意外', '年金', '投資型', '旅平'], of: kindsOf }, tools: { label: '講解工具', def: ['T字障', '四象限', '帆船理論', '金三角', '28000天'], of: toolsOf } };
+const chOf = (n) => n.channels || (n.group ? [n.group] : []); // 範本可以同時用在 LINE、簡訊、信件…
+const chPills = (n) => chOf(n).map((g) => `<span class="pill p-go">${esc(g)}</span>`).join('');
 const tagList = (key) => { const l = Vault.get('settings', 'tag-' + key)?.list; return l?.length ? l : TAGS[key].def; };
 function openTagEditor(key) {
   const T = TAGS[key]; let rows = tagList(key).map((n) => ({ old: n, name: n }));
@@ -367,7 +369,7 @@ const TPLGROUPS = ['LINE', '簡訊', '信件', '其他'];
 const linkify = (html) => html.replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.length > 60 ? u.slice(0, 57) + '…' : u}</a>`);
 
 /* ================= 狀態與畫面 ================= */
-const S = { view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
+const S = { view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
 const cases = () => Vault.all('cases');
 const localDay = (d = new Date()) => { const t = new Date(d); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
 const caseDate = (c) => c.date || (c.createdAt ? localDay(c.createdAt) : '');
@@ -939,7 +941,7 @@ function caseTplHTML(c) {
   const ts = notes().filter((n) => n.kind === 'tpl' && n.cat === c.cat && !(n.sopId && sops.some((x) => x.id === n.sopId))).sort((a, b) => TPLGROUPS.indexOf(a.group) - TPLGROUPS.indexOf(b.group));
   return `${sops.length ? `<div class="sec"><h2>「${esc(c.cat)}」SOP <button class="linkbtn" data-act="sopfor">管理 SOP</button></h2>${sops.map((n) => `<details class="tplrow sopcase"><summary><span class="tpltitle">${esc(n.title)}</span>${tagPills(n)}</summary><pre>${linkify(esc(n.body))}</pre>${nimgsHTML(n)}${sopTplsHTML(n, c)}</details>`).join('')}</div>` : ''}
   <div class="sec"><h2>「${esc(c.cat)}」範本 <button class="linkbtn" data-act="tplfor">${ts.length ? '管理範本' : '＋ 新增範本'}</button></h2>
-   ${ts.length ? ts.map((n) => `<details class="tplrow"><summary><span class="pill p-go">${esc(n.group)}</span><span class="tpltitle">${esc(n.title)}</span><button class="btn" data-copy="${n.id}" data-forcase="1" style="padding:4px 10px;font-size:13px">複製</button></summary><pre>${esc(fillTpl(n.body, c))}</pre></details>`).join('') : `<div class="sub">還沒有和「${esc(c.cat)}」相關的 LINE、簡訊範本。</div>`}</div>`;
+   ${ts.length ? ts.map((n) => `<details class="tplrow"><summary>${chPills(n)}<span class="tpltitle">${esc(n.title)}</span><button class="btn" data-copy="${n.id}" data-forcase="1" style="padding:4px 10px;font-size:13px">複製</button></summary><pre>${esc(fillTpl(n.body, c))}</pre></details>`).join('') : `<div class="sub">還沒有和「${esc(c.cat)}」相關的 LINE、簡訊範本。</div>`}</div>`;
 }
 function docTile(d, i, p, folders) { // p：'' 案件、'c' 客戶
   const media = isPdf(d) ? `<div class="pdftile">PDF<small>${esc(d.name)}</small></div>` : `<canvas data-${p}thumb="${i}" width="240" height="320"></canvas>`;
@@ -1058,7 +1060,7 @@ function sopMatch(n) {
 const tagPills = (n) => [...kindsOf(n), ...toolsOf(n)].map((t) => `<span class="tagpill">${esc(t)}</span>`).join('');
 function sopTplsHTML(sop, c) { // 掛在這個 SOP 底下、要傳給客戶的範本
   const ts = notes().filter((t) => t.kind === 'tpl' && t.sopId === sop.id);
-  return `<div class="soptpls">${ts.map((t) => `<details class="tplrow"><summary><span class="pill p-go">${esc(t.group)}</span><span class="tpltitle">${esc(t.title)}</span><button class="btn" data-copy="${t.id}"${c ? ' data-forcase="1"' : ''} style="padding:4px 10px;font-size:13px">複製</button></summary><pre>${esc(fillTpl(t.body, c))}</pre></details>`).join('')}<button class="linkbtn" data-newtplfor="${sop.id}">＋ 給客戶的範本</button></div>`;
+  return `<div class="soptpls">${ts.map((t) => `<details class="tplrow"><summary>${chPills(t)}<span class="tpltitle">${esc(t.title)}</span><button class="btn" data-copy="${t.id}"${c ? ' data-forcase="1"' : ''} style="padding:4px 10px;font-size:13px">複製</button></summary><pre>${esc(fillTpl(t.body, c))}</pre></details>`).join('')}<button class="linkbtn" data-newtplfor="${sop.id}">＋ 給客戶的範本</button></div>`;
 }
 function sopHTML() {
   const q = S.q.trim(), list = notes().filter((n) => n.kind === 'sop' && sopMatch(n) && (!q || (n.title + n.body).includes(q)));
@@ -1074,15 +1076,20 @@ function sopHTML() {
 }
 function notesHTML(kind) {
   if (kind === 'sop') return sopHTML();
-  const groups = TPLGROUPS;
-  const list = notes().filter((n) => n.kind === kind && (kind !== 'tpl' || ((S.tplGroup === '全部' || n.group === S.tplGroup) && (S.tplCat === '全部' || (S.tplCat === '通用' ? !n.cat : n.cat === S.tplCat)))));
-  const allT = notes().filter((n) => n.kind === 'tpl'), usedCats = CATS.filter((k) => allT.some((n) => n.cat === k));
-  const q = S.q.trim(); const shown = list.filter((n) => !q || (n.title + n.body).includes(q));
+  const tg = GROUPS.find((x) => x.name === S.tg);
+  const shown = notes().filter((n) => {
+    if (n.kind !== 'tpl') return false;
+    const k = n.cat || '';
+    if (S.tg === '通用') { if (k) return false; } else if (tg) { if (!tg.cats.includes(k)) return false; if (S.tplCat !== '全部' && k !== S.tplCat) return false; }
+    if (S.tplGroup !== '全部' && !chOf(n).includes(S.tplGroup)) return false;
+    const q = S.q.trim(); return !q || (n.title + n.body).includes(q);
+  });
   return `<h1 style="display:flex;justify-content:space-between;align-items:center;gap:8px">話術範本<span class="actions" style="margin:0"><button class="btn" data-act="import">批次匯入</button><button class="btn pri" data-act="newtpl">＋ 新增範本</button></span></h1>
   <input class="search" id="q" placeholder="搜尋" value="${esc(S.q)}" style="max-width:420px" autocomplete="off">
-  ${kind === 'tpl' ? `<div class="chips">${['全部', ...groups].map((g) => `<button class="chip${S.tplGroup === g ? ' on' : ''}" data-tg="${g}">${g}</button>`).join('')}</div>
-   <div class="chips"><span class="sub" style="align-self:center">相關案件</span>${['全部', '通用', ...usedCats].map((g) => `<button class="chip${S.tplCat === g ? ' on' : ''}" data-tc="${g}">${g}</button>`).join('')}</div>` : ''}
-  <div class="cards">${shown.map((n) => `<div class="card"><h3><span>${esc(n.title)}</span><span class="sub">${esc(n.group)}${n.cat ? ' · ' + esc(n.cat) : ''}</span></h3>${n.sopId && Vault.get('notes', n.sopId) ? `<div class="sub">↳ SOP：${esc(Vault.get('notes', n.sopId).title)}</div>` : ''}<pre>${linkify(esc(n.body))}</pre>${nimgsHTML(n)}<div class="mini">${kind === 'tpl' || /https?:\/\//.test(n.body) ? `<button data-copy="${n.id}">複製</button>` : ''}<button data-editnote="${n.id}">編輯</button><button data-delnote="${n.id}">刪除</button></div></div>`).join('') || `<div class="empty">${kind === 'sop' ? '還沒有流程。用下面的表單把 Notion、LINE 記事本裡的步驟加進來。' : '還沒有範本。'}</div>`}</div>
+  <div class="chips">${['全部', ...GROUPS.map((x) => x.name), '通用'].map((x) => `<button class="chip${S.tg === x ? ' on' : ''}" data-tgg="${esc(x)}">${esc(x)}</button>`).join('')}<button class="chip chipedit" data-act="editcats">⚙ 編輯分類</button></div>
+  ${tg ? `<div class="chips subchips">${['全部', ...tg.cats].map((x) => `<button class="chip${S.tplCat === x ? ' on' : ''}" data-tc="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : ''}
+  <div class="chips"><span class="sub" style="align-self:center">傳送方式</span>${TPLGROUPS.map((g) => `<button class="chip${S.tplGroup === g ? ' on' : ''}" data-tg="${esc(g)}">${esc(g)}</button>`).join('')}</div>
+  <div class="cards">${shown.map((n) => `<div class="card"><h3><span>${esc(n.title)}</span><span class="sub">${esc(n.cat || '通用')}</span></h3><div class="tagpills">${chPills(n)}</div>${n.sopId && Vault.get('notes', n.sopId) ? `<div class="sub">↳ SOP：${esc(Vault.get('notes', n.sopId).title)}</div>` : ''}<pre>${linkify(esc(n.body))}</pre>${nimgsHTML(n)}<div class="mini">${kind === 'tpl' || /https?:\/\//.test(n.body) ? `<button data-copy="${n.id}">複製</button>` : ''}<button data-editnote="${n.id}">編輯</button><button data-delnote="${n.id}">刪除</button></div></div>`).join('') || `<div class="empty">${kind === 'sop' ? '還沒有流程。用下面的表單把 Notion、LINE 記事本裡的步驟加進來。' : '還沒有範本。'}</div>`}</div>
   `;
 }
 function quickHTML() {
@@ -1139,7 +1146,7 @@ app.addEventListener('click', async (e) => {
   if (d.sopopen) { S.sopOpen = S.sopOpen === d.sopopen ? null : d.sopopen; App.render(); return; }
   if (d.sk != null && S.view === 'sop') { S.sk = S.sk === d.sk ? '' : d.sk; App.render(); return; }
   if (d.st != null && S.view === 'sop') { S.st = S.st === d.st ? '' : d.st; App.render(); return; }
-  if (d.newtplfor) { const sop = Vault.get('notes', d.newtplfor); if (!sop) return; const t = Vault.put('notes', { kind: 'tpl', group: '簡訊', cat: catOf(sop), sopId: sop.id, title: sop.title, body: '', images: [] }); editNote(t.id, true); return; }
+  if (d.newtplfor) { const sop = Vault.get('notes', d.newtplfor); if (!sop) return; const t = Vault.put('notes', { kind: 'tpl', group: 'LINE', channels: ['LINE'], cat: catOf(sop), sopId: sop.id, title: sop.title, body: '', images: [] }); editNote(t.id, true); return; }
   if (d.editdisc) { const cl0 = curClient(); if (cl0) openDisclosure(cl0, d.editdisc, ''); return; }
   if (d.deldisc) { const ccl = curClient(); if (!ccl) return; if (armConfirm(b, '再按一次刪除')) { const r = (ccl.disclosures || []).find((x) => x.id === d.deldisc); (r?.files || []).forEach((f) => Files.remove(f.fileId)); ccl.disclosures = (ccl.disclosures || []).filter((x) => x.id !== d.deldisc); Vault.put('clients', ccl); App.render(); } return; }
   if (d.discfile) { const [rid, i] = d.discfile.split(':'); const r = (curClient()?.disclosures || []).find((x) => x.id === rid); const f = r?.files?.[+i]; if (f) openViewer({ ...f, masks: [] }); return; }
@@ -1185,8 +1192,10 @@ app.addEventListener('click', async (e) => {
   if (d.mask && c) { openMask(c, +d.mask); return; }
   if (d.view && c) { openGallery(b, c.docs, 'view'); return; }
   if (d.deldoc && c) { if (armConfirm(b, '確定？')) { const [doc] = c.docs.splice(+d.deldoc, 1); saveCase(c); if (doc) { Files.remove(doc.fileId, { coll: 'cases', recId: c.id, doc }); toast('已移到「最近刪除」，30 天內可以救回'); } App.render(); } return; }
+  if (d.copy && Vault.get('notes', d.copy)?.images?.length) { e.preventDefault(); openSend(Vault.get('notes', d.copy), d.forcase ? c : null); return; }
   if (d.copy) { e.preventDefault(); const n = Vault.get('notes', d.copy); const txt = fillTpl(n.body, d.forcase ? c : null); try { await navigator.clipboard.writeText(txt); toast('已複製' + (d.forcase && c?.client ? `（已帶入 ${c.client}）` : '')); } catch (err) { toast('無法自動複製，請長按文字選取'); } return; }
-  if (d.tg) { S.tplGroup = d.tg; App.render(); return; }
+  if (d.tg) { S.tplGroup = S.tplGroup === d.tg ? '全部' : d.tg; App.render(); return; }
+  if (d.tgg) { S.tg = d.tgg; S.tplCat = '全部'; if (d.tgg === '全部') S.tplGroup = '全部'; App.render(); return; }
   if (d.tc) { S.tplCat = d.tc; App.render(); return; }
   if (d.nimg) { openViewer({ fileId: d.nimg, name: d.ntitle || '附圖' }); return; }
   if (d.delnote) { if (armConfirm(b, '確定刪除？')) { (Vault.get('notes', d.delnote)?.images || []).forEach((f) => Files.remove(f)); Vault.del('notes', d.delnote); App.render(); } return; }
@@ -1221,10 +1230,10 @@ app.addEventListener('click', async (e) => {
     }
     case 'tocliient': { const k = curCall(); if (!k) break; let cl = clients().find((x) => x.name === k.name && k.name); if (!cl) cl = Vault.put('clients', { name: k.name, phone: k.phone, note: [k.source, k.note].filter(Boolean).join('\n'), docs: [] }); k.clientId = cl.id; Vault.put('calls', k); App.render(); toast(`已轉成客戶「${cl.name || '未填姓名'}」`); break; }
     case 'delcall': if (armConfirm(b, '再按一次確定刪除')) { Vault.del('calls', S.ksel); S.ksel = null; S.showDetail = false; App.render(); } break;
-    case 'newtpl': { const n = Vault.put('notes', { kind: 'tpl', group: S.tplGroup !== '全部' ? S.tplGroup : '簡訊', cat: S.tplCat !== '全部' && S.tplCat !== '通用' ? S.tplCat : '', title: '', body: '', images: [] }); editNote(n.id, true); break; }
+    case 'newtpl': { const ch = S.tplGroup !== '全部' ? S.tplGroup : 'LINE', tg = GROUPS.find((x) => x.name === S.tg); const n = Vault.put('notes', { kind: 'tpl', group: ch, channels: [ch], cat: S.tplCat !== '全部' ? S.tplCat : tg?.cats[0] || '', title: '', body: '', images: [] }); editNote(n.id, true); break; }
     case 'newsop': { const g = GROUPS.find((x) => x.name === S.sg); const n = Vault.put('notes', { kind: 'sop', v2: true, cat: S.sc !== '全部' ? S.sc : g?.cats[0] || '', kinds: S.sk ? [S.sk] : [], tools: S.st ? [S.st] : [], title: '', body: '', images: [] }); editNote(n.id, true); break; }
     case 'sopfor': S.view = 'sop'; S.sg = groupOf(c.cat) || '全部'; S.sc = groupOf(c.cat) ? c.cat : '全部'; S.sk = ''; S.st = ''; S.q = ''; S.showDetail = false; App.render(); break;
-    case 'tplfor': S.view = 'tpl'; S.tplCat = c.cat; S.tplGroup = '全部'; S.q = ''; S.showDetail = false; App.render(); break;
+    case 'tplfor': S.view = 'tpl'; S.tg = groupOf(c.cat) || '全部'; S.tplCat = groupOf(c.cat) ? c.cat : '全部'; S.tplGroup = '全部'; S.q = ''; S.showDetail = false; App.render(); break;
     case 'adddisc': if (ccl) openDisclosure(ccl, null, ''); break;
     case 'togglehealth': S.showHealth = !S.showHealth; App.render(); break;
     case 'casedisc': { const ppl = casePeople(c); if (ppl.length > 1) openWhoPicker(c, ppl); else { const cl2 = Vault.get('clients', c.clientId); if (cl2) openDisclosure(cl2, null, c.id); } break; }
@@ -1339,25 +1348,25 @@ async function addNoteImages(n, files) {
   if (imgs.length > added) toast('有圖片打不開，換一張試試');
   return added;
 }
-const tplRowHTML = (t) => `<div class="etpl" data-tid="${t?.id || ''}"><div class="etplhead"><select class="etg" aria-label="傳送方式">${TPLGROUPS.map((g) => `<option${g === (t?.group || '簡訊') ? ' selected' : ''}>${g}</option>`).join('')}</select><input class="ett" value="${esc(t?.title || '')}" placeholder="範本標題（可不填，用 SOP 標題）" aria-label="範本標題"><button type="button" class="tldel etx" aria-label="刪除這則範本">✕</button></div><textarea class="etb" rows="5" placeholder="{客戶}您好，…" aria-label="範本內容">${esc(t?.body || '')}</textarea></div>`;
+const tplRowHTML = (t) => `<div class="etpl" data-tid="${t?.id || ''}"><div class="etplhead"><span class="tags etch">${[...new Set([...TPLGROUPS, ...(t ? chOf(t) : [])])].map((g) => `<button type="button" class="tag sm${(t ? chOf(t) : ['LINE']).includes(g) ? ' on' : ''}" data-t="${esc(g)}">${esc(g)}</button>`).join('')}</span><input class="ett" value="${esc(t?.title || '')}" placeholder="範本標題（可不填，用 SOP 標題）" aria-label="範本標題"><button type="button" class="tldel etx" aria-label="刪除這則範本">✕</button></div><textarea class="etb" rows="5" placeholder="{客戶}您好，…" aria-label="範本內容">${esc(t?.body || '')}</textarea></div>`;
 function editNote(id, isNew) {
   const n = Vault.get('notes', id); const withImgs = n.kind !== 'quick';
   NE = withImgs ? n : null;
   const imgsBlock = () => `<div class="sub">附圖 · 可以把圖片拖進來，或按 Ctrl+V 貼上截圖</div><div class="nimgs edit">${(n.images || []).map((f, i) => `<div class="nimgwrap"><button class="nimg" data-vimg="${f}" aria-label="放大看圖"><img data-fid="${f}" alt=""></button><button class="nimgdel" data-delimg="${i}" aria-label="移除這張圖">✕</button></div>`).join('')}<button class="adddoc nimgadd" id="eCam">${ICON.scan}拍照／掃描</button><button class="adddoc nimgadd" id="eAddImg">＋ 選圖片</button></div><input type="file" id="eImgs" accept="image/*" multiple>`;
-  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${n.kind === 'quick' ? '電話' : '編輯'}</h2><button class="btn" id="eCancel">取消</button><button class="btn pri" id="eSave">儲存</button></div><div class="ovbody" style="flex-direction:column;max-width:720px;margin:0 auto;width:100%">${n.kind === 'sop' ? `<label class="f">分類<select id="eC">${catOptions(catOf(n), '通用（不屬於特定分類）')}</select></label>${Object.keys(TAGS).map((key) => `<div class="f" style="font-size:13px;color:var(--muted)">${TAGS[key].label}<div class="tags" data-etag="${key}">${[...new Set([...tagList(key), ...TAGS[key].of(n)])].map((t) => `<button type="button" class="tag sm${TAGS[key].of(n).includes(t) ? ' on' : ''}" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div></div>`).join('')}` : ''}${n.kind === 'tpl' ? `<div class="grid2"><label class="f">傳送方式<select id="eG">${TPLGROUPS.map((g) => `<option${g === n.group ? ' selected' : ''}>${g}</option>`).join('')}</select></label><label class="f">相關案件<select id="eC">${catOptions(n.cat, '通用')}</select></label></div><label class="f">屬於哪個 SOP<select id="eS"><option value="">（不屬於 SOP）</option>${notes().filter((x) => x.kind === 'sop').sort((a, b) => (catOf(b) === n.cat) - (catOf(a) === n.cat) || a.title.localeCompare(b.title)).map((x) => `<option value="${x.id}"${x.id === n.sopId ? ' selected' : ''}>${esc(x.title)}${catOf(x) ? '（' + esc(catOf(x)) + '）' : ''}</option>`).join('')}</select></label><div class="sub">可以寫 {客戶}、{日期}，從案件複製時會自動帶入。</div>` : ''}<label class="f">${n.kind === 'quick' ? '名稱' : '標題'}<input id="eT" value="${esc(n.title)}"></label>${n.kind === 'quick' ? `<label class="f">電話<input id="eB" inputmode="tel" value="${esc(n.body)}"></label>` : `<label class="f">${n.kind === 'sop' ? '作業步驟' : '內容'}<textarea id="eB" rows="${n.kind === 'sop' ? 8 : 10}">${esc(n.body)}</textarea></label><div id="eImgBox">${imgsBlock()}</div>`}${n.kind === 'sop' ? `<div class="f etplbox"><b style="font-size:14px;color:var(--ink)">給客戶的範本</b><span class="sub">這個作業要傳給客戶的 LINE／簡訊，可以寫 {客戶}、{日期}。會同時出現在「範本」頁和同類案件裡。</span><div id="eTpls">${notes().filter((t) => t.kind === 'tpl' && t.sopId === n.id).map(tplRowHTML).join('')}</div><button type="button" class="btn" id="eAddTpl" style="align-self:flex-start">＋ 加一則範本</button></div>` : ''}${n.kind === 'quick' && !isNew ? '<div class="actions"><button class="btn danger" id="eDel">刪除這支電話</button></div>' : ''}</div></div>`;
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${n.kind === 'quick' ? '電話' : '編輯'}</h2><button class="btn" id="eCancel">取消</button><button class="btn pri" id="eSave">儲存</button></div><div class="ovbody" style="flex-direction:column;max-width:720px;margin:0 auto;width:100%">${n.kind === 'sop' ? `<label class="f">分類<select id="eC">${catOptions(catOf(n), '通用（不屬於特定分類）')}</select></label>${Object.keys(TAGS).map((key) => `<div class="f" style="font-size:13px;color:var(--muted)">${TAGS[key].label}<div class="tags" data-etag="${key}">${[...new Set([...tagList(key), ...TAGS[key].of(n)])].map((t) => `<button type="button" class="tag sm${TAGS[key].of(n).includes(t) ? ' on' : ''}" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div></div>`).join('')}` : ''}${n.kind === 'tpl' ? `<label class="f">分類<select id="eC">${catOptions(n.cat, '通用')}</select></label><div class="f" style="font-size:13px;color:var(--muted)">用在哪裡（可複選）<div class="tags" data-etag="channels">${[...new Set([...TPLGROUPS, ...chOf(n)])].map((g) => `<button type="button" class="tag sm${chOf(n).includes(g) ? ' on' : ''}" data-t="${esc(g)}">${esc(g)}</button>`).join('')}</div></div><label class="f">屬於哪個 SOP<select id="eS"><option value="">（不屬於 SOP）</option>${notes().filter((x) => x.kind === 'sop').sort((a, b) => (catOf(b) === n.cat) - (catOf(a) === n.cat) || a.title.localeCompare(b.title)).map((x) => `<option value="${x.id}"${x.id === n.sopId ? ' selected' : ''}>${esc(x.title)}${catOf(x) ? '（' + esc(catOf(x)) + '）' : ''}</option>`).join('')}</select></label><div class="sub">可以寫 {客戶}、{日期}，從案件複製時會自動帶入。</div>` : ''}<label class="f">${n.kind === 'quick' ? '名稱' : '標題'}<input id="eT" value="${esc(n.title)}"></label>${n.kind === 'quick' ? `<label class="f">電話<input id="eB" inputmode="tel" value="${esc(n.body)}"></label>` : `<label class="f">${n.kind === 'sop' ? '作業步驟' : '內容'}<textarea id="eB" rows="${n.kind === 'sop' ? 8 : 10}">${esc(n.body)}</textarea></label><div id="eImgBox">${imgsBlock()}</div>`}${n.kind === 'sop' ? `<div class="f etplbox"><b style="font-size:14px;color:var(--ink)">給客戶的範本</b><span class="sub">這個作業要傳給客戶的 LINE／簡訊，可以寫 {客戶}、{日期}。會同時出現在「範本」頁和同類案件裡。</span><div id="eTpls">${notes().filter((t) => t.kind === 'tpl' && t.sopId === n.id).map(tplRowHTML).join('')}</div><button type="button" class="btn" id="eAddTpl" style="align-self:flex-start">＋ 加一則範本</button></div>` : ''}${n.kind === 'quick' && !isNew ? '<div class="actions"><button class="btn danger" id="eDel">刪除這支電話</button></div>' : ''}</div></div>`;
   const close = () => { NE = null; ov.innerHTML = ''; App.render(); };
   if ($('eAddTpl')) {
     $('eAddTpl').onclick = () => { $('eTpls').insertAdjacentHTML('beforeend', tplRowHTML(null)); $('eTpls').lastElementChild.querySelector('.etb').focus(); };
-    $('eTpls').onclick = (e) => { const x = e.target.closest('.etx'); if (!x) return; const row = x.closest('.etpl'); if (!x.dataset.sure && row.dataset.tid) { x.dataset.sure = 1; x.textContent = '刪除？'; return; } row.hidden = true; row.dataset.del = 1; };
+    $('eTpls').onclick = (e) => { const ch = e.target.closest('.etch [data-t]'); if (ch) { ch.classList.toggle('on'); return; } const x = e.target.closest('.etx'); if (!x) return; const row = x.closest('.etpl'); if (!x.dataset.sure && row.dataset.tid) { x.dataset.sure = 1; x.textContent = '刪除？'; return; } row.hidden = true; row.dataset.del = 1; };
   }
   const saveTpls = () => { // SOP 底下的範本跟著 SOP 一起存
     ov.querySelectorAll('.etpl').forEach((row) => {
       const tid = row.dataset.tid, old = tid && Vault.get('notes', tid);
       if (row.dataset.del) { if (old) Vault.del('notes', tid); row.remove(); return; }
-      const body = row.querySelector('.etb').value, title = row.querySelector('.ett').value.trim(), group = row.querySelector('.etg').value;
+      const body = row.querySelector('.etb').value, title = row.querySelector('.ett').value.trim(), channels = [...row.querySelectorAll('.etch .tag.on')].map((x) => x.dataset.t), group = channels[0] || '其他';
       if (!old && !body.trim() && !title) return;
       const t = old || { kind: 'tpl', images: [] };
-      Object.assign(t, { group, title: title || n.title || '未命名', body, cat: n.cat || '', sopId: n.id });
+      Object.assign(t, { group, channels, title: title || n.title || '未命名', body, cat: n.cat || '', sopId: n.id });
       Vault.put('notes', t); row.dataset.tid = t.id;
     });
     notes().filter((t) => t.kind === 'tpl' && t.sopId === n.id && t.cat !== (n.cat || '')).forEach((t) => { t.cat = n.cat || ''; Vault.put('notes', t); });
@@ -1366,6 +1375,7 @@ function editNote(id, isNew) {
   const collect = () => {
     n.title = $('eT').value.trim() || '未命名'; n.body = $('eB').value;
     if ($('eG')) n.group = $('eG').value; if ($('eC')) n.cat = $('eC').value; if ($('eS')) n.sopId = $('eS').value;
+    if (n.kind === 'tpl') { const box = ov.querySelector('[data-etag="channels"]'); if (box) { n.channels = [...box.querySelectorAll('.tag.on')].map((x) => x.dataset.t); n.group = n.channels[0] || '其他'; } }
     if (n.kind === 'sop') { n.v2 = true; ov.querySelectorAll('[data-etag]').forEach((box) => { n[box.dataset.etag] = [...box.querySelectorAll('.tag.on')].map((x) => x.dataset.t); }); saveTpls(); }
   };
   const wireImgs = () => {
@@ -1401,6 +1411,7 @@ function parseImport(text) {
     kind: x.kind,
     group: x.kind === 'sop' ? String(x.group || '') : x.kind === 'tpl' ? (TPLGROUPS.includes(x.group) ? x.group : '其他') : '電話',
     title: String(x.title || '未命名').slice(0, 200), body: String(x.body || ''), cat: CATS.includes(x.cat) ? x.cat : x.kind === 'sop' ? mapGroup(x.group) : '',
+    ...(x.kind === 'tpl' ? { channels: Array.isArray(x.channels) ? x.channels.map(String) : [TPLGROUPS.includes(x.group) ? x.group : '其他'] } : {}),
     ...(x.kind === 'sop' ? { v2: true, kinds: Array.isArray(x.kinds) ? x.kinds.map(String) : [], tools: Array.isArray(x.tools) ? x.tools.map(String) : (x.group === LEGACY_T ? ['T字障'] : []) } : {}),
   }));
   if (!items.length) return { err: '裡面沒有可以匯入的項目' };
@@ -1638,6 +1649,36 @@ async function openViewer(d, overEdit, nav) {
   $('vClose').onclick = () => (ov.innerHTML = '');
 }
 
+/* 傳送：文字＋圖片（剪貼簿一次只能放一樣，所以分開複製，或用分享一次傳） */
+async function pngBlob(fileId) {
+  const u = await Files.url(fileId); if (!u) throw new Error('讀不到圖片');
+  const bmp = await createImageBitmap(await (await fetch(u)).blob());
+  const cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = bmp.height; cv.getContext('2d').drawImage(bmp, 0, 0);
+  return await new Promise((ok) => cv.toBlob(ok, 'image/png'));
+}
+async function openSend(n, c) {
+  const txt = fillTpl(n.body, c), imgs = n.images || [];
+  const canShare = !!navigator.canShare;
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>傳送 · ${esc(n.title)}</h2><button class="btn pri" id="sdX">關閉</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:640px;margin:0 auto;width:100%">
+   ${canShare ? `<button class="btn pri" id="sdShare" style="align-self:flex-start">分享（文字＋${imgs.length} 張圖）</button><div class="sub">會跳出分享選單，選 LINE 或要傳的人。LINE 有時只收圖片、沒帶到文字，那就再按下面的「複製文字」貼上。</div>` : '<div class="sub">電腦上剪貼簿一次只能放一樣：先複製文字貼上，再一張一張複製圖片貼上。</div>'}
+   <div class="sendbox"><pre>${esc(txt)}</pre><button class="btn" id="sdText">複製文字</button></div>
+   <div class="sendimgs">${imgs.map((f, i) => `<div class="sendimg"><img data-sdimg="${f}" alt=""><button class="btn" data-sdcopy="${i}">複製這張</button></div>`).join('')}</div></div></div>`;
+  ov.querySelectorAll('[data-sdimg]').forEach((im) => Files.url(im.dataset.sdimg).then((u) => { if (u) im.src = u; }));
+  $('sdX').onclick = () => (ov.innerHTML = '');
+  $('sdText').onclick = async () => { try { await navigator.clipboard.writeText(txt); toast('文字已複製'); } catch (e) { toast('無法自動複製，請長按文字選取'); } };
+  ov.querySelectorAll('[data-sdcopy]').forEach((b) => (b.onclick = async () => {
+    try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob(imgs[+b.dataset.sdcopy]) })]); toast('圖片已複製，到 LINE 貼上'); }
+    catch (e) { toast('這個瀏覽器不能複製圖片，請用「分享」或長按圖片儲存'); }
+  }));
+  if ($('sdShare')) $('sdShare').onclick = async () => {
+    try {
+      const files = await Promise.all(imgs.map(async (f, i) => new File([await pngBlob(f)], `${(n.title || '圖片').replace(/[\\/:*?"<>|]/g, '_')}-${i + 1}.png`, { type: 'image/png' })));
+      const data = { text: txt, files }; if (!navigator.canShare(data)) { toast('這台裝置不能一次分享圖片，請一張一張複製'); return; }
+      await navigator.share(data);
+    } catch (e) { if (e.name !== 'AbortError') toast('分享失敗，請改用複製'); }
+  };
+}
 let GV = null;
 async function showGallery(nav) {
   GV = nav; const d = nav.list[nav.i], n = nav.list.length;
