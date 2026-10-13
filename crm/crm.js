@@ -1042,7 +1042,7 @@ app.addEventListener('click', async (e) => {
   if (d.csel) { S.ccat = '全部'; S.csel = d.csel; S.showDetail = true; S.showIds = false; App.render(); return; }
   if (d.reveal) { const el = $(d.reveal); if (el) { const on = el.classList.toggle('shown'); b.textContent = on ? '隱藏' : '顯示'; } return; }
   const ccl = curClient();
-  if (d.cview && ccl) { openViewer(ccl.docs[+d.cview]); return; }
+  if (d.cview && ccl) { openGallery(b, ccl.docs, 'cview'); return; }
   if (d.cmask && ccl) { openMask(ccl, +d.cmask, 'clients'); return; }
   if (d.cdeldoc && ccl) { if (armConfirm(b, '確定？')) { const [doc] = ccl.docs.splice(+d.cdeldoc, 1); Vault.put('clients', ccl); if (doc) Files.remove(doc.fileId); App.render(); } return; }
   if (d.addstep != null && c) {
@@ -1059,7 +1059,7 @@ app.addEventListener('click', async (e) => {
   if (d.ctype && c) { c.causeType = c.causeType === d.ctype ? '' : d.ctype; c.causeDetail = ''; saveCase(c); App.render(); return; }
   if (d.cdet && c) { c.causeDetail = c.causeDetail === d.cdet ? '' : d.cdet; saveCase(c); App.render(); return; }
   if (d.mask && c) { openMask(c, +d.mask); return; }
-  if (d.view && c) { openViewer(c.docs[+d.view]); return; }
+  if (d.view && c) { openGallery(b, c.docs, 'view'); return; }
   if (d.deldoc && c) { if (armConfirm(b, '確定？')) { const [doc] = c.docs.splice(+d.deldoc, 1); saveCase(c); if (doc) Files.remove(doc.fileId); App.render(); } return; }
   if (d.copy) { e.preventDefault(); const n = Vault.get('notes', d.copy); const txt = fillTpl(n.body, d.forcase ? c : null); try { await navigator.clipboard.writeText(txt); toast('已複製' + (d.forcase && c?.client ? `（已帶入 ${c.client}）` : '')); } catch (err) { toast('無法自動複製，請長按文字選取'); } return; }
   if (d.tg) { S.tplGroup = d.tg; App.render(); return; }
@@ -1462,7 +1462,15 @@ function warp(img, k, filter) {
 }
 
 /* ================= 看原圖 ================= */
-async function openViewer(d, overEdit) {
+// 依畫面上的排列順序翻頁看文件
+function openGallery(btn, docs, key) {
+  const tiles = [...btn.closest('.docs').querySelectorAll('.doc[data-di]')];
+  const list = tiles.map((t) => docs[+t.dataset.di]).filter(Boolean);
+  const i = list.indexOf(docs[+btn.dataset[key]]);
+  openViewer(list[i], false, { list, i });
+}
+async function openViewer(d, overEdit, nav) {
+  if (nav && nav.list.length > 1) return showGallery(nav);
   const url = await Files.url(d.fileId); if (!url) { toast('檔案讀取失敗，請確認網路'); return; }
   if (isPdf(d)) {
     ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${esc(d.name)}</h2><button class="btn" id="vShare">分享／儲存</button><button class="btn pri" id="vClose">關閉</button></div><div class="sub" style="padding:6px 16px">如果只看到第一頁，按「分享／儲存」用「檔案」或 PDF 閱讀器打開。</div><iframe src="${url}" title="${esc(d.name)}" style="flex:1;width:100%;border:0;background:#fff"></iframe></div>`;
@@ -1474,6 +1482,28 @@ async function openViewer(d, overEdit) {
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${esc(d.name)}（原圖）</h2><button class="btn pri" id="vClose">關閉</button></div><div class="ovbody" style="justify-content:center"><img src="${url}" alt="${esc(d.name)}" style="max-width:100%;height:auto;align-self:flex-start;border-radius:6px"></div></div>`;
   $('vClose').onclick = () => (ov.innerHTML = '');
 }
+
+let GV = null;
+async function showGallery(nav) {
+  GV = nav; const d = nav.list[nav.i], n = nav.list.length;
+  const url = await Files.url(d.fileId); if (GV !== nav) return; if (!url) { toast('檔案讀取失敗，請確認網路'); return; }
+  const body = isPdf(d) ? `<iframe src="${url}" title="${esc(d.name)}" style="flex:1;width:100%;border:0;background:#fff;min-height:70vh"></iframe>` : `<img src="${url}" alt="${esc(d.name)}" class="gvimg">`;
+  ov.innerHTML = `<div class="ov gv"><div class="ovhead"><h2>${esc(d.name)}</h2><span class="gvcnt">${nav.i + 1} / ${n}</span><button class="btn" id="gvPrev" ${nav.i ? '' : 'disabled'} aria-label="上一張">‹ 上一張</button><button class="btn" id="gvNext" ${nav.i < n - 1 ? '' : 'disabled'} aria-label="下一張">下一張 ›</button>${isPdf(d) ? '<button class="btn" id="vShare">分享／儲存</button>' : ''}<button class="btn pri" id="vClose">關閉</button></div>
+   <div class="ovbody gvbody">${body}<button class="gvside l" id="gvL" ${nav.i ? '' : 'hidden'} aria-label="上一張">‹</button><button class="gvside r" id="gvR" ${nav.i < n - 1 ? '' : 'hidden'} aria-label="下一張">›</button></div></div>`;
+  const go = (k) => { const j = nav.i + k; if (j < 0 || j >= n) return; showGallery({ list: nav.list, i: j }); };
+  $('gvPrev').onclick = $('gvL').onclick = () => go(-1);
+  $('gvNext').onclick = $('gvR').onclick = () => go(1);
+  $('vClose').onclick = () => { ov.innerHTML = ''; GV = null; };
+  if ($('vShare')) $('vShare').onclick = async () => { const blob = await (await fetch(url)).blob(); shareOrSave([new File([blob], d.name.replace(/[\\/:*?"<>|]/g, '_') + '.pdf', { type: 'application/pdf' })]); };
+  const img = ov.querySelector('.gvimg');
+  if (img) {
+    let sx = null, sy = 0;
+    img.addEventListener('touchstart', (e) => { if (e.touches.length === 1) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; } else sx = null; }, { passive: true });
+    img.addEventListener('touchend', (e) => { if (sx == null) return; const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; sx = null; if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) { e.preventDefault(); go(dx < 0 ? 1 : -1); } });
+    img.onclick = (e) => { const r = img.getBoundingClientRect(); go(e.clientX < r.left + r.width / 3 ? -1 : 1); }; // 點右邊／中間下一張，點左邊三分之一上一張
+  }
+}
+document.addEventListener('keydown', (e) => { if (!GV || !ov.querySelector('.gv')) return; if (e.key === 'ArrowRight') $('gvNext')?.click(); else if (e.key === 'ArrowLeft') $('gvPrev')?.click(); else if (e.key === 'Escape') $('vClose')?.click(); });
 
 /* ================= 遮罩 ================= */
 let MK = null;

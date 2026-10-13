@@ -341,3 +341,11 @@ body.dragging-doc,body.dragging-doc *{cursor:grabbing!important}
 .ppline>span.me{color:var(--muted);font-weight:400}
 .ppline small{margin-left:4px;font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 6px}
 .doc[data-di] canvas,.doc[data-di] .pdftile{cursor:zoom-in}
+/* 翻頁看文件 */
+.gv .ovhead .gvcnt{font-family:var(--f-num);color:var(--muted);font-size:13px;white-space:nowrap}
+.gv .ovhead .btn:disabled{opacity:.35}
+.gvbody{position:relative;justify-content:center;align-items:flex-start}
+.gvimg{max-width:100%;height:auto;border-radius:6px;cursor:pointer;touch-action:pan-y pinch-zoom}
+.gvside{position:fixed;top:50%;transform:translateY(-50%);width:44px;height:64px;border:0;border-radius:10px;background:rgba(0,0,0,.35);color:#fff;font-size:32px;line-height:1;z-index:5}
+.gvside.l{left:10px}.gvside.r{right:10px}
+@media (max-width:700px){.gv .ovhead #gvPrev,.gv .ovhead #gvNext{display:none}}
