@@ -408,3 +408,6 @@ summary .tagpill{margin-left:4px}
 .doc.refview{cursor:zoom-in}
 .catpick{display:flex;gap:6px}
 .catpick select{flex:1;min-width:0}
+div.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);min-width:0}
+.catpick select{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;color:var(--ink);font-size:15px;width:100%}
+.chips.linefilter .chip.on{background:var(--info-soft);border-color:var(--info);color:var(--info)}
