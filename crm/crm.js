@@ -249,10 +249,10 @@ const ICON = {
   msg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>',
 };
 const NAV = [['quick', '快查', 'bolt'], ['clients', '客戶', 'user'], ['cases', '案件', 'folder'], ['calls', '電訪', 'phone'], ['refs', '理賠參考', 'book'], ['sop', 'SOP', 'list'], ['tpl', '範本', 'msg']];
-const DEFAULT_CATS = ['理賠', '建議書', '新契約', '保全', '保費', '保校', '房貸', '服務', '其他'];
+const DEFAULT_CATS = ['理賠', '建議書', '新契約', '保全', '保費', '保校', '服務', '其他'];
 const CATS = [...DEFAULT_CATS]; // 可以在 App 裡自己改，存在設定裡
 // 分類分兩層：大類（照公司拜訪事件）› 小類（案件、SOP、範本共用）
-const DEFAULT_GROUPS = [['關係／觀念建立', []], ['需求分析', ['保單健檢']], ['建議書／促約', ['建議書', '新契約']], ['客戶服務', ['理賠', '保全', '保費', '保校', '服務']], ['整合行銷', ['房貸', '推薦連結']], ['其他', ['其他']]];
+const DEFAULT_GROUPS = [['關係／觀念建立', []], ['需求分析', ['保單健檢']], ['建議書／促約', ['建議書', '新契約']], ['客戶服務', ['理賠', '保全', '保費', '保校', '服務']], ['其他', ['其他']]];
 let GROUPS = DEFAULT_GROUPS.map(([name, cats]) => ({ name, cats: [...cats] }));
 function syncCats() {
   const st = Vault.get('settings', 'catgroups')?.list;
@@ -329,7 +329,7 @@ function mapGroup(g) { if (!g) return ''; if (g === LEGACY_T) return CATS.includ
 const catOf = (n) => (n.kind === 'sop' && !n.v2 ? mapGroup(n.group) : n.cat || '');
 const kindsOf = (n) => n.kinds || [];
 const toolsOf = (n) => n.tools || (n.kind === 'sop' && !n.v2 && n.group === LEGACY_T ? ['T字障'] : []);
-const TAGS = { kinds: { label: '壽險險種', def: ['壽險', '醫療', '儲蓄', '意外', '年金', '投資型', '旅平'], of: kindsOf }, pkinds: { label: '產險險種', def: ['車險', '住火', '旅綜', '寵物險'], of: (n) => n.pkinds || [] }, tools: { label: '講解工具', def: ['T字障', '四象限', '帆船理論', '金三角', '28000天'], of: toolsOf } };
+const TAGS = { kinds: { label: '壽險險種', def: ['壽險', '醫療', '儲蓄', '意外', '年金', '投資型', '旅平'], of: kindsOf }, pkinds: { label: '產險險種', def: ['車險', '住火', '旅綜', '寵物險'], of: (n) => n.pkinds || [] }, mkinds: { label: '整合行銷項目', def: ['房貸', '證券', '信用卡', '開戶', '推薦連結'], of: (n) => n.mkinds || [] }, tools: { label: '講解工具', def: ['T字障', '四象限', '帆船理論', '金三角', '28000天'], of: toolsOf } };
 const chOf = (n) => n.channels || (n.group ? [n.group] : []); // 範本可以同時用在 LINE、簡訊、信件…
 const chPills = (n) => chOf(n).map((g) => `<span class="pill p-go">${esc(g)}</span>`).join('');
 const tagList = (key) => { const l = Vault.get('settings', 'tag-' + key)?.list; return l?.length ? l : TAGS[key].def; };
@@ -358,21 +358,22 @@ function openTagEditor(key) {
     if (new Set(names).size !== names.length) { toast('有重複的名稱'); return; }
     const m = new Map(rows.filter((r) => r.old && r.old !== r.name.trim()).map((r) => [r.old, r.name.trim()]));
     if (m.size) notes().forEach((n) => { const cur = T.of(n); if (cur.some((t) => m.has(t))) { n[key] = cur.map((t) => m.get(t) || t); Vault.put('notes', n); } });
-    const fk = { kinds: 'sk', pkinds: 'spk', tools: 'st' }[key]; if (m.has(S[fk])) S[fk] = m.get(S[fk]);
+    const fk = { kinds: 'sk', pkinds: 'spk', mkinds: 'smk', tools: 'st' }[key]; if (m.has(S[fk])) S[fk] = m.get(S[fk]);
     Vault.put('settings', { id: 'tag-' + key, list: names }); ov.innerHTML = ''; App.render(); toast(T.label + '已更新');
   };
 }
 const STATUS = ['進行中', '待回覆', '已結案'];
-const DEFAULT_ITEMS = { 壽險: ['住院醫療', '實支實付', '住院日額', '手術', '意外醫療', '意外失能', '骨折', '重大傷病', '癌症', '長照失能', '門診'], 產險: ['車險', '住火', '旅綜', '寵物險'] };
-const LINES = ['壽險', '產險'];
+const DEFAULT_ITEMS = { 壽險: ['住院醫療', '實支實付', '住院日額', '手術', '意外醫療', '意外失能', '骨折', '重大傷病', '癌症', '長照失能', '門診'], 產險: ['車險', '住火', '旅綜', '寵物險'] , 整合行銷: ['房貸', '證券', '信用卡', '開戶', '推薦連結'] };
+const LINES = ['壽險', '產險', '整合行銷'];
+const MK_WORDS = ['房貸', '證券', '信用卡', '開戶', '推薦連結', '銀行'];
 const P_WORDS = ['車險', '住火', '旅綜', '旅平', '寵物', '頭家壓箱寶', '產險'];
 const isPItem = (x) => P_WORDS.some((w) => String(x).includes(w));
 const DEFAULT_CAUSE = { '疾病': ['感染症（病毒、細菌）', '消化系統', '呼吸系統', '心血管', '腦血管／神經', '骨科／肌肉骨骼', '泌尿／腎臟', '婦科／產科', '內分泌／代謝', '腫瘤', '眼耳鼻喉', '皮膚', '牙科', '身心科', '其他疾病'], '意外': ['交通事故', '跌倒／滑倒', '運動傷害', '職業傷害', '燒燙傷', '割傷／刺傷', '撞擊／夾傷', '動物咬抓傷', '其他意外'] };
-const ITEMS = { 壽險: [...DEFAULT_ITEMS.壽險], 產險: [...DEFAULT_ITEMS.產險] }, CAUSE = Object.fromEntries(Object.entries(DEFAULT_CAUSE).map(([k, v]) => [k, [...v]]));
+const ITEMS = { 壽險: [...DEFAULT_ITEMS.壽險], 產險: [...DEFAULT_ITEMS.產險], 整合行銷: [...DEFAULT_ITEMS.整合行銷] }, CAUSE = Object.fromEntries(Object.entries(DEFAULT_CAUSE).map(([k, v]) => [k, [...v]]));
 function syncRefLists() { // 險種項目、原因可以自己改，存在設定裡
   const set = (arr, l) => { const next = l?.length ? l : null; if (next && next.join('|') !== arr.join('|')) arr.splice(0, arr.length, ...next); };
   const old = Vault.get('settings', 'items')?.list; // 舊版只有一份：產險字樣的歸產險，其他歸壽險
-  LINES.forEach((ln) => { let l = Vault.get('settings', 'items-' + ln)?.list; if (!l && old) l = ln === '產險' ? [...new Set([...old.filter(isPItem).map((x) => x.replace(/^產險-/, '')), ...DEFAULT_ITEMS.產險])] : old.filter((x) => !isPItem(x)); set(ITEMS[ln], l || DEFAULT_ITEMS[ln]); });
+  LINES.forEach((ln) => { let l = Vault.get('settings', 'items-' + ln)?.list; if (!l && old && ln !== '整合行銷') l = ln === '產險' ? [...new Set([...old.filter(isPItem).map((x) => x.replace(/^產險-/, '')), ...DEFAULT_ITEMS.產險])] : old.filter((x) => !isPItem(x)); set(ITEMS[ln], l || DEFAULT_ITEMS[ln]); });
   Object.keys(CAUSE).forEach((k) => set(CAUSE[k], Vault.get('settings', 'cause-' + k)?.list || DEFAULT_CAUSE[k]));
 }
 // 通用的清單編輯器（改名會一起改到用到它的資料；有在用的不能刪）
@@ -405,12 +406,14 @@ function openListEditor({ title, note, list, used, rename, save }) {
   };
 }
 // 壽險／產險是每筆資料的屬性（不是分類）：案件分壽險、產險；SOP、範本多一個「通用」
-const NLINES = ['壽險', '產險', '通用'];
-const lineN = (n) => n.line || ((n.pkinds || []).length && !(n.kinds || []).length ? '產險' : '通用');
+const NLINES = ['壽險', '產險', '整合行銷', '通用'];
+const lineN = (n) => n.line || ((n.pkinds || []).length && !(n.kinds || []).length ? '產險' : (n.mkinds || []).length && !(n.kinds || []).length ? '整合行銷' : '通用');
+const TAG_LINE = { kinds: '壽險', tools: '壽險', pkinds: '產險', mkinds: '整合行銷' }; // 每排標籤屬於哪一邊
+const tagShown = (key, ln) => !ln || ln === '通用' || TAG_LINE[key] === ln;
 const lineOk = (n, want) => !want || lineN(n) === want || lineN(n) === '通用';
-const linePill = (ln) => (ln && ln !== '通用' ? `<span class="pill ${ln === '產險' ? 'p-wait' : 'p-go'}">${ln}</span>` : '');
+const linePill = (ln) => (ln && ln !== '通用' ? `<span class="pill ${ln === '產險' ? 'p-wait' : ln === '整合行銷' ? 'p-mk' : 'p-go'}">${ln}</span>` : '');
 const lineSeg = (cur, attr, opts) => `<div class="stseg lineseg" role="group" aria-label="壽險或產險">${opts.map((ln) => `<button type="button" class="${cur === ln ? 'on st-go' : ''}" data-${attr}="${ln}">${ln}</button>`).join('')}</div>`;
-const lineOf = (c) => c.line || ((c.items || []).some((x) => ITEMS.產險.includes(x) || isPItem(x)) ? '產險' : '壽險');
+const lineOf = (c) => c.line || ((c.items || []).some((x) => ITEMS.產險.includes(x) || isPItem(x)) ? '產險' : (c.items || []).some((x) => ITEMS.整合行銷.includes(x)) ? '整合行銷' : '壽險');
 function editItems(ln) {
   openListEditor({ title: `編輯${ln}的險種項目`, list: ITEMS[ln], used: (n) => cases().filter((c) => (c.items || []).includes(n)).length,
     rename: (m) => cases().forEach((c) => { if ((c.items || []).some((x) => m.has(x))) { c.items = c.items.map((x) => m.get(x) || x); saveCase(c); } }),
@@ -531,9 +534,10 @@ function caseDetailHTML() {
    <label class="f">客戶${c.clientId && Vault.get('clients', c.clientId) ? ` <button class="clientchip" data-goclient="${c.clientId}">👤 看客戶資料 ›</button>` : ''}<input id="f_client" data-f="client" list="clientNames" autocomplete="off" value="${esc(c.client)}" placeholder="打名字，會自動帶出或建立客戶"><datalist id="clientNames">${clients().map((x) => `<option value="${esc(x.name)}">`).join('')}</datalist></label>
    <label class="f">日期<input type="date" id="f_date" data-f="date" value="${esc(caseDate(c))}"></label>
    <div class="f">類別<div class="catpick">${(() => { const g = GROUPS.find((x) => x.cats.includes(c.cat)); const gs = GROUPS.filter((x) => x.cats.length); return `<select data-catgroup aria-label="大類">${g ? '' : '<option selected>（請選大類）</option>'}${gs.map((x) => `<option${x === g ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select><select id="f_cat" data-f="cat" aria-label="小類">${g ? '' : `<option selected>${esc(c.cat)}</option>`}${(g ? g.cats : []).map((k) => `<option${k === c.cat ? ' selected' : ''}>${esc(k)}</option>`).join('')}</select>`; })()}</div></div>
-   <div class="f">壽險／產險${lineSeg(lineOf(c), 'line', LINES)}</div>
+   <div class="f">業務別${lineSeg(lineOf(c), 'line', LINES)}</div>
    <div class="f">狀態<div class="stseg" role="group" aria-label="狀態">${STATUS.map((x) => `<button class="${x === c.status ? 'on ' + pillCls(x) : ''}" data-setst="${x}" aria-pressed="${x === c.status}">${x}</button>`).join('')}</div></div>
    <label class="f">下一步<input id="f_next" data-f="next" value="${esc(c.next)}" placeholder="例如：補診斷書正本"></label></div></div>
+  ${lineOf(c) === '整合行銷' ? `<div class="sec"><h2>整合行銷項目</h2><div class="tags">${[...ITEMS.整合行銷, ...(c.items || []).filter((x) => !ITEMS.整合行銷.includes(x))].map((x) => `<button class="tag${(c.items || []).includes(x) ? ' on' : ''}" data-item="${esc(x)}">${esc(x)}</button>`).join('')}<button class="tag tagedit" data-edititems="整合行銷">⚙ 編輯</button></div></div>` : ''}
   ${peopleHTML(c)}
   ${timelineHTML(c)}
   ${isClaim ? `<div class="sec"><h2>理賠分類</h2>
@@ -1144,10 +1148,11 @@ function sopMatch(n) {
   if (S.sg === '通用') { if (k) return false; } else if (S.sg !== '全部') { const g = GROUPS.find((x) => x.name === S.sg); if (!g || !g.cats.includes(k)) return false; if (S.sc !== '全部' && k !== S.sc) return false; }
   if (S.sk && !kindsOf(n).includes(S.sk)) return false;
   if (S.spk && !(n.pkinds || []).includes(S.spk)) return false;
+  if (S.smk && !(n.mkinds || []).includes(S.smk)) return false;
   if (S.st && !toolsOf(n).includes(S.st)) return false;
   return true;
 }
-const tagPills = (n) => [...kindsOf(n), ...(n.pkinds || []), ...toolsOf(n)].map((t) => `<span class="tagpill">${esc(t)}</span>`).join('');
+const tagPills = (n) => [...kindsOf(n), ...(n.pkinds || []), ...(n.mkinds || []), ...toolsOf(n)].map((t) => `<span class="tagpill">${esc(t)}</span>`).join('');
 function sopTplsHTML(sop, c) { // 掛在這個 SOP 底下、要傳給客戶的範本
   const ts = notes().filter((t) => t.kind === 'tpl' && t.sopId === sop.id);
   return `<div class="soptpls">${ts.map((t) => `<details class="tplrow"><summary>${chPills(t)}<span class="tpltitle">${esc(t.title)}</span><button class="btn" data-copy="${t.id}"${c ? ' data-forcase="1"' : ''} style="padding:4px 10px;font-size:13px">複製</button></summary><pre>${esc(fillTpl(t.body, c))}</pre></details>`).join('')}<button class="linkbtn" data-newtplfor="${sop.id}">＋ 給客戶的範本</button></div>`;
@@ -1160,7 +1165,7 @@ function sopHTML() {
   <input class="search" id="q" placeholder="搜尋" value="${esc(S.q)}" style="max-width:420px" autocomplete="off">
   ${lineFilter('nline')}<div class="chips">${['全部', ...GROUPS.map((x) => x.name), '通用'].map((x) => `<button class="chip${S.sg === x ? ' on' : ''}" data-sg="${esc(x)}">${esc(x)}</button>`).join('')}<button class="chip chipedit" data-act="editcats">⚙ 編輯分類</button></div>
   ${g ? `<div class="chips subchips">${['全部', ...g.cats].map((x) => `<button class="chip${S.sc === x ? ' on' : ''}" data-sc="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : ''}
-  ${S.nline !== '產險' ? tagRow('kinds', S.sk, 'sk') : ''}${S.nline !== '壽險' ? tagRow('pkinds', S.spk, 'spk') : ''}${S.nline !== '產險' ? tagRow('tools', S.st, 'st') : ''}
+  ${tagShown('kinds', S.nline) ? tagRow('kinds', S.sk, 'sk') : ''}${tagShown('tools', S.nline) ? tagRow('tools', S.st, 'st') : ''}${tagShown('pkinds', S.nline) ? tagRow('pkinds', S.spk, 'spk') : ''}${tagShown('mkinds', S.nline) ? tagRow('mkinds', S.smk, 'smk') : ''}
   <div class="cards">${list.map((n) => { const open = S.sopOpen === n.id, long = (n.body || '').split('\n').length > 8 || (n.body || '').length > 260 || (n.images || []).length > 4; return `<div class="card sopcard${open ? ' open' : ''}"><h3><span>${esc(n.title)}</span><span class="sub">${linePill(lineN(n))} ${esc(catOf(n) || '通用')}</span></h3>${tagPills(n) ? `<div class="tagpills">${tagPills(n)}</div>` : ''}<pre>${linkify(esc(n.body))}</pre>${nimgsHTML(n, open ? 0 : 4)}${long ? `<button class="linkbtn" data-sopopen="${n.id}">${open ? '收起' : '展開全部'}</button>` : ''}${sopTplsHTML(n, null)}<div class="mini">${/https?:\/\//.test(n.body) ? `<button data-copy="${n.id}">複製</button>` : ''}<button data-editnote="${n.id}">編輯</button><button data-delnote="${n.id}">刪除</button></div></div>`; }).join('') || `<div class="empty">${notes().some((n) => n.kind === 'sop') ? '這個篩選沒有符合的 SOP。' : '還沒有流程。按右上角「＋ 新增 SOP」。'}</div>`}</div>
   `;
 }
@@ -1249,11 +1254,12 @@ app.addEventListener('click', async (e) => {
   if (d.ritem) { S.refItem = d.ritem; App.render(); return; }
   if (d.rcause) { S.refCause = d.rcause; S.refDet = ''; App.render(); return; }
   if (d.rdet) { S.refDet = S.refDet === d.rdet ? '' : d.rdet; App.render(); return; }
-  if (d.sg) { S.sg = d.sg; S.sc = '全部'; if (d.sg === '全部') { S.sk = ''; S.spk = ''; S.st = ''; } App.render(); return; } // 點「全部」＝清掉所有篩選
+  if (d.sg) { S.sg = d.sg; S.sc = '全部'; if (d.sg === '全部') { S.sk = ''; S.spk = ''; S.smk = ''; S.st = ''; } App.render(); return; } // 點「全部」＝清掉所有篩選
   if (d.sc) { S.sc = d.sc; App.render(); return; }
   if (d.refpick) { const rc = Vault.get('cases', S.refSel); if (!rc) return; if (d.refpick === 'all') rc.refDocIds = rc.docs.filter((x) => !isPdf(x)).map(dkey); else if (d.refpick === 'none') rc.refDocIds = []; else { delete rc.refDocIds; delete rc.refFolders; } saveCase(rc); App.render(); return; }
   if (d.sopopen) { S.sopOpen = S.sopOpen === d.sopopen ? null : d.sopopen; App.render(); return; }
   if (d.sk != null && S.view === 'sop') { S.sk = S.sk === d.sk ? '' : d.sk; App.render(); return; }
+  if (d.smk != null && S.view === 'sop') { S.smk = S.smk === d.smk ? '' : d.smk; App.render(); return; }
   if (d.spk != null && S.view === 'sop') { S.spk = S.spk === d.spk ? '' : d.spk; App.render(); return; }
   if (d.st != null && S.view === 'sop') { S.st = S.st === d.st ? '' : d.st; App.render(); return; }
   if (d.newtplfor) { const sop = Vault.get('notes', d.newtplfor); if (!sop) return; const t = Vault.put('notes', { kind: 'tpl', line: lineN(sop), group: 'LINE', channels: ['LINE'], cat: catOf(sop), sopId: sop.id, title: sop.title, body: '', images: [] }); editNote(t.id, true); return; }
@@ -1297,7 +1303,7 @@ app.addEventListener('click', async (e) => {
   if (d.unlink && c) { const o = Vault.get('cases', d.unlink); c.links = (c.links || []).filter((x) => x !== d.unlink); saveCase(c); if (o) { o.links = (o.links || []).filter((x) => x !== c.id); saveCase(o); } App.render(); toast('已取消連結'); return; }
   if (d.gocase) { S.folder = '全部'; S.view = 'cases'; S.sel = d.gocase; S.showDetail = true; App.render(); return; }
   if (d.edititems) { editItems(d.edititems); return; }
-  if (d.lf) { const [k, v] = d.lf.split(':'); S[k] = v === '全部' ? '' : v; if (k === 'nline') { if (v === '產險') { S.sk = ''; S.st = ''; } if (v === '壽險') S.spk = ''; } App.render(); return; }
+  if (d.lf) { const [k, v] = d.lf.split(':'); S[k] = v === '全部' ? '' : v; if (k === 'nline') { [['kinds', 'sk'], ['tools', 'st'], ['pkinds', 'spk'], ['mkinds', 'smk']].forEach(([t, f]) => { if (!tagShown(t, S.nline)) S[f] = ''; }); } App.render(); return; }
   if (d.line && c) { c.line = d.line; saveCase(c); App.render(); return; }
   if (d.item && c) { const i = c.items.indexOf(d.item); i < 0 ? c.items.push(d.item) : c.items.splice(i, 1); saveCase(c); App.render(); return; }
   if (d.ctype && c) { c.causeType = c.causeType === d.ctype ? '' : d.ctype; c.causeDetail = ''; saveCase(c); App.render(); return; }
@@ -1347,8 +1353,8 @@ app.addEventListener('click', async (e) => {
     case 'newtpl': { const ch = S.tplGroup !== '全部' ? S.tplGroup : 'LINE', tg = GROUPS.find((x) => x.name === S.tg); const n = Vault.put('notes', { kind: 'tpl', line: S.nline || '通用', group: ch, channels: [ch], cat: S.tplCat !== '全部' ? S.tplCat : tg?.cats[0] || '', title: '', body: '', images: [] }); editNote(n.id, true); break; }
     case 'refpickmode': S.refPick = !S.refPick; App.render(); break;
     case 'pickref': S.refPick = true; S.view = 'refs'; S.refSel = c.id; S.refItem = '全部'; S.refCause = '全部'; S.refDet = ''; S.showDetail = true; App.render(); break;
-    case 'newsop': { const g = GROUPS.find((x) => x.name === S.sg); const n = Vault.put('notes', { kind: 'sop', v2: true, line: S.nline || '通用', cat: S.sc !== '全部' ? S.sc : g?.cats[0] || '', kinds: S.sk ? [S.sk] : [], pkinds: S.spk ? [S.spk] : [], tools: S.st ? [S.st] : [], title: '', body: '', images: [] }); editNote(n.id, true); break; }
-    case 'sopfor': S.view = 'sop'; S.sg = groupOf(c.cat) || '全部'; S.sc = groupOf(c.cat) ? c.cat : '全部'; S.sk = ''; S.spk = ''; S.st = ''; S.q = ''; S.showDetail = false; App.render(); break;
+    case 'newsop': { const g = GROUPS.find((x) => x.name === S.sg); const n = Vault.put('notes', { kind: 'sop', v2: true, line: S.nline || '通用', cat: S.sc !== '全部' ? S.sc : g?.cats[0] || '', kinds: S.sk ? [S.sk] : [], pkinds: S.spk ? [S.spk] : [], mkinds: S.smk ? [S.smk] : [], tools: S.st ? [S.st] : [], title: '', body: '', images: [] }); editNote(n.id, true); break; }
+    case 'sopfor': S.view = 'sop'; S.sg = groupOf(c.cat) || '全部'; S.sc = groupOf(c.cat) ? c.cat : '全部'; S.sk = ''; S.spk = ''; S.smk = ''; S.st = ''; S.q = ''; S.showDetail = false; App.render(); break;
     case 'tplfor': S.view = 'tpl'; S.tg = groupOf(c.cat) || '全部'; S.tplCat = groupOf(c.cat) ? c.cat : '全部'; S.tplGroup = '全部'; S.q = ''; S.showDetail = false; App.render(); break;
     case 'adddisc': if (ccl) openDisclosure(ccl, null, ''); break;
     case 'togglehealth': S.showHealth = !S.showHealth; App.render(); break;
@@ -1379,6 +1385,7 @@ app.addEventListener('click', async (e) => {
     case 'edittags-kinds': openTagEditor('kinds'); break;
     case 'edittags-tools': openTagEditor('tools'); break;
     case 'edittags-pkinds': openTagEditor('pkinds'); break;
+    case 'edittags-mkinds': openTagEditor('mkinds'); break;
     case 'pasteimg': pasteFromClipboard(); break;
     case 'editsteps': openStepEditor(c.cat); break;
     case 'linkcase': openLinkPicker(c); break;
@@ -1470,7 +1477,7 @@ function editNote(id, isNew) {
   const n = Vault.get('notes', id); const withImgs = n.kind !== 'quick';
   NE = withImgs ? n : null;
   const imgsBlock = () => `<div class="sub">附圖 · 可以把圖片拖進來，或按 Ctrl+V 貼上截圖</div><div class="nimgs edit">${(n.images || []).map((f, i) => `<div class="nimgwrap"><button class="nimg" data-vimg="${f}" aria-label="放大看圖"><img data-fid="${f}" alt=""></button><button class="nimgdel" data-delimg="${i}" aria-label="移除這張圖">✕</button></div>`).join('')}<button class="adddoc nimgadd" id="eCam">${ICON.scan}拍照／掃描</button><button class="adddoc nimgadd" id="eAddImg">＋ 選圖片</button></div><input type="file" id="eImgs" accept="image/*" multiple>`;
-  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${n.kind === 'quick' ? '電話' : '編輯'}</h2><button class="btn" id="eCancel">取消</button><button class="btn pri" id="eSave">儲存</button></div><div class="ovbody" style="flex-direction:column;max-width:720px;margin:0 auto;width:100%">${n.kind === 'sop' || n.kind === 'tpl' ? `<div class="f">壽險／產險${lineSeg(lineN(n), 'eline', NLINES)}</div>` : ''}${n.kind === 'sop' ? `<label class="f">分類<select id="eC">${catOptions(catOf(n), '通用（不屬於特定分類）')}</select></label>${Object.keys(TAGS).map((key) => `<div class="f" data-tagrow="${key}" style="font-size:13px;color:var(--muted)${((key === 'kinds' || key === 'tools') && lineN(n) === '產險') || (key === 'pkinds' && lineN(n) === '壽險') ? ';display:none' : ''}">${TAGS[key].label}<div class="tags" data-etag="${key}">${[...new Set([...tagList(key), ...TAGS[key].of(n)])].map((t) => `<button type="button" class="tag sm${TAGS[key].of(n).includes(t) ? ' on' : ''}" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div></div>`).join('')}` : ''}${n.kind === 'tpl' ? `<label class="f">分類<select id="eC">${catOptions(n.cat, '通用')}</select></label><div class="f" style="font-size:13px;color:var(--muted)">用在哪裡（可複選）<div class="tags" data-etag="channels">${[...new Set([...TPLGROUPS, ...chOf(n)])].map((g) => `<button type="button" class="tag sm${chOf(n).includes(g) ? ' on' : ''}" data-t="${esc(g)}">${esc(g)}</button>`).join('')}</div></div><label class="f">屬於哪個 SOP<select id="eS"><option value="">（不屬於 SOP）</option>${notes().filter((x) => x.kind === 'sop').sort((a, b) => (catOf(b) === n.cat) - (catOf(a) === n.cat) || a.title.localeCompare(b.title)).map((x) => `<option value="${x.id}"${x.id === n.sopId ? ' selected' : ''}>${esc(x.title)}${catOf(x) ? '（' + esc(catOf(x)) + '）' : ''}</option>`).join('')}</select></label><div class="sub">可以寫 {客戶}、{日期}，從案件複製時會自動帶入。</div>` : ''}<label class="f">${n.kind === 'quick' ? '名稱' : '標題'}<input id="eT" value="${esc(n.title)}"></label>${n.kind === 'quick' ? `<label class="f">電話<input id="eB" inputmode="tel" value="${esc(n.body)}"></label>` : `<label class="f">${n.kind === 'sop' ? '作業步驟' : '內容'}<textarea id="eB" rows="${n.kind === 'sop' ? 8 : 10}">${esc(n.body)}</textarea></label><div id="eImgBox">${imgsBlock()}</div>`}${n.kind === 'sop' ? `<div class="f etplbox"><b style="font-size:14px;color:var(--ink)">給客戶的範本</b><span class="sub">這個作業要傳給客戶的 LINE／簡訊，可以寫 {客戶}、{日期}。會同時出現在「範本」頁和同類案件裡。</span><div id="eTpls">${notes().filter((t) => t.kind === 'tpl' && t.sopId === n.id).map(tplRowHTML).join('')}</div><button type="button" class="btn" id="eAddTpl" style="align-self:flex-start">＋ 加一則範本</button></div>` : ''}${n.kind === 'quick' && !isNew ? '<div class="actions"><button class="btn danger" id="eDel">刪除這支電話</button></div>' : ''}</div></div>`;
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${n.kind === 'quick' ? '電話' : '編輯'}</h2><button class="btn" id="eCancel">取消</button><button class="btn pri" id="eSave">儲存</button></div><div class="ovbody" style="flex-direction:column;max-width:720px;margin:0 auto;width:100%">${n.kind === 'sop' || n.kind === 'tpl' ? `<div class="f">業務別${lineSeg(lineN(n), 'eline', NLINES)}</div>` : ''}${n.kind === 'sop' ? `<label class="f">分類<select id="eC">${catOptions(catOf(n), '通用（不屬於特定分類）')}</select></label>${Object.keys(TAGS).map((key) => `<div class="f" data-tagrow="${key}" style="font-size:13px;color:var(--muted)${tagShown(key, lineN(n)) ? '' : ';display:none'}">${TAGS[key].label}<div class="tags" data-etag="${key}">${[...new Set([...tagList(key), ...TAGS[key].of(n)])].map((t) => `<button type="button" class="tag sm${TAGS[key].of(n).includes(t) ? ' on' : ''}" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div></div>`).join('')}` : ''}${n.kind === 'tpl' ? `<label class="f">分類<select id="eC">${catOptions(n.cat, '通用')}</select></label><div class="f" style="font-size:13px;color:var(--muted)">用在哪裡（可複選）<div class="tags" data-etag="channels">${[...new Set([...TPLGROUPS, ...chOf(n)])].map((g) => `<button type="button" class="tag sm${chOf(n).includes(g) ? ' on' : ''}" data-t="${esc(g)}">${esc(g)}</button>`).join('')}</div></div><label class="f">屬於哪個 SOP<select id="eS"><option value="">（不屬於 SOP）</option>${notes().filter((x) => x.kind === 'sop').sort((a, b) => (catOf(b) === n.cat) - (catOf(a) === n.cat) || a.title.localeCompare(b.title)).map((x) => `<option value="${x.id}"${x.id === n.sopId ? ' selected' : ''}>${esc(x.title)}${catOf(x) ? '（' + esc(catOf(x)) + '）' : ''}</option>`).join('')}</select></label><div class="sub">可以寫 {客戶}、{日期}，從案件複製時會自動帶入。</div>` : ''}<label class="f">${n.kind === 'quick' ? '名稱' : '標題'}<input id="eT" value="${esc(n.title)}"></label>${n.kind === 'quick' ? `<label class="f">電話<input id="eB" inputmode="tel" value="${esc(n.body)}"></label>` : `<label class="f">${n.kind === 'sop' ? '作業步驟' : '內容'}<textarea id="eB" rows="${n.kind === 'sop' ? 8 : 10}">${esc(n.body)}</textarea></label><div id="eImgBox">${imgsBlock()}</div>`}${n.kind === 'sop' ? `<div class="f etplbox"><b style="font-size:14px;color:var(--ink)">給客戶的範本</b><span class="sub">這個作業要傳給客戶的 LINE／簡訊，可以寫 {客戶}、{日期}。會同時出現在「範本」頁和同類案件裡。</span><div id="eTpls">${notes().filter((t) => t.kind === 'tpl' && t.sopId === n.id).map(tplRowHTML).join('')}</div><button type="button" class="btn" id="eAddTpl" style="align-self:flex-start">＋ 加一則範本</button></div>` : ''}${n.kind === 'quick' && !isNew ? '<div class="actions"><button class="btn danger" id="eDel">刪除這支電話</button></div>' : ''}</div></div>`;
   const close = () => { NE = null; ov.innerHTML = ''; App.render(); };
   if ($('eAddTpl')) {
     $('eAddTpl').onclick = () => { $('eTpls').insertAdjacentHTML('beforeend', tplRowHTML(null)); $('eTpls').lastElementChild.querySelector('.etb').focus(); };
@@ -1490,9 +1497,7 @@ function editNote(id, isNew) {
   };
   ov.querySelectorAll('[data-eline]').forEach((b) => (b.onclick = () => {
     ov.querySelectorAll('[data-eline]').forEach((x) => x.classList.remove('on', 'st-go')); b.classList.add('on', 'st-go');
-    const ln = b.dataset.eline, k = ov.querySelector('[data-tagrow="kinds"]'), pk = ov.querySelector('[data-tagrow="pkinds"]');
-    const tl = ov.querySelector('[data-tagrow="tools"]');
-    if (k) k.style.display = ln === '產險' ? 'none' : ''; if (tl) tl.style.display = ln === '產險' ? 'none' : ''; if (pk) pk.style.display = ln === '壽險' ? 'none' : '';
+    const ln = b.dataset.eline; ov.querySelectorAll('[data-tagrow]').forEach((r) => { r.style.display = tagShown(r.dataset.tagrow, ln) ? '' : 'none'; });
   }));
   ov.querySelectorAll('[data-etag]').forEach((box) => (box.onclick = (e) => { const t = e.target.closest('[data-t]'); if (t) t.classList.toggle('on'); }));
   const collect = () => {
@@ -2084,7 +2089,7 @@ function askUnlock() {
   setTimeout(() => $('gP')?.focus(), 50);
 }
 let lastAct = Date.now();
-if (MOCK) window.__crm = { get Vault() { return Vault; }, migrateLine: () => migrateLine(), App }; // 只有測試模式才開，方便測試
+if (MOCK) window.__crm = { get Vault() { return Vault; }, migrateLine: () => migrateLine(), migrateMarketing: () => migrateMarketing(), App }; // 只有測試模式才開，方便測試
 function migrateLine() { // 一次性：「產險」大類拿掉，裡面的東西改成「產險」屬性
   if (Vault.get('settings', 'migr-line')) return;
   syncCats(); syncRefLists();
@@ -2101,9 +2106,24 @@ function migrateLine() { // 一次性：「產險」大類拿掉，裡面的東�
   }
   Vault.put('settings', { id: 'migr-line', done: true }); syncCats(); syncRefLists();
 }
+function migrateMarketing() { // 一次性：「整合行銷」大類拿掉，改成跟壽險、產險同一層
+  if (Vault.get('settings', 'migr-mk')) return;
+  syncCats(); syncRefLists();
+  const g = GROUPS.find((x) => x.name === '整合行銷'), mcats = [...new Set([...(g ? g.cats : []), ...CATS.filter((k) => MK_WORDS.includes(k))])];
+  if (mcats.length) {
+    const fb = CATS.includes('其他') && !mcats.includes('其他') ? '其他' : '';
+    cases().forEach((c) => { if (!mcats.includes(c.cat)) return; const k = c.cat; c.line = '整合行銷'; c.cat = fb || '其他'; if (!(c.items || []).includes(k)) c.items = [...(c.items || []), k]; saveCase(c); });
+    notes().forEach((n) => { if ((n.kind !== 'sop' && n.kind !== 'tpl') || !mcats.includes(catOf(n))) return; const k = catOf(n); n.line = '整合行銷'; n.cat = fb; if (n.kind === 'sop') n.v2 = true; n.mkinds = [...new Set([...(n.mkinds || []), k])]; Vault.put('notes', n); });
+    Vault.put('settings', { id: 'items-整合行銷', list: [...new Set([...ITEMS.整合行銷, ...mcats])] });
+    Vault.put('settings', { id: 'tag-mkinds', list: [...new Set([...tagList('mkinds'), ...mcats])] });
+    const groups = GROUPS.filter((x) => x !== g).map((x) => ({ name: x.name, cats: x.cats.filter((k) => !mcats.includes(k)) }));
+    Vault.put('settings', { id: 'catgroups', list: groups }); Vault.put('settings', { id: 'cats', list: groups.flatMap((x) => x.cats) });
+  }
+  Vault.put('settings', { id: 'migr-mk', done: true }); syncCats(); syncRefLists();
+}
 function enter() {
   gate.hidden = true; app.hidden = false;
-  syncCats(); syncRefLists(); migrateLine();
+  syncCats(); syncRefLists(); migrateLine(); migrateMarketing();
   cases().filter((c) => c.client && !c.clientId).forEach((c) => { linkClient(c); saveCase(c); }); // 舊案件補連客戶
   cases().filter((c) => !c.date || c.docs.some((d) => !d.date)).forEach((c) => { c.date = caseDate(c); c.docs.forEach((d) => { if (!d.date) d.date = c.date; }); saveCase(c); }); // 舊資料補日期
   const first = cases().slice().sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))[0];
