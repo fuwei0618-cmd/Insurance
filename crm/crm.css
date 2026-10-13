@@ -302,3 +302,19 @@ textarea.grow{resize:vertical;overflow:hidden;min-height:96px;line-height:1.6}
 .item.is-wait{border-left:4px solid var(--warn)}
 .item.is-done{border-left:4px solid var(--line)}
 .item.is-done .t>span:first-child{color:var(--muted)}
+/* 看客戶資料 */
+.clientchip{border:0;background:var(--accent-soft);color:var(--accent-ink);border-radius:999px;padding:3px 10px;font-size:13px;font-weight:500;margin-left:6px;cursor:pointer}
+.clientchip:hover{background:var(--accent);color:var(--card)}
+/* 提示橫條 */
+.sec.banner{flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.sec.warnbanner{border-color:var(--warn);background:var(--warn-soft)}
+/* 文件改名 */
+.docnamein{flex:1;min-width:0;border:1px solid var(--accent);border-radius:4px;padding:2px 4px;font-size:12px;background:var(--card);color:var(--ink)}
+/* 告知精簡表單 */
+.dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px 10px}
+.dgrid label.f input,.dgrid label.f select{padding:6px 8px;font-size:14px}
+details.sec.fold>summary{list-style:none;cursor:pointer}
+details.sec.fold>summary::-webkit-details-marker{display:none}
+details.sec.fold>summary h2::after{content:" ▸";color:var(--muted)}
+details.sec.fold[open]>summary h2::after{content:" ▾"}
+.card pre a{color:var(--info);word-break:break-all}

@@ -275,7 +275,8 @@ const STATUS = ['進行中', '待回覆', '已結案'];
 const ITEMS = ['住院醫療', '實支實付', '住院日額', '手術', '意外醫療', '意外失能', '骨折', '重大傷病', '癌症', '長照失能', '門診', '產險-車險', '產險-住火', '產險-旅平'];
 const CAUSE = { '疾病': ['消化系統', '呼吸系統', '心血管', '骨科', '婦科', '腫瘤', '眼耳鼻喉', '其他疾病'], '意外': ['交通事故', '跌倒', '運動傷害', '職業傷害', '燒燙傷', '其他意外'] };
 const TPLGROUPS = ['LINE', '簡訊', '信件', '其他'];
-const SOPGROUPS = ['壽險·新契約', '壽險·保全', '壽險·保費', '壽險·保校', '壽險·理賠', '壽險·房貸', '壽險·服務', '壽險·其他', '產險'];
+const SOPGROUPS = ['壽險·新契約', '壽險·保全', '壽險·保費', '壽險·保校', '壽險·理賠', '壽險·房貸', '壽險·服務', '壽險·其他', '產險', '推薦連結'];
+const linkify = (html) => html.replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.length > 60 ? u.slice(0, 57) + '…' : u}</a>`);
 
 /* ================= 狀態與畫面 ================= */
 const S = { view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', sopGroup: '全部', showDetail: false };
@@ -349,9 +350,12 @@ function caseDetailHTML() {
   return `<button class="back" data-act="back">‹ 案件列表</button>
   <div class="dhead"><input class="title" id="f_title" data-f="title" value="${esc(c.title)}" placeholder="案件名稱" aria-label="案件名稱"><span class="pill ${pillCls(c.status)}">${c.status}</span></div>
   ${c.convertedAt ? `<div class="note">由建議書轉成新契約 · ${esc(c.convertedAt)}</div>` : ''}
-  ${c.cat === '建議書' ? `<div class="sec" style="flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap"><div><div style="font-weight:500">促約成功了嗎？</div><div class="sub">轉成新契約後，文件、備註都會保留，客戶頁的「新契約」就會出現這一件。</div></div><button class="btn pri" data-act="convert">轉成新契約</button></div>` : ''}
+  ${c.cat === '建議書' && c.outcome !== '成交' ? `<div class="sec banner"><div><div style="font-weight:500">成交了嗎？</div><div class="sub">會另外開一件新契約，帶入客戶和要保人／被保險人。建議書的準備筆記留在這裡，不會混進新契約。</div></div><button class="btn pri" data-act="convert">成交，建立新契約</button></div>` : ''}
+  ${c.cat === '建議書' && c.outcome === '成交' ? `<div class="note">已成交，轉成新契約${(c.links || []).map((id) => Vault.get('cases', id)).filter((x) => x && x.fromProposal === c.id).map((x) => ` <button class="linkbtn" data-gocase="${x.id}">${esc(x.title || '新契約')} ›</button>`).join('')}</div>` : ''}
+  ${c.cat === '新契約' && c.status !== '已結案' && c.clientId && !casePeople(c).some((p) => (Vault.get('clients', p.clientId)?.disclosures || []).some((r) => r.caseId === c.id)) ? `<div class="sec banner warnbanner"><div><div style="font-weight:500">記得記錄告知資料</div><div class="sub">送件時填的財務、身高體重存起來，下次就不用再問。</div></div><button class="btn" data-act="casedisc">記錄告知</button></div>` : ''}
+  ${c.fromProposal && Vault.get('cases', c.fromProposal) ? `<div class="note">來自建議書 <button class="linkbtn" data-gocase="${c.fromProposal}">${esc(Vault.get('cases', c.fromProposal).title || '建議書')} ›</button></div>` : ''}
   <div class="sec"><h2>基本資料</h2><div class="grid2">
-   <label class="f">客戶${c.clientId && Vault.get('clients', c.clientId) ? ` <button class="linkbtn" data-goclient="${c.clientId}">看客戶資料 ›</button>` : ''}<input id="f_client" data-f="client" list="clientNames" autocomplete="off" value="${esc(c.client)}" placeholder="打名字，會自動帶出或建立客戶"><datalist id="clientNames">${clients().map((x) => `<option value="${esc(x.name)}">`).join('')}</datalist></label>
+   <label class="f">客戶${c.clientId && Vault.get('clients', c.clientId) ? ` <button class="clientchip" data-goclient="${c.clientId}">👤 看客戶資料 ›</button>` : ''}<input id="f_client" data-f="client" list="clientNames" autocomplete="off" value="${esc(c.client)}" placeholder="打名字，會自動帶出或建立客戶"><datalist id="clientNames">${clients().map((x) => `<option value="${esc(x.name)}">`).join('')}</datalist></label>
    <label class="f">日期<input type="date" id="f_date" data-f="date" value="${esc(caseDate(c))}"></label>
    <label class="f">類別<select id="f_cat" data-f="cat">${(CATS.includes(c.cat) ? CATS : [c.cat, ...CATS]).map((x) => `<option${x === c.cat ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
    <label class="f">狀態<select id="f_status" data-f="status">${STATUS.map((x) => `<option${x === c.status ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
@@ -573,6 +577,7 @@ function showCrmForm(data) {
   };
 }
 /* ================= 告知資料（財務、體況） ================= */
+const ASSETS = [['job', '職業／職稱', ''], ['company', '公司', ''], ['deposit', '存款', '萬'], ['securities', '股票・基金', '萬'], ['realEstate', '不動產', '萬'], ['policyValue', '保單價值', '萬'], ['otherAssets', '其他資產', '萬'], ['mortgage', '房貸', '萬'], ['otherDebt', '信貸・其他負債', '萬']];
 const FIN = [['workIncome', '工作年收入', '萬'], ['otherIncome', '其他年收入', '萬'], ['personalAssets', '個人資產', '萬'], ['familyIncome', '家庭年收入', '萬'], ['familyAssets', '家庭資產', '萬']];
 function parseFin(raw) {
   const t = String(raw || '').replace(/[\uFF01-\uFF5E]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
@@ -588,6 +593,7 @@ function discSummary(r) {
   const b = bmi(h.height, h.weight);
   return `${fin || f.mainEarner ? `<div class="sub">財務</div><div class="kvs">${fin}${f.mainEarner ? `<div class="kv"><span>主要經濟來源</span><b>${esc(f.mainEarner)}${f.mainEarner === '否' && f.relation ? '（主要經濟者是' + esc(f.relation) + '）' : ''}</b></div>` : ''}</div>${f.reason ? `<div class="sub">收入不一致原因：${esc(f.reason)}</div>` : ''}` : ''}
    ${h.height || h.weight || h.smoke || h.drink || h.items ? `<div class="sub">體況</div><div class="kvs">${h.height ? `<div class="kv"><span>身高</span><b>${esc(h.height)} cm</b></div>` : ''}${h.weight ? `<div class="kv"><span>體重</span><b>${esc(h.weight)} kg${b ? '（BMI ' + b + '）' : ''}</b></div>` : ''}${h.smoke ? `<div class="kv"><span>吸菸</span><b>${esc(h.smoke)}</b></div>` : ''}${h.drink ? `<div class="kv"><span>飲酒</span><b>${esc(h.drink)}</b></div>` : ''}</div>${h.items ? `<pre class="discpre">${esc(h.items)}</pre>` : ''}` : ''}
+   ${(() => { const a = r.assets || {}; const kv = ASSETS.filter(([k]) => a[k]).map(([k, l, u]) => `<div class="kv"><span>${l}</span><b>${esc(a[k])}${u ? ' ' + u : ''}</b></div>`).join(''); return kv || a.explain ? `<div class="sub">財產明細</div><div class="kvs">${kv}</div>${a.explain ? `<div class="sub">說明：${esc(a.explain)}</div>` : ''}` : ''; })()}
    ${r.note ? `<pre class="discpre">${esc(r.note)}</pre>` : ''}
    ${(r.files || []).length ? `<div class="nimgs">${r.files.map((f, i) => f.type === 'pdf' ? `<button class="nimg pdfmini" data-discfile="${r.id}:${i}">PDF</button>` : `<button class="nimg" data-discfile="${r.id}:${i}"><img data-fid="${f.fileId}" alt=""></button>`).join('')}</div>` : ''}`;
 }
@@ -603,38 +609,43 @@ let DSC = null;
 function openDisclosure(cl, id, caseId) {
   const old = id ? (cl.disclosures || []).find((x) => x.id === id) : null;
   let base = old ? JSON.parse(JSON.stringify(old)) : null;
-  if (!base) { const prev = (cl.disclosures || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]; base = { id: uid(), date: localDay(), caseId: caseId || '', fin: { ...(prev?.fin || {}) }, health: { ...(prev?.health || {}) }, note: '', files: [] }; }
+  if (!base) { const prev = (cl.disclosures || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]; base = { id: uid(), date: localDay(), caseId: caseId || '', fin: { ...(prev?.fin || {}) }, health: { ...(prev?.health || {}) }, assets: { ...(prev?.assets || {}) }, note: '', files: [] }; }
   DSC = { cl, r: base, isNew: !old };
-  const f = base.fin, h = base.health;
+  const f = base.fin, h = base.health, a = base.assets || {};
+  const hasAssets = ASSETS.some(([k]) => a[k]), hasMore = h.smoke || h.drink || h.items || f.reason || base.note;
   const inp = (k, v, l, u, extra = '') => `<label class="f">${l}<span class="unit"><input id="d_${k}" value="${esc(v ?? '')}" ${extra}>${u ? `<i>${u}</i>` : ''}</span></label>`;
   const cases2 = clientCases(cl);
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${old ? '編輯' : '新增'}告知資料 · ${esc(cl.name || '')}</h2><button class="btn" id="dX">取消</button><button class="btn pri" id="dSave">儲存</button></div>
   <div class="ovbody" style="flex-direction:column;max-width:780px;margin:0 auto;width:100%">
    ${!old && (cl.disclosures || []).length ? '<div class="note">已先帶入上一次的內容，只要改有變動的地方。</div>' : ''}
    <div class="grid2"><label class="f">日期<input type="date" id="d_date" value="${esc(base.date)}"></label><label class="f">來自案件<select id="d_case"><option value="">（不指定）</option>${cases2.map((c) => `<option value="${c.id}"${c.id === base.caseId ? ' selected' : ''}>${esc(fmtDay(caseDate(c)) + ' ' + c.cat + '・' + (c.title || '未命名'))}</option>`).join('')}</select></label></div>
-   <div class="sec"><h2>財務告知 <span class="sub">單位：萬</span></h2>
+   <div class="sec"><h2>基本告知 <span class="sub">熟人填這些就夠了 · 金額單位：萬</span></h2>
     <div class="actions"><label class="btn">截圖帶入<input type="file" id="dShot" accept="image/*"></label><button class="btn" id="dPasteShot">📋 貼上截圖</button><span class="sub" id="dOcr">也可以在這個畫面按 Ctrl+V</span></div>
-    <div class="grid2">${FIN.map(([k, l, u]) => inp(k, f[k], l, u, 'inputmode="decimal"')).join('')}
-     <label class="f">是否為家中主要經濟來源<select id="d_mainEarner">${['', '是', '否'].map((o) => `<option${o === (f.mainEarner || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></label>
-     ${inp('relation', f.relation, '與主要經濟者關係', '', 'placeholder="例如：配偶"')}</div>
-    ${inp('reason', f.reason, '收入不一致原因', '')}</div>
-   <div class="sec"><h2>體況告知</h2><div class="grid2">
-    ${inp('height', h.height, '身高', 'cm', 'inputmode="decimal"')}${inp('weight', h.weight, '體重', 'kg', 'inputmode="decimal"')}
-    <label class="f">吸菸<select id="d_smoke">${['', '無', '有', '已戒'].map((o) => `<option${o === (h.smoke || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></label>
-    <label class="f">飲酒<select id="d_drink">${['', '無', '偶爾', '經常'].map((o) => `<option${o === (h.drink || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></label></div>
-    <label class="f">告知事項（病史、住院、手術、用藥、體檢異常…）<textarea id="d_items" rows="4">${esc(h.items)}</textarea></label></div>
-   <label class="f">其他備註<textarea id="d_note" rows="2">${esc(base.note)}</textarea></label>
+    <div class="dgrid">${inp('height', h.height, '身高', 'cm', 'inputmode="decimal"')}${inp('weight', h.weight, '體重', 'kg', 'inputmode="decimal"')}
+     ${FIN.map(([k, l, u]) => inp(k, f[k], l, u, 'inputmode="decimal"')).join('')}
+     <label class="f">主要經濟來源<select id="d_mainEarner">${['', '是', '否'].map((o) => `<option${o === (f.mainEarner || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></label>
+     ${inp('relation', f.relation, '主要經濟者是', '', 'placeholder="例：配偶"')}</div></div>
+   <details class="sec fold"${hasAssets ? ' open' : ''}><summary><h2>財產明細 <span class="sub">需要交代財產時（財務狀況告知書）</span></h2></summary>
+    <div class="dgrid">${ASSETS.map(([k, l, u]) => inp('a_' + k, a[k], l, u, u ? 'inputmode="decimal"' : '')).join('')}</div>
+    ${inp('a_explain', a.explain, '資金來源／說明', '')}</details>
+   <details class="sec fold"${hasMore ? ' open' : ''}><summary><h2>體況詳細・其他 <span class="sub">不熟的客戶再填</span></h2></summary>
+    <div class="dgrid"><label class="f">吸菸<select id="d_smoke">${['', '無', '有', '已戒'].map((o) => `<option${o === (h.smoke || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></label>
+     <label class="f">飲酒<select id="d_drink">${['', '無', '偶爾', '經常'].map((o) => `<option${o === (h.drink || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></label></div>
+    <label class="f">告知事項（病史、住院、手術、用藥、體檢異常…）<textarea id="d_items" class="grow" rows="3">${esc(h.items)}</textarea></label>
+    ${inp('reason', f.reason, '收入不一致原因', '')}
+    <label class="f">其他備註<textarea id="d_note" class="grow" rows="2">${esc(base.note)}</textarea></label></details>
    <div class="sec"><h2>附件 <span class="sub">要保書、告知書、財務狀況告知書的照片或 PDF</span></h2>
     <div class="nimgs edit" id="dFiles"></div>
     <div class="actions"><label class="btn">＋ 加照片或 PDF<input type="file" id="dAdd" accept="image/*,application/pdf,.pdf" multiple></label><button class="btn" id="dPaste">📋 貼上</button></div></div>
   </div></div>`;
-  drawDiscFiles();
+  drawDiscFiles(); fitNotes();
   $('dX').onclick = () => { if (DSC.isNew) (DSC.r.files || []).forEach((x) => Files.remove(x.fileId)); DSC = null; ov.innerHTML = ''; };
   $('dSave').onclick = () => {
     const r = DSC.r, g = (k) => $('d_' + k)?.value.trim() ?? '';
     r.date = g('date') || localDay(); r.caseId = $('d_case').value; r.note = g('note');
     r.fin = Object.fromEntries([...FIN.map(([k]) => [k, g(k)]), ['mainEarner', g('mainEarner')], ['relation', g('relation')], ['reason', g('reason')]].filter(([, v]) => v !== ''));
     r.health = Object.fromEntries([['height', g('height')], ['weight', g('weight')], ['smoke', g('smoke')], ['drink', g('drink')], ['items', $('d_items').value.trim()]].filter(([, v]) => v !== ''));
+    r.assets = Object.fromEntries([...ASSETS.map(([k]) => [k, g('a_' + k)]), ['explain', g('a_explain')]].filter(([, v]) => v !== ''));
     const c2 = DSC.cl; c2.disclosures = [...(c2.disclosures || []).filter((x) => x.id !== r.id), r]; Vault.put('clients', c2);
     DSC = null; ov.innerHTML = ''; S.view = 'clients'; S.csel = c2.id; S.showDetail = true; S.showHealth = true; App.render(); toast('告知資料已儲存');
   };
@@ -935,7 +946,7 @@ function notesHTML(kind) {
   ${kind === 'sop' ? `<div class="chips">${['全部', ...groups].map((g) => `<button class="chip${S.sopGroup === g ? ' on' : ''}" data-sg="${g}">${g}</button>`).join('')}</div>` : ''}
   ${kind === 'tpl' ? `<div class="chips">${['全部', ...groups].map((g) => `<button class="chip${S.tplGroup === g ? ' on' : ''}" data-tg="${g}">${g}</button>`).join('')}</div>
    <div class="chips"><span class="sub" style="align-self:center">相關案件</span>${['全部', '通用', ...usedCats].map((g) => `<button class="chip${S.tplCat === g ? ' on' : ''}" data-tc="${g}">${g}</button>`).join('')}</div>` : ''}
-  <div class="cards">${shown.map((n) => `<div class="card"><h3><span>${esc(n.title)}</span><span class="sub">${esc(n.group)}${n.cat ? ' · ' + esc(n.cat) : ''}</span></h3><pre>${esc(n.body)}</pre>${nimgsHTML(n)}<div class="mini">${kind === 'tpl' ? `<button data-copy="${n.id}">複製</button>` : ''}<button data-editnote="${n.id}">編輯</button><button data-delnote="${n.id}">刪除</button></div></div>`).join('') || `<div class="empty">${kind === 'sop' ? '還沒有流程。用下面的表單把 Notion、LINE 記事本裡的步驟加進來。' : '還沒有範本。'}</div>`}</div>
+  <div class="cards">${shown.map((n) => `<div class="card"><h3><span>${esc(n.title)}</span><span class="sub">${esc(n.group)}${n.cat ? ' · ' + esc(n.cat) : ''}</span></h3><pre>${linkify(esc(n.body))}</pre>${nimgsHTML(n)}<div class="mini">${kind === 'tpl' || /https?:\/\//.test(n.body) ? `<button data-copy="${n.id}">複製</button>` : ''}<button data-editnote="${n.id}">編輯</button><button data-delnote="${n.id}">刪除</button></div></div>`).join('') || `<div class="empty">${kind === 'sop' ? '還沒有流程。用下面的表單把 Notion、LINE 記事本裡的步驟加進來。' : '還沒有範本。'}</div>`}</div>
   <div class="sec" style="max-width:620px"><h2>新增${kind === 'sop' ? '流程' : '範本'}</h2>
    <div class="grid2"><label class="f">分類<select id="nGroup">${groups.map((g) => `<option${(kind === 'sop' ? S.sopGroup : S.tplGroup) === g ? ' selected' : ''}>${g}</option>`).join('')}</select></label>${kind === 'tpl' ? `<label class="f">相關案件<select id="nCat"><option value="">通用</option>${CATS.map((k) => `<option${S.tplCat === k ? ' selected' : ''}>${k}</option>`).join('')}</select></label>` : ''}<label class="f">標題<input id="nTitle"></label></div>
    ${kind === 'tpl' ? '<div class="sub">內容裡可以寫 {客戶}、{日期}，從案件複製時會自動換成客戶名字和今天日期。</div>' : ''}
@@ -955,7 +966,7 @@ function quickHTML() {
   ${(() => { const t = localDay(), due = calls().filter((k) => k.nextDate && k.nextDate <= t && k.status !== '結案').sort((a, b) => a.nextDate.localeCompare(b.nextDate)); return due.length ? `<div class="card"><h3>今天要回撥 <span class="sub">${due.length} 位</span></h3>${due.slice(0, 6).map((k) => `<button class="item" data-gocall="${k.id}"><span class="t"><span>${esc(k.name)}</span><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></span><span class="s">${k.nextDate < t ? '<span class="due">已過 ' + fmtDay(k.nextDate).slice(5) + '</span>' : '今天'}${k.source ? ' · ' + esc(k.source) : ''}</span></button>`).join('')}</div>` : ''; })()}
   <div class="card"><h3>待辦案件 <span class="sub">${waiting.length} 件</span></h3>${waiting.slice(0, 6).map((c) => `<button class="item${itemCls(c.status)}" data-gocase="${c.id}"><span class="t"><span>${esc(c.client)} · ${esc(c.title)}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${esc(c.next || '未填下一步')}</span></button>`).join('') || '<div class="sub">沒有待辦。</div>'}</div>
   <div class="card"><h3>同步</h3>${syncHTML()}<div class="sub">資料加密後存在 OneDrive › 應用程式 › Work › ${esc(FOLDER)}。iPad 和手機登入同一個帳號就會自動同步，不需要備份。</div>
-   <div class="actions"><button class="btn" data-act="import">批次匯入</button><button class="btn" data-act="lock">鎖定</button><button class="btn" data-act="signout">登出</button></div></div>
+   <div class="actions"><button class="btn" data-act="import">批次匯入</button><button class="btn" data-act="exportnotes">複製新契約備註（去掉姓名）</button><button class="btn" data-act="lock">鎖定</button><button class="btn" data-act="signout">登出</button></div></div>
   </div>`;
 }
 
@@ -997,8 +1008,11 @@ app.addEventListener('click', async (e) => {
   if (d.delrel) { if (armConfirm(b, '移除？')) { Vault.del('rels', d.delrel); App.render(); } return; }
   if (d.rename != null || d.crename != null) {
     const isC = d.crename != null, rec = isC ? curClient() : c, doc = rec?.docs[+(isC ? d.crename : d.rename)]; if (!doc) return;
-    const name = (prompt('文件名稱', doc.name) || '').trim(); if (!name || name === doc.name) return;
-    doc.name = name; Vault.put(isC ? 'clients' : 'cases', rec); App.render(); return;
+    const inp = document.createElement('input'); inp.className = 'docnamein'; inp.value = doc.name; inp.setAttribute('aria-label', '文件名稱');
+    b.replaceWith(inp); inp.focus(); inp.select();
+    let done = false; const finish = (save) => { if (done) return; done = true; const v = inp.value.trim(); if (save && v && v !== doc.name) { doc.name = v; Vault.put(isC ? 'clients' : 'cases', rec); } App.render(); };
+    inp.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); finish(true); } if (ev.key === 'Escape') finish(false); });
+    inp.addEventListener('blur', () => finish(true)); return;
   }
   if (d.folder != null) { S.folder = d.folder; App.render(); return; }
   if (d.goclient) { S.ccat = '全部'; S.view = 'clients'; S.csel = d.goclient; S.showDetail = true; S.showIds = false; App.render(); return; }
@@ -1074,6 +1088,15 @@ app.addEventListener('click', async (e) => {
     case 'crmimportnew': openCrmImport(null); break;
     case 'addrel': if (ccl) openRelPicker(ccl); break;
     case 'relgraph': openRelGraph(); break;
+    case 'exportnotes': {
+      const names = clients().map((x) => x.name).filter((n) => n && n.length >= 2).sort((a2, b2) => b2.length - a2.length);
+      const clean = (t) => { let o = String(t || ''); names.forEach((n) => { o = o.split(n).join('○○'); }); return o.replace(/[A-Z][12]\d{8}/g, '［身分證］').replace(/09\d{2}[-\s]?\d{3}[-\s]?\d{3}/g, '［電話］').replace(/[\w.+-]+@[\w.-]+/g, '［Email］'); };
+      const list = cases().filter((x) => ['新契約', '建議書'].includes(x.cat) && ((x.notes || '').trim() || (x.timeline || []).some((e) => e.note))).sort(byDate);
+      const txt = list.map((x, i) => `#${i + 1}【${x.cat}】${clean(x.title)}\n${clean(x.notes)}${(x.timeline || []).filter((e) => e.note).map((e) => `\n・${e.title}：${clean(e.note)}`).join('')}`).join('\n\n---\n\n');
+      if (!txt) { toast('還沒有新契約或建議書的備註'); break; }
+      try { await navigator.clipboard.writeText(txt); toast(`已複製 ${list.length} 件的備註，客戶姓名已換成 ○○`); } catch (err) { toast('無法複製，請在電腦上試試'); }
+      break;
+    }
     case 'savenow': {
       const a = document.activeElement; if (a && a !== document.body && a.blur) a.blur(); // 先讓正在打的欄位存進去
       b.textContent = '儲存中…'; b.disabled = true;
@@ -1084,7 +1107,13 @@ app.addEventListener('click', async (e) => {
     case 'pasteimg': pasteFromClipboard(); break;
     case 'editsteps': openStepEditor(c.cat); break;
     case 'linkcase': openLinkPicker(c); break;
-    case 'convert': { const t = new Date(); const day = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; c.cat = '新契約'; c.status = '進行中'; c.convertedAt = day; saveCase(c); S.cat = S.cat === '建議書' ? '新契約' : S.cat; App.render(); toast('已轉成新契約'); break; }
+    case 'convert': {
+      const nc = saveCase({ date: localDay(), client: c.client, clientId: c.clientId || '', title: c.title, cat: '新契約', status: '進行中', items: [], causeType: '', causeDetail: '', diag: '', next: '送件', cost: '', ratio: '', payout: '', notes: '', docs: [], isRef: false,
+        people: JSON.parse(JSON.stringify(c.people || [])), links: [c.id], fromProposal: c.id,
+        timeline: [{ id: uid(), date: localDay(), title: '簽約', note: '', at: new Date().toISOString() }] });
+      c.links = [...new Set([...(c.links || []), nc.id])]; c.outcome = '成交'; c.status = '已結案'; saveCase(c);
+      S.sel = nc.id; S.folder = '全部'; if (S.cat === '建議書') S.cat = '新契約'; App.render(); toast('已建立新契約，記得記錄告知資料'); break;
+    }
     case 'newfolder': { const name = (prompt('資料夾名稱（例如：體檢報告、基本資料、收據）') || '').trim(); if (!name) break; c.folders = c.folders || []; if (!c.folders.includes(name)) c.folders.push(name); saveCase(c); S.folder = name; App.render(); break; }
     case 'renfolder': { const old = S.folder; const name = (prompt('新的資料夾名稱', old) || '').trim(); if (!name || name === old) break; c.folders = c.folders.map((f) => (f === old ? name : f)); c.docs.forEach((doc) => { if (doc.folder === old) doc.folder = name; }); saveCase(c); S.folder = name; App.render(); break; }
     case 'delfolder': if (armConfirm(b, '確定刪除？裡面的文件會移到未分類')) { const old = S.folder; c.folders = c.folders.filter((f) => f !== old); c.docs.forEach((doc) => { if (doc.folder === old) doc.folder = ''; }); saveCase(c); S.folder = '全部'; App.render(); } break;
