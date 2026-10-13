@@ -290,3 +290,4 @@ textarea.grow{resize:vertical;overflow:hidden;min-height:96px;line-height:1.6}
 .item .t{min-width:0}
 .item .t>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .item .s{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.actions .savebtn{min-width:96px;justify-content:center}

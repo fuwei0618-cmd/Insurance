@@ -371,7 +371,7 @@ function caseDetailHTML() {
   ${linksHTML(c)}
   ${caseTplHTML(c)}
   <div class="sec"><h2>備註</h2><textarea id="f_notes" class="grow" data-f="notes" rows="4" aria-label="備註">${esc(c.notes)}</textarea></div>
-  <div class="actions">${isClaim ? `<button class="btn${c.isRef ? ' on' : ''}" data-act="ref">${c.isRef ? '✓ 已在理賠參考' : '做成理賠參考'}</button>` : ''}${c.clientId && ['新契約', '建議書', '保全', '產險'].includes(c.cat) ? '<button class="btn" data-act="casedisc">存成客戶告知資料</button>' : ''}<button class="btn danger" data-act="delcase">刪除案件</button></div>`;
+  <div class="actions"><button class="btn pri savebtn" data-act="savenow">儲存</button>${isClaim ? `<button class="btn${c.isRef ? ' on' : ''}" data-act="ref">${c.isRef ? '✓ 已在理賠參考' : '做成理賠參考'}</button>` : ''}${c.clientId && ['新契約', '建議書', '保全', '產險'].includes(c.cat) ? '<button class="btn" data-act="casedisc">記錄財務／體況告知</button>' : ''}<button class="btn danger" data-act="delcase">刪除案件</button></div>`;
 }
 /* ================= 電訪 ================= */
 const calls = () => Vault.all('calls');
@@ -415,7 +415,7 @@ function callDetailHTML() {
    <div class="actions" style="align-items:flex-end"><label class="f" style="width:170px">下次聯絡（可不填）<input type="date" id="kNext"></label><button class="btn pri" data-act="logcall">記錄</button></div></div>
   <div class="sec"><h2>通話紀錄 <span class="sub">${logs.length ? logs.length + ' 通，新的在上面' : ''}</span></h2>
    ${logs.length ? `<div class="tl">${logs.map((l) => `<div class="tli"><span class="tldot"></span><div class="tlrow"><span class="tldate" style="padding:3px 6px">${fmtDay(l.date)}</span><span class="tltitle" style="padding:3px 6px">${esc(l.result)}</span><button class="tldel" data-kdel="${l.id}" aria-label="刪除這通">✕</button></div>${l.note ? `<div class="lognote">${esc(l.note)}</div>` : ''}</div>`).join('')}</div>` : '<div class="sub">還沒有紀錄。</div>'}</div>
-  <div class="actions">${cl ? `<button class="btn" data-goclient="${cl.id}">看客戶資料 ›</button>` : '<button class="btn" data-act="tocliient">轉成客戶</button>'}<button class="btn danger" data-act="delcall">刪除</button></div>`;
+  <div class="actions"><button class="btn pri savebtn" data-act="savenow">儲存</button>${cl ? `<button class="btn" data-goclient="${cl.id}">看客戶資料 ›</button>` : '<button class="btn" data-act="tocliient">轉成客戶</button>'}<button class="btn danger" data-act="delcall">刪除</button></div>`;
 }
 function openCallImport() {
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>匯入電訪名單</h2><button class="btn" id="ciCancel">取消</button><button class="btn pri" id="ciGo">匯入</button></div>
@@ -810,7 +810,7 @@ function clientDetailHTML() {
   <div class="sec"><h2>案件 <button class="btn" data-act="ccase" style="padding:4px 10px;font-size:13px">＋ 新增${S.ccat !== '全部' ? esc(S.ccat) : '案件'}</button></h2>
    ${cs.length ? `<div class="chips">${['全部', ...CATS.filter((k) => cs.some((c) => c.cat === k))].map((k) => `<button class="chip${S.ccat === k ? ' on' : ''}" data-ccat="${k}">${k} <span class="cnt">${k === '全部' ? cs.length : cs.filter((c) => c.cat === k).length}</span></button>`).join('')}</div>` : ''}
    ${cs.length ? cs.filter((c) => S.ccat === '全部' || c.cat === S.ccat).map((c) => `<button class="item" data-gocase="${c.id}"><span class="t"><span>${esc(c.title || '未命名')}${(() => { const p = (c.people || []).find((y) => y.clientId === x.id); return p && p.roles.length ? ' <span class="sub">（' + esc(p.roles.join('、')) + '）</span>' : c.clientId !== x.id ? ' <span class="sub">（' + esc(c.client) + ' 的案件）</span>' : ''; })()}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${fmtDay(caseDate(c))} · ${esc(caseSummary(c))}${c.next ? ' · 下一步：' + esc(c.next) : ''}</span></button>`).join('') : '<div class="sub">還沒有案件。</div>'}</div>
-  <div class="actions"><button class="btn danger" data-act="delclient">刪除客戶</button></div>`;
+  <div class="actions"><button class="btn pri savebtn" data-act="savenow">儲存</button><button class="btn danger" data-act="delclient">刪除客戶</button></div>`;
 }
 const isPdf = (d) => d.type === 'pdf';
 function fillTpl(body, c) { return String(body || '').replace(/\{日期\}/g, fmtDay(localDay())).replace(/\{客戶\}/g, (c?.client || '').trim() || '{客戶}'); }
@@ -1073,6 +1073,12 @@ app.addEventListener('click', async (e) => {
     case 'crmimportnew': openCrmImport(null); break;
     case 'addrel': if (ccl) openRelPicker(ccl); break;
     case 'relgraph': openRelGraph(); break;
+    case 'savenow': {
+      const a = document.activeElement; if (a && a !== document.body && a.blur) a.blur(); // 先讓正在打的欄位存進去
+      b.textContent = '儲存中…'; b.disabled = true;
+      setTimeout(async () => { try { await Vault.save(true); } catch (err) { } const ok = Vault.state === 'synced'; toast(ok ? '✓ 已儲存' : '已存在這台裝置，連上網路會自動上傳'); App.render(); }, 60);
+      break;
+    }
     case 'editcats': openCatEditor(); break;
     case 'pasteimg': pasteFromClipboard(); break;
     case 'editsteps': openStepEditor(c.cat); break;
