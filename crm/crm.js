@@ -364,7 +364,7 @@ function openTagEditor(key) {
 }
 const STATUS = ['進行中', '待回覆', '已結案'];
 const ITEMS = ['住院醫療', '實支實付', '住院日額', '手術', '意外醫療', '意外失能', '骨折', '重大傷病', '癌症', '長照失能', '門診', '產險-車險', '產險-住火', '產險-旅平'];
-const CAUSE = { '疾病': ['消化系統', '呼吸系統', '心血管', '骨科', '婦科', '腫瘤', '眼耳鼻喉', '其他疾病'], '意外': ['交通事故', '跌倒', '運動傷害', '職業傷害', '燒燙傷', '其他意外'] };
+const CAUSE = { '疾病': ['感染症（病毒、細菌）', '消化系統', '呼吸系統', '心血管', '腦血管／神經', '骨科／肌肉骨骼', '泌尿／腎臟', '婦科／產科', '內分泌／代謝', '腫瘤', '眼耳鼻喉', '皮膚', '牙科', '身心科', '其他疾病'], '意外': ['交通事故', '跌倒／滑倒', '運動傷害', '職業傷害', '燒燙傷', '割傷／刺傷', '撞擊／夾傷', '動物咬抓傷', '其他意外'] };
 const TPLGROUPS = ['LINE', '簡訊', '信件', '通話', '其他'];
 const linkify = (html) => html.replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.length > 60 ? u.slice(0, 57) + '…' : u}</a>`);
 
@@ -952,7 +952,7 @@ function docTile(d, i, p, folders) { // p：'' 案件、'c' 客戶
   const media = isPdf(d) ? `<div class="pdftile">PDF<small>${esc(d.name)}</small></div>` : `<canvas data-${p}thumb="${i}" width="240" height="320"></canvas>`;
   const mv = folders ? `<select class="mv" data-movedoc="${i}" aria-label="移到資料夾"><option value="">未分類</option>${folders.map((f) => `<option${f === d.folder ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select>` : '';
   const dt = `<input type="date" class="ddate" data-${p}docdate="${i}" value="${esc(d.date || '')}" aria-label="文件日期">`;
-  return `<div class="doc" data-di="${i}" data-dp="${p}">${media}${dt}<div class="bar"><button class="docname" data-${p}rename="${i}" title="改名">${esc(d.name)}${d.masks?.length ? ' · 已遮 ' + d.masks.length : ''}</button><span><button data-${p}view="${i}" hidden>看</button>${isPdf(d) ? '' : `<button data-${p}mask="${i}">遮罩</button>`}<button data-${p}deldoc="${i}" aria-label="刪除文件">刪</button></span></div>${mv}</div>`;
+  return `<div class="doc" data-di="${i}" data-dp="${p}">${media}${dt}${d.note ? `<div class="docnote" title="${esc(d.note)}">📝 ${esc(d.note)}</div>` : ''}<div class="bar"><button class="docname" data-${p}rename="${i}" title="改名">${esc(d.name)}${d.masks?.length ? ' · 已遮 ' + d.masks.length : ''}</button><span><button data-${p}view="${i}" hidden>看</button>${isPdf(d) ? '' : `<button data-${p}mask="${i}">遮罩</button>`}<button data-${p}deldoc="${i}" aria-label="刪除文件">刪</button></span></div>${mv}</div>`;
 }
 const STEPS = {
   新契約: ['建議書', 'keyman 再解說', '簽約', '送件', '文件補全', '核保通過', '簽收回條', '紙本保單'],
@@ -1043,6 +1043,9 @@ function refListHTML() {
   <div class="sub">原因</div><div class="chips">${['全部', '疾病', '意外'].map((x) => `<button class="chip${S.refCause === x ? ' on' : ''}" data-rcause="${x}">${x}</button>`).join('')}</div></div>
   <div class="list">${list.length ? list.map((c) => `<button class="item${c.id === S.refSel ? ' on' : ''}" data-rsel="${c.id}"><span class="t"><span>${esc(refTitle(c))}</span></span><span class="s">${esc(c.items.join('、') || '未選險種')} · ${esc(c.causeType)}${c.causeDetail ? '›' + esc(c.causeDetail) : ''}</span></button>`).join('') : '<div class="empty">還沒有理賠參考。在理賠案件裡按「做成理賠參考」就會出現在這裡。</div>'}</div></section>`;
 }
+// 理賠參考要放哪些文件：可以選資料夾；沒選過的話，有「理賠」字樣的資料夾就只放那些，否則全部
+function refFolderSel(c) { if (c.refFolders === 'all') return null; if (c.refFolders) return c.refFolders; const fs = (c.folders || []).filter((f) => f.includes('理賠') && c.docs.some((d) => d.folder === f)); return fs.length ? fs : null; }
+const refDocs = (c) => { const sel = refFolderSel(c); return c.docs.map((d, i) => [d, i]).filter(([d]) => !isPdf(d) && (!sel || sel.includes(d.folder || ''))); };
 function refDetailHTML() {
   const c = cases().find((x) => x.id === S.refSel && x.isRef);
   if (!c) return '<div class="empty">選一則理賠參考。這裡不會顯示客戶姓名。</div>';
@@ -1051,9 +1054,11 @@ function refDetailHTML() {
   <div class="dhead"><h1 style="margin:0;font-size:20px">${esc(refTitle(c))}</h1></div>
   <div class="sec"><h2>分類</h2><div class="reftop">${c.items.map((x) => `<span class="pill p-go">${esc(x)}</span>`).join('')}${c.causeType ? `<span class="pill p-wait">${esc(c.causeType)}${c.causeDetail ? ' › ' + esc(c.causeDetail) : ''}</span>` : ''}</div></div>
   ${cost ? `<div class="sec"><h2>理賠金額</h2><div class="calcline">花費 ${cost.toLocaleString()} × ${ratio || '—'}% = ${auto ? auto.toLocaleString() : '—'}${c.payout ? `　實際理賠 ${(+c.payout).toLocaleString()}` : ''}</div></div>` : ''}
-  ${c.docs.length ? `<div class="sec"><h2>文件（遮罩版）</h2><div class="docs">${c.docs.map((d, i) => (isPdf(d) ? '' : `<div class="doc"><canvas data-rthumb="${i}" width="240" height="320"></canvas></div>`)).join('')}</div><div class="actions"><button class="btn pri" data-act="rshare">匯出分享版</button></div></div>` : ''}
+  ${c.docs.length ? (() => { const sel = refFolderSel(c), fs = [...(c.folders || []).filter((f) => c.docs.some((d) => d.folder === f)), ...(c.docs.some((d) => !d.folder) ? [''] : [])], rd = refDocs(c); return `<div class="sec"><h2>文件（遮罩版）<span class="sub">${rd.length} 張</span></h2>
+   ${fs.length > 1 ? `<div class="chips"><span class="sub" style="align-self:center">要放的資料夾</span><button class="chip${!sel ? ' on' : ''}" data-reff="*">全部</button>${fs.map((f) => `<button class="chip${sel && sel.includes(f) ? ' on' : ''}" data-reff="${esc(f)}">${esc(f || '未分類')}</button>`).join('')}</div>` : ''}
+   <div class="docs">${rd.map(([d, i]) => `<div class="doc"><canvas data-rthumb="${i}" width="240" height="320"></canvas>${d.note ? `<div class="docnote">${esc(d.note)}</div>` : ''}</div>`).join('') || '<div class="sub">沒有選到文件。</div>'}</div><div class="actions"><button class="btn pri" data-act="rshare">匯出分享版</button></div></div>`; })() : ''}
   <div class="note">這頁只顯示分類、計算和遮罩後的文件，不顯示客戶姓名。要修改內容請回到「案件」。</div>
-  <div class="actions"><button class="btn" data-act="gocase">打開原案件</button></div>`;
+  <div class="actions"><button class="btn" data-act="gocase">打開原案件</button>${c.clientId && Vault.get('clients', c.clientId) ? `<button class="btn" data-goclient="${c.clientId}">打開客戶資料</button>` : ''}</div>`;
 }
 function sopMatch(n) {
   const k = catOf(n);
@@ -1148,6 +1153,7 @@ app.addEventListener('click', async (e) => {
   if (d.rcause) { S.refCause = d.rcause; App.render(); return; }
   if (d.sg) { S.sg = d.sg; S.sc = '全部'; if (d.sg === '全部') { S.sk = ''; S.st = ''; } App.render(); return; } // 點「全部」＝清掉所有篩選
   if (d.sc) { S.sc = d.sc; App.render(); return; }
+  if (d.reff != null) { const rc = Vault.get('cases', S.refSel); if (!rc) return; if (d.reff === '*') rc.refFolders = 'all'; else { const cur = refFolderSel(rc) || []; rc.refFolders = cur.includes(d.reff) ? cur.filter((x) => x !== d.reff) : [...cur, d.reff]; if (!rc.refFolders.length) rc.refFolders = 'all'; } saveCase(rc); App.render(); return; }
   if (d.sopopen) { S.sopOpen = S.sopOpen === d.sopopen ? null : d.sopopen; App.render(); return; }
   if (d.sk != null && S.view === 'sop') { S.sk = S.sk === d.sk ? '' : d.sk; App.render(); return; }
   if (d.st != null && S.view === 'sop') { S.st = S.st === d.st ? '' : d.st; App.render(); return; }
@@ -1287,7 +1293,7 @@ app.addEventListener('click', async (e) => {
     case 'delcase': if (armConfirm(b, '再按一次確定刪除')) { c.docs.forEach((doc) => Files.remove(doc.fileId)); (c.links || []).forEach((id) => { const o = Vault.get('cases', id); if (o) { o.links = (o.links || []).filter((x) => x !== c.id); saveCase(o); } }); Vault.del('cases', c.id); S.sel = null; S.showDetail = false; App.render(); } break;
     case 'pdf': makePDF(c.docs, false, (c.client || '案件') + '-' + (c.title || '文件')); break;
     case 'share': openShare(c); break;
-    case 'rshare': openShare(Vault.get('cases', S.refSel)); break;
+    case 'rshare': { const rc = Vault.get('cases', S.refSel); if (rc) openShare(rc, null, refDocs(rc).map(([d]) => d)); break; }
     case 'gocase': S.view = 'cases'; S.sel = S.refSel; S.showDetail = true; App.render(); break;
     case 'addphone': { const n = Vault.put('notes', { kind: 'quick', group: '電話', title: '', body: '' }); editNote(n.id, true); break; }
     case 'import': openImport(); break;
@@ -1725,20 +1731,31 @@ document.addEventListener('keydown', (e) => { if (!GV || !ov.querySelector('.gv'
 let MK = null;
 async function openMask(c, i, coll = 'cases') { const d = c.docs[i]; const im = await getImg(d.fileId); if (!im) { toast('圖片讀取失敗，請確認網路'); return; } MK = { c, coll, d, im, masks: d.masks.map((m) => ({ ...m })), sel: -1, mode: null, start: null, preview: false }; renderMask(); }
 function renderMask() {
-  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>遮罩 · ${esc(MK.d.name)}</h2><button class="btn" id="mkCancel">取消</button><button class="btn pri" id="mkSave">儲存遮罩</button></div>
-  <div class="ovbody"><div class="stage"><canvas id="mkCv"></canvas></div>
-  <div class="side"><div class="note">在要遮的地方拖曳畫框。點一下框可以選取、拖曳移動。原圖不會被改動。</div>
+  const st0 = document.querySelector('#ovRoot .stage'), keepScroll = st0 ? [st0.scrollLeft, st0.scrollTop] : null; // 重畫後留在原本放大的位置
+  if (MK.note == null) MK.note = MK.d.note || ''; MK.zoom = MK.zoom || 1;
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>遮罩 · ${esc(MK.d.name)}</h2><button class="btn" id="mkCancel">取消</button><button class="btn pri" id="mkSave">儲存</button></div>
+  <div class="ovbody"><div class="stage${MK.zoom > 1 ? ' zoomed' : ''}${MK.pan ? ' panning' : ''}"><canvas id="mkCv"></canvas></div>
+  <div class="side"><div class="actions zoombar" style="margin:0"><button class="btn" id="mkZo" aria-label="縮小" ${MK.zoom > 1 ? '' : 'disabled'}>－</button><span class="sub">${Math.round(MK.zoom * 100)}%</span><button class="btn" id="mkZi" aria-label="放大" ${MK.zoom < 4 ? '' : 'disabled'}>＋</button>${MK.zoom > 1 ? `<button class="btn${MK.pan ? ' on' : ''}" id="mkPan">${MK.pan ? '✋ 移動中' : '✋ 移動畫面'}</button>` : ''}</div>
+  <div class="note">在要遮的地方拖曳畫框。點一下框可以選取、拖曳移動。原圖不會被改動。${MK.zoom > 1 ? '放大後要移動畫面，按「✋ 移動畫面」再拖。' : ''}</div>
+  <label class="f">筆記<textarea id="mkNote" class="grow" rows="3" placeholder="這份文件的重點，例如：急診 2 天、住院日額可申請">${esc(MK.note)}</textarea></label>
   <div class="actions"><button class="btn${MK.preview ? ' on' : ''}" id="mkPrev">${MK.preview ? '回到編輯' : '看分享版效果'}</button></div>
   <div class="actions"><button class="btn danger" id="mkDel">刪除選取的框</button><button class="btn" id="mkClear">全部清除</button></div>
   <div class="sub">目前 ${MK.masks.length} 個框</div></div></div></div>`;
   $('mkCancel').onclick = () => { ov.innerHTML = ''; MK = null; };
-  $('mkSave').onclick = () => { MK.d.masks = MK.masks; Vault.put(MK.coll, MK.c); ov.innerHTML = ''; MK = null; App.render(); toast('遮罩已儲存，原圖保留'); };
+  $('mkNote').oninput = (e) => { MK.note = e.target.value; fitNote(e.target); }; fitNote($('mkNote'));
+  $('mkZi').onclick = () => { MK.zoom = Math.min(4, MK.zoom * 1.5); renderMask(); };
+  $('mkZo').onclick = () => { MK.zoom = Math.max(1, MK.zoom / 1.5); if (MK.zoom < 1.05) { MK.zoom = 1; MK.pan = false; } renderMask(); };
+  if ($('mkPan')) $('mkPan').onclick = () => { MK.pan = !MK.pan; renderMask(); };
+  $('mkSave').onclick = () => { MK.d.masks = MK.masks; MK.d.note = MK.note.trim(); Vault.put(MK.coll, MK.c); ov.innerHTML = ''; MK = null; App.render(); toast('已儲存，原圖保留'); };
   $('mkPrev').onclick = () => { MK.preview = !MK.preview; renderMask(); };
   $('mkDel').onclick = () => { if (MK.sel >= 0) { MK.masks.splice(MK.sel, 1); MK.sel = -1; renderMask(); } else toast('先點選一個框'); };
   $('mkClear').onclick = () => { MK.masks = []; MK.sel = -1; renderMask(); };
   const cv = $('mkCv'); cv.width = MK.im.width; cv.height = MK.im.height; const x = cv.getContext('2d'); const W = cv.width, H = cv.height;
   const draw = (tmp) => { x.drawImage(MK.im, 0, 0); const all = tmp ? [...MK.masks, tmp] : MK.masks; all.forEach((m, i) => { if (MK.preview) { x.fillStyle = '#111'; x.fillRect(m.x * W, m.y * H, m.w * W, m.h * H); } else { x.fillStyle = 'rgba(17,17,17,.6)'; x.fillRect(m.x * W, m.y * H, m.w * W, m.h * H); x.lineWidth = Math.max(2, W / 300); x.strokeStyle = i === MK.sel ? '#E2B56A' : '#9DBA88'; x.strokeRect(m.x * W, m.y * H, m.w * W, m.h * H); } }); };
-  draw(); if (MK.preview) return;
+  draw();
+  if (MK.zoom > 1) { const fit = cv.getBoundingClientRect().width; cv.style.maxWidth = 'none'; cv.style.maxHeight = 'none'; cv.style.width = fit * MK.zoom + 'px'; }
+  if (keepScroll) { const st = ov.querySelector('.stage'); st.scrollLeft = keepScroll[0]; st.scrollTop = keepScroll[1]; }
+  if (MK.preview || MK.pan) return;
   const pt = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]; };
   let tmp = null;
   cv.onpointerdown = (e) => { const [px, py] = pt(e); cv.setPointerCapture(e.pointerId); const hit = MK.masks.findIndex((m) => px >= m.x && px <= m.x + m.w && py >= m.y && py <= m.y + m.h); if (hit >= 0) { MK.sel = hit; MK.mode = 'move'; MK.start = [px, py, { ...MK.masks[hit] }]; } else { MK.sel = -1; MK.mode = 'draw'; MK.start = [px, py]; } draw(); };
@@ -1758,9 +1775,9 @@ async function shareOrSave(files) { // 有分享功能就跳分享（可以直�
   try { if (navigator.canShare && navigator.canShare({ files })) { await navigator.share({ files }); return; } } catch (e) { if (e.name === 'AbortError') return; }
   files.forEach((f) => { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000); });
 }
-async function openShare(c, pdfName) {
+async function openShare(c, pdfName, only) {
   if (!c) return;
-  const docs = c.docs.filter((d) => !isPdf(d)); if (!docs.length) { toast('PDF 檔請在文件上按「看」再分享'); return; }
+  const docs = (only || c.docs).filter((d) => !isPdf(d)); if (!docs.length) { toast('PDF 檔請在文件上按「看」再分享'); return; }
   let canvases; try { canvases = await Promise.all(docs.map((d) => renderDoc(d, true))); } catch (e) { toast('圖片讀取失敗，請確認網路'); return; }
   const unmasked = docs.filter((d) => !d.masks.length).length;
   const urls = canvases.map((cv) => cv.toDataURL('image/jpeg', 0.85));
