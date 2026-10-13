@@ -326,3 +326,13 @@ details.sec.fold[open]>summary h2::after{content:" ▾"}
 .stseg button.on.st-go{background:var(--info-soft);color:var(--info)}
 .stseg button.on.st-wait{background:var(--warn-soft);color:var(--warn)}
 .stseg button.on.st-done{background:var(--line);color:var(--ink)}
+/* 文件拖曳 */
+.doc[data-di]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;position:relative}
+.doc[data-di] canvas,.doc[data-di] .pdftile{cursor:grab}
+.doc.ddsrc{opacity:.3}
+.ddghost{position:fixed;z-index:9999;pointer-events:none;box-shadow:0 12px 30px rgba(0,0,0,.25);opacity:.92;transform-origin:top left}
+body.dragging-doc,body.dragging-doc *{cursor:grabbing!important}
+.doc.ins-before{box-shadow:-5px 0 0 -1px var(--accent)}
+.doc.ins-after{box-shadow:5px 0 0 -1px var(--accent)}
+.chip.droptgt{background:var(--accent);border-color:var(--accent);color:#fff;transform:scale(1.08)}
+.chip.droptgt .cnt{color:#fff}

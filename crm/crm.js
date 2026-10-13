@@ -815,8 +815,8 @@ function clientDetailHTML() {
    <label class="f">備註<textarea id="cf_note" class="grow" data-cf="note" rows="3" placeholder="家庭狀況、保單重點、喜好…">${esc(x.note)}</textarea></label></div>
   ${disclosureHTML(x)}
   ${relsHTML(x)}
-  <div class="sec"><h2>證件與文件 <button class="btn" data-act="toggleids" style="padding:4px 10px;font-size:13px">${S.showIds ? '隱藏證件' : '顯示證件'}</button></h2>
-   <div class="docs${S.showIds ? '' : ' veiled'}">${docs.map((d, i) => [d, i]).sort(([a], [b]) => (b.date || '').localeCompare(a.date || '')).map(([d, i]) => docTile(d, i, 'c', null)).join('')}
+  <div class="sec"><h2>證件與文件 <button class="btn" data-act="toggleids" style="padding:4px 10px;font-size:13px">${S.showIds ? '隱藏證件' : '顯示證件'}</button>${x.docManual ? '<button class="linkbtn" data-docbydate="c">改回依日期排序</button>' : ''}</h2>
+   <div class="docs${S.showIds ? '' : ' veiled'}">${docIdx(x).map((i) => docTile(docs[i], i, 'c', null)).join('')}
    <button class="adddoc" data-act="cscan">${ICON.scan}拍身分證、存摺<span style="font-size:11px">也可以拖曳圖片、PDF 進來</span></button><button class="adddoc" data-act="pasteimg">📋 貼上圖片</button><label class="adddoc">＋ 上傳 PDF 或圖片<input type="file" id="docUpC" accept="image/*,application/pdf,.pdf" multiple></label></div>
    ${docs.some((d) => !isPdf(d)) ? '<div class="actions"><button class="btn" data-act="cpdf">圖片合成 PDF</button><button class="btn" data-act="cshare">匯出遮罩版</button></div>' : ''}</div>
   <div class="sec"><h2>案件 <button class="btn" data-act="ccase" style="padding:4px 10px;font-size:13px">＋ 新增${S.ccat !== '全部' ? esc(S.ccat) : '案件'}</button></h2>
@@ -835,7 +835,7 @@ function docTile(d, i, p, folders) { // p：'' 案件、'c' 客戶
   const media = isPdf(d) ? `<div class="pdftile">PDF<small>${esc(d.name)}</small></div>` : `<canvas data-${p}thumb="${i}" width="240" height="320"></canvas>`;
   const mv = folders ? `<select class="mv" data-movedoc="${i}" aria-label="移到資料夾"><option value="">未分類</option>${folders.map((f) => `<option${f === d.folder ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select>` : '';
   const dt = `<input type="date" class="ddate" data-${p}docdate="${i}" value="${esc(d.date || '')}" aria-label="文件日期">`;
-  return `<div class="doc">${media}${dt}<div class="bar"><button class="docname" data-${p}rename="${i}" title="改名">${esc(d.name)}${d.masks?.length ? ' · 已遮 ' + d.masks.length : ''}</button><span><button data-${p}view="${i}">看</button>${isPdf(d) ? '' : `<button data-${p}mask="${i}">遮罩</button>`}<button data-${p}deldoc="${i}" aria-label="刪除文件">刪</button></span></div>${mv}</div>`;
+  return `<div class="doc" data-di="${i}" data-dp="${p}">${media}${dt}<div class="bar"><button class="docname" data-${p}rename="${i}" title="改名">${esc(d.name)}${d.masks?.length ? ' · 已遮 ' + d.masks.length : ''}</button><span><button data-${p}view="${i}">看</button>${isPdf(d) ? '' : `<button data-${p}mask="${i}">遮罩</button>`}<button data-${p}deldoc="${i}" aria-label="刪除文件">刪</button></span></div>${mv}</div>`;
 }
 const STEPS = {
   新契約: ['建議書', 'keyman 再解說', '簽約', '送件', '文件補全', '核保通過', '簽收回條', '紙本保單'],
@@ -890,15 +890,17 @@ function openLinkPicker(c) {
   $('lkQ').oninput = (e) => draw(e.target.value.trim());
   draw();
 }
+// 文件顯示順序：手動排過就照陣列順序，否則新到舊
+function docIdx(rec) { const docs = rec?.docs || []; const ix = docs.map((_, i) => i); return rec?.docManual ? ix : ix.sort((a, b) => (docs[b].date || '').localeCompare(docs[a].date || '')); }
 function curFolder(c) { return (c?.folders || []).includes(S.folder) ? S.folder : ''; }
 function caseDocsHTML(c) {
   const folders = c.folders || [];
   if (!['全部', '未分類', ...folders].includes(S.folder)) S.folder = '全部';
   const cnt = (f) => c.docs.filter((d) => (f === '全部' ? true : f === '未分類' ? !d.folder : d.folder === f)).length;
-  const shown = c.docs.map((d, i) => [d, i]).filter(([d]) => S.folder === '全部' || (S.folder === '未分類' ? !d.folder : d.folder === S.folder)).sort(([a], [b]) => (b.date || '').localeCompare(a.date || ''));
+  const shown = docIdx(c).map((i) => [c.docs[i], i]).filter(([d]) => S.folder === '全部' || (S.folder === '未分類' ? !d.folder : d.folder === S.folder));
   const hasImg = c.docs.some((d) => !isPdf(d));
-  return `<div class="sec"><h2>文件 <span class="sub">原圖永遠保留，遮罩可以隨時改</span></h2>
-   <div class="chips">${['全部', ...(c.docs.some((d) => !d.folder) && folders.length ? ['未分類'] : []), ...folders].map((f) => `<button class="chip${S.folder === f ? ' on' : ''}" data-folder="${esc(f)}">${esc(f)} <span class="cnt">${cnt(f)}</span></button>`).join('')}<button class="chip" data-act="newfolder">＋ 資料夾</button></div>
+  return `<div class="sec"><h2>文件 <span class="sub">原圖永遠保留，遮罩可以隨時改${c.docs.length > 1 ? '・按住文件拖曳可排順序' + (folders.length ? '、拖到上面資料夾' : '') : ''}</span>${c.docManual ? '<button class="linkbtn" data-docbydate="">改回依日期排序</button>' : ''}</h2>
+   <div class="chips">${['全部', ...(folders.length ? ['未分類'] : []), ...folders].map((f) => `<button class="chip${S.folder === f ? ' on' : ''}" data-folder="${esc(f)}">${esc(f)} <span class="cnt">${cnt(f)}</span></button>`).join('')}<button class="chip" data-act="newfolder">＋ 資料夾</button></div>
    ${folders.includes(S.folder) ? `<div class="actions"><button class="linkbtn" data-act="renfolder">重新命名資料夾</button><button class="linkbtn" data-act="delfolder">刪除資料夾</button><span class="sub">新加的文件會放進「${esc(S.folder)}」</span></div>` : ''}
    <div class="docs">${shown.map(([d, i]) => docTile(d, i, '', folders.length ? folders : null)).join('')}
    <button class="adddoc" data-act="scan">${ICON.scan}拍照／掃描<span style="font-size:11px">也可以拖曳圖片、PDF 進來</span></button>
@@ -1014,6 +1016,7 @@ app.addEventListener('click', async (e) => {
     inp.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); finish(true); } if (ev.key === 'Escape') finish(false); });
     inp.addEventListener('blur', () => finish(true)); return;
   }
+  if (d.docbydate != null) { const rec = d.docbydate === 'c' ? curClient() : cur(); if (rec) { delete rec.docManual; Vault.put(d.docbydate === 'c' ? 'clients' : 'cases', rec); App.render(); toast('已改回依日期排序'); } return; }
   if (d.folder != null) { S.folder = d.folder; App.render(); return; }
   if (d.goclient) { S.ccat = '全部'; S.view = 'clients'; S.csel = d.goclient; S.showDetail = true; S.showIds = false; App.render(); return; }
   if (d.ksel) { S.ksel = d.ksel; S.kres = ''; S.showDetail = true; App.render(); return; }
@@ -1321,6 +1324,61 @@ function takeImages(files) {
   if (SC.img) SC.queue.push(...imgs); else onFiles(imgs);
   if (imgs.length > 1) toast(`收到 ${imgs.length} 張，一張一張對齊後按「加入這頁」`);
 }
+// ── 文件拖曳：排順序、拖進資料夾（滑鼠直接拖；觸控長按後拖）──
+let DD = null;
+function ddRec(p) { return p === 'c' ? [curClient(), 'clients'] : [cur(), 'cases']; }
+function ddScroller(el) { for (let n = el; n && n !== document.body; n = n.parentElement) { const o = getComputedStyle(n).overflowY; if ((o === 'auto' || o === 'scroll') && n.scrollHeight > n.clientHeight) return n; } return document.scrollingElement; }
+function ddClear() { document.querySelectorAll('.ins-before,.ins-after,.droptgt').forEach((n) => n.classList.remove('ins-before', 'ins-after', 'droptgt')); }
+function ddBegin() {
+  const t = DD.tile, r = t.getBoundingClientRect(), g = t.cloneNode(true);
+  t.querySelectorAll('canvas').forEach((cv, k) => { const gc = g.querySelectorAll('canvas')[k]; gc.getContext('2d').drawImage(cv, 0, 0); });
+  g.classList.add('ddghost'); g.style.width = r.width + 'px'; g.style.left = r.left + 'px'; g.style.top = r.top + 'px';
+  DD.dx = DD.x0 - r.left; DD.dy = DD.y0 - r.top; DD.ghost = g; DD.on = true; DD.scroller = ddScroller(t);
+  document.body.appendChild(g); t.classList.add('ddsrc'); document.body.classList.add('dragging-doc');
+  navigator.vibrate?.(15);
+  DD.tick = setInterval(() => { if (!DD?.on) return; const h = window.innerHeight, v = DD.y < 70 ? -12 : DD.y > h - 70 ? 12 : 0; if (v) { DD.scroller.scrollBy(0, v); ddMove(DD.x, DD.y); } }, 16);
+}
+function ddMove(x, y) {
+  DD.x = x; DD.y = y; if (!DD.on) return;
+  DD.ghost.style.transform = `translate(${x - DD.dx - parseFloat(DD.ghost.style.left)}px,${y - DD.dy - parseFloat(DD.ghost.style.top)}px) scale(.9) rotate(-2deg)`;
+  ddClear(); DD.target = null;
+  const el = document.elementFromPoint(x, y); if (!el) return;
+  const chip = DD.p === '' && el.closest('.chip[data-folder]');
+  if (chip && chip.dataset.folder !== '全部') { chip.classList.add('droptgt'); DD.target = { folder: chip.dataset.folder }; return; }
+  const t = el.closest('.doc[data-di]');
+  if (t && t !== DD.tile && t.parentElement === DD.tile.parentElement) { const r = t.getBoundingClientRect(), before = x < r.left + r.width / 2; t.classList.add(before ? 'ins-before' : 'ins-after'); DD.target = { di: +t.dataset.di, before }; }
+}
+function ddEnd(cancel) {
+  const d = DD; DD = null; if (!d) return; clearTimeout(d.timer); clearInterval(d.tick);
+  if (!d.on) return;
+  d.ghost.remove(); d.tile.classList.remove('ddsrc'); document.body.classList.remove('dragging-doc'); ddClear();
+  window.addEventListener('click', (e) => { e.stopPropagation(); e.preventDefault(); }, { capture: true, once: true }); setTimeout(() => window.dispatchEvent(new Event('click')), 0);
+  if (cancel || !d.target) return;
+  const [rec, coll] = ddRec(d.p); if (!rec) return; const src = d.di;
+  if (d.target.folder != null) {
+    const f = d.target.folder === '未分類' ? '' : d.target.folder;
+    if ((rec.docs[src].folder || '') === f) return;
+    rec.docs[src].folder = f; Vault.put(coll, rec); App.render(); toast(`已移到「${d.target.folder}」`); return;
+  }
+  const order = docIdx(rec).filter((i) => i !== src); let pos = order.indexOf(d.target.di); if (pos < 0) return;
+  order.splice(d.target.before ? pos : pos + 1, 0, src);
+  rec.docs = order.map((i) => rec.docs[i]); rec.docManual = true; Vault.put(coll, rec); App.render();
+}
+function ddDown(e, x, y, touch) {
+  if (!Vault.key || DD) return;
+  const tile = e.target.closest?.('.doc[data-di]'); if (!tile || e.target.closest('button,input,select,label,a,textarea')) return;
+  DD = { tile, p: tile.dataset.dp || '', di: +tile.dataset.di, x0: x, y0: y, x, y, touch, on: false };
+  if (touch) { const me = DD; DD.timer = setTimeout(() => { if (DD === me) ddBegin(); }, 380); }
+}
+document.addEventListener('mousedown', (e) => { if (e.button === 0) ddDown(e, e.clientX, e.clientY, false); });
+document.addEventListener('mousemove', (e) => { if (!DD || DD.touch) return; if (!DD.on && Math.hypot(e.clientX - DD.x0, e.clientY - DD.y0) > 6) ddBegin(); if (DD.on) { e.preventDefault(); ddMove(e.clientX, e.clientY); } });
+document.addEventListener('mouseup', () => { if (DD && !DD.touch) ddEnd(false); });
+document.addEventListener('touchstart', (e) => { if (e.touches.length === 1) ddDown(e, e.touches[0].clientX, e.touches[0].clientY, true); else ddEnd(true); }, { passive: true });
+document.addEventListener('touchmove', (e) => { if (!DD || !DD.touch) return; const t = e.touches[0]; if (!DD.on) { if (Math.hypot(t.clientX - DD.x0, t.clientY - DD.y0) > 10) { clearTimeout(DD.timer); DD = null; } return; } e.preventDefault(); ddMove(t.clientX, t.clientY); }, { passive: false });
+document.addEventListener('touchend', () => { if (DD?.touch) ddEnd(false); });
+document.addEventListener('touchcancel', () => ddEnd(true));
+document.addEventListener('contextmenu', (e) => { if (DD || e.target.closest?.('.doc[data-di] canvas')) e.preventDefault(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && DD) ddEnd(true); });
 const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
 let dragDepth = 0;
 document.addEventListener('dragenter', (e) => { if (!Vault.key || !hasFiles(e)) return; e.preventDefault(); dragDepth++; document.body.classList.add('dropping'); });
