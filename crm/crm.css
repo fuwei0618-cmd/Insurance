@@ -336,3 +336,7 @@ body.dragging-doc,body.dragging-doc *{cursor:grabbing!important}
 .doc.ins-after{box-shadow:5px 0 0 -1px var(--accent)}
 .chip.droptgt{background:var(--accent);border-color:var(--accent);color:#fff;transform:scale(1.08)}
 .chip.droptgt .cnt{color:#fff}
+.ppline{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;margin:2px 0}
+.ppline>span{color:var(--ink);font-weight:500}
+.ppline>span.me{color:var(--muted);font-weight:400}
+.ppline small{margin-left:4px;font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 6px}

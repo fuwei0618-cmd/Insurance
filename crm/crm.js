@@ -488,6 +488,15 @@ function openWhoPicker(c, ppl) {
   $('wpX').onclick = () => (ov.innerHTML = '');
   ov.querySelectorAll('[data-who]').forEach((b) => (b.onclick = () => openDisclosure(Vault.get('clients', b.dataset.who), null, c.id)));
 }
+// 客戶頁的案件列：列出這件案子裡的每個人和角色，看得出是誰的案件
+function casePeopleLine(c, meId) {
+  const ppl = (c.people || []).filter((p) => Vault.get('clients', p.clientId));
+  const list = [];
+  if (c.clientId && !ppl.some((p) => p.clientId === c.clientId)) list.push({ id: c.clientId, name: c.client, roles: ['主要客戶'] });
+  ppl.forEach((p) => list.push({ id: p.clientId, name: Vault.get('clients', p.clientId).name || '未填姓名', roles: p.roles.length ? p.roles : (p.clientId === c.clientId ? ['主要客戶'] : []) }));
+  if (!list.length || (list.length === 1 && list[0].id === meId)) return '';
+  return `<span class="ppline">${list.map((p) => `<span class="${p.id === meId ? 'me' : ''}">${esc(p.name)}${p.roles.length ? `<small>${esc(p.roles.join('、'))}</small>` : ''}</span>`).join('')}</span>`;
+}
 function clientCases(cl) { return cases().filter((c) => c.clientId === cl.id || (c.people || []).some((p) => p.clientId === cl.id)).sort(byDate); }
 /* ================= 從 CRM 帶入（截圖在這台裝置上辨識，不會傳出去） ================= */
 function parseCRM(raw) {
@@ -824,7 +833,7 @@ function clientDetailHTML() {
    ${docs.some((d) => !isPdf(d)) ? '<div class="actions"><button class="btn" data-act="cpdf">圖片合成 PDF</button><button class="btn" data-act="cshare">匯出遮罩版</button></div>' : ''}</div>
   <div class="sec"><h2>案件 <button class="btn" data-act="ccase" style="padding:4px 10px;font-size:13px">＋ 新增${S.ccat !== '全部' ? esc(S.ccat) : '案件'}</button></h2>
    ${cs.length ? `<div class="chips">${['全部', ...CATS.filter((k) => cs.some((c) => c.cat === k))].map((k) => `<button class="chip${S.ccat === k ? ' on' : ''}" data-ccat="${k}">${k} <span class="cnt">${k === '全部' ? cs.length : cs.filter((c) => c.cat === k).length}</span></button>`).join('')}</div>` : ''}
-   ${cs.length ? cs.filter((c) => S.ccat === '全部' || c.cat === S.ccat).map((c) => `<button class="item${itemCls(c.status)}" data-gocase="${c.id}"><span class="t"><span>${esc(c.title || '未命名')}${(() => { const p = (c.people || []).find((y) => y.clientId === x.id); return p && p.roles.length ? ' <span class="sub">（' + esc(p.roles.join('、')) + '）</span>' : c.clientId !== x.id ? ' <span class="sub">（' + esc(c.client) + ' 的案件）</span>' : ''; })()}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${fmtDay(caseDate(c))} · ${esc(caseSummary(c))}${c.next ? ' · 下一步：' + esc(c.next) : ''}</span></button>`).join('') : '<div class="sub">還沒有案件。</div>'}</div>
+   ${cs.length ? cs.filter((c) => S.ccat === '全部' || c.cat === S.ccat).map((c) => `<button class="item${itemCls(c.status)}" data-gocase="${c.id}"><span class="t"><span>${esc(c.title || '未命名')}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span>${casePeopleLine(c, x.id)}<span class="s">${fmtDay(caseDate(c))} · ${esc(caseSummary(c))}${c.next ? ' · 下一步：' + esc(c.next) : ''}</span></button>`).join('') : '<div class="sub">還沒有案件。</div>'}</div>
   <div class="actions"><button class="btn pri savebtn" data-act="savenow">儲存</button><button class="btn danger" data-act="delclient">刪除客戶</button></div>`;
 }
 const isPdf = (d) => d.type === 'pdf';
