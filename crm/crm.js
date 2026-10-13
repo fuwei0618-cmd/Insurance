@@ -1105,7 +1105,7 @@ function refDetailHTML() {
    <div class="actions" style="margin:0 0 8px"><span class="sub">點文件可以選或取消，只有選的會放進參考和分享版</span><button class="linkbtn" data-refpick="all">全選</button><button class="linkbtn" data-refpick="none">全不選</button>${(c.folders || []).some((f) => f.includes('理賠')) ? '<button class="linkbtn" data-refpick="claim">只選理賠資料夾</button>' : ''}</div>
    <div class="docs">${all.map(([d, i]) => `<div class="doc refpick${on.has(dkey(d)) ? ' on' : ''}" data-refdoc="${esc(dkey(d))}"><canvas data-rthumb="${i}" width="240" height="320"></canvas><span class="sdcheck">✓</span>${d.note ? `<div class="docnote">${esc(d.note)}</div>` : ''}</div>`).join('')}</div>${on.size ? '<div class="actions"><button class="btn pri" data-act="rshare">匯出分享版</button></div>' : ''}</div>`; })() : ''}
   <div class="note">這頁只顯示分類、計算和遮罩後的文件，不顯示客戶姓名。要修改內容請回到「案件」。</div>
-  <div class="actions"><button class="btn" data-act="gocase">打開原案件</button>${c.clientId && Vault.get('clients', c.clientId) ? `<button class="btn" data-goclient="${c.clientId}">打開客戶資料</button>` : ''}</div>`;
+  <div class="actions"><button class="btn" data-act="gocase">打開原案件</button></div>`;
 }
 function sopMatch(n) {
   const k = catOf(n);
