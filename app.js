@@ -185,19 +185,41 @@
   }
 
   /* ---------- 目錄 ---------- */
+  /* 目錄分類：每章再分段，用底色區分（頁面 id 對到分類） */
+  const TOC_GROUPS = [
+    [['開場', ['book', 'toc', 'cover']], ['人生願景', ['castle', 'lifecycle', 'architect', 'castlework']], ['保險觀念', ['overview', 'why', 'what', 'how', 'howmuch']], ['銜接', ['bridge']]],
+    [['總覽與案例', ['cover', '2eda2cc9', 'hub', 'case-shen', 'case-natto']], ['意外與醫療', ['ins-accident', 'ins-hosp', 'ins-surgery', 'ins-medexp', 'ins-special']], ['重症與長照', ['ins-cancer', 'ins-ci', 'ins-ltc']], ['壽險與總結', ['ins-life', 'summary']]],
+    [['人生階段', ['cover', 'roadmap', 'stages', 'stage-0-18', 'stage-19-34', 'stage-35-44', 'stage-45up']], ['第一步　保單健檢', ['step1-check', 'step1-amount', 'step1-gap']], ['第二步　優先順序', ['step2-priority']], ['第三步　商品與預算', ['step3-budget', 'step3-product', 'step3-plans']], ['簽約與服務', ['who', 'when', 'where', 'closing']]],
+  ];
+  const TOC_TINTS = ['#F3EBDA', '#E3EEE9', '#E8E6F1', '#F4E3DE', '#E2EAF2'];
+  function tocGroupOf(c, id) {
+    const g = TOC_GROUPS[c] || [];
+    for (let i = 0; i < g.length; i++) if (g[i][1].includes(id)) return i;
+    return -1;
+  }
   function slidePicker(onPick, highlight) {
     const wrap = document.createElement('div'); wrap.className = 'toc-wrap';
     CH.forEach((ch, c) => {
       const sec = document.createElement('div'); sec.className = 'toc-ch';
       sec.innerHTML = `<h3>${esc(ch.short)}｜${esc(ch.title)}</h3>`;
-      const list = document.createElement('div'); list.className = 'toc-list';
+      let list = null, lastG = null;
       ch.slides.forEach((sl, s) => {
+        const g = tocGroupOf(c, sl.id);
+        if (list === null || g !== lastG) {
+          list = document.createElement('div'); list.className = 'toc-list toc-grp';
+          if (g >= 0) {
+            list.style.background = TOC_TINTS[g % TOC_TINTS.length];
+            const lb = document.createElement('div'); lb.className = 'toc-grp-name'; lb.textContent = TOC_GROUPS[c][g][0];
+            list.appendChild(lb);
+          }
+          sec.appendChild(list); lastG = g;
+        }
         const b = document.createElement('button'); b.className = 'toc-item' + (highlight && c === cur.c && s === cur.s ? ' cur' : '');
         b.innerHTML = `<b>P${s + 1}</b><span>${esc(sl.title || sl.id)}</span>`;
         b.onclick = () => onPick(c, s);
         list.appendChild(b);
       });
-      sec.appendChild(list); wrap.appendChild(sec);
+      wrap.appendChild(sec);
     });
     return wrap;
   }
