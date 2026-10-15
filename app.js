@@ -186,7 +186,7 @@
 
   /* ---------- 目錄 ---------- */
   function slidePicker(onPick, highlight) {
-    const wrap = document.createElement('div');
+    const wrap = document.createElement('div'); wrap.className = 'toc-wrap';
     CH.forEach((ch, c) => {
       const sec = document.createElement('div'); sec.className = 'toc-ch';
       sec.innerHTML = `<h3>${esc(ch.short)}｜${esc(ch.title)}</h3>`;
