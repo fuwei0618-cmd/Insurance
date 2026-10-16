@@ -1032,7 +1032,7 @@ function docTile(d, i, p, folders) { // p：'' 案件、'c' 客戶
   const media = isPdf(d) ? `<div class="pdftile">PDF<small>${esc(d.name)}</small></div>` : `<canvas data-${p}thumb="${i}" width="240" height="320"></canvas>`;
   const mv = folders ? `<select class="mv" data-movedoc="${i}" aria-label="移到資料夾"><option value="">未分類</option>${folders.map((f) => `<option${f === d.folder ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select>` : '';
   const dt = `<input type="date" class="ddate" data-${p}docdate="${i}" value="${esc(d.date || '')}" aria-label="文件日期">`;
-  return `<div class="doc" data-di="${i}" data-dp="${p}">${media}${dt}${d.note ? `<div class="docnote" title="${esc(d.note)}">📝 ${esc(d.note)}</div>` : ''}<div class="bar"><button class="docname" data-${p}rename="${i}" title="改名">${esc(d.name)}${d.masks?.length ? ' · 已遮 ' + d.masks.length : ''}</button><span><button data-${p}view="${i}" hidden>看</button>${isPdf(d) ? '' : `<button data-${p}mask="${i}">遮罩</button>`}<button data-${p}deldoc="${i}" aria-label="刪除文件">刪</button></span></div>${mv}</div>`;
+  return `<div class="doc" data-di="${i}" data-dp="${p}">${media}${dt}${d.note ? `<div class="docnote" title="${esc(d.note)}">📝 ${esc(d.note)}</div>` : ''}<div class="bar"><button class="docname" data-${p}rename="${i}" title="改名">${esc(d.name)}${d.masks?.length ? ' · 已遮 ' + d.masks.length : ''}</button><span><button data-${p}view="${i}" hidden>看</button>${isPdf(d) ? '' : `<button data-${p}rot="${i}" aria-label="向右轉 90 度" title="轉方向">↻</button><button data-${p}mask="${i}">遮罩</button>`}<button data-${p}deldoc="${i}" aria-label="刪除文件">刪</button></span></div>${mv}</div>`;
 }
 const STEPS = {
   新契約: ['建議書', 'keyman 再解說', '簽約', '送件', '文件補全', '核保通過', '簽收回條', '紙本保單'],
@@ -1304,6 +1304,7 @@ app.addEventListener('click', async (e) => {
   if (d.reveal) { const el = $(d.reveal); if (el) { const on = el.classList.toggle('shown'); b.textContent = on ? '隱藏' : '顯示'; } return; }
   const ccl = curClient();
   if (d.cview && ccl) { openGallery(b, ccl.docs, 'cview'); return; }
+  if (d.crot != null && ccl) { rotateDoc(ccl, 'clients', +d.crot, b); return; }
   if (d.cmask && ccl) { openMask(ccl, +d.cmask, 'clients'); return; }
   if (d.cdeldoc && ccl) { if (armConfirm(b, '確定？')) { const [doc] = ccl.docs.splice(+d.cdeldoc, 1); Vault.put('clients', ccl); if (doc) { Files.remove(doc.fileId, { coll: 'clients', recId: ccl.id, doc }); toast('已移到「最近刪除」，30 天內可以救回'); } App.render(); } return; }
   if (d.addstep != null && c) {
@@ -1323,6 +1324,7 @@ app.addEventListener('click', async (e) => {
   if (d.ctype && c) { c.causeType = c.causeType === d.ctype ? '' : d.ctype; c.causeDetail = ''; saveCase(c); App.render(); return; }
   if (d.editcause) { editCause(d.editcause); return; }
   if (d.cdet && c) { c.causeDetail = c.causeDetail === d.cdet ? '' : d.cdet; saveCase(c); App.render(); return; }
+  if (d.rot != null && c) { rotateDoc(c, 'cases', +d.rot, b); return; }
   if (d.mask && c) { openMask(c, +d.mask); return; }
   if (d.view && c) { openGallery(b, c.docs, 'view'); return; }
   if (d.deldoc && c) { if (armConfirm(b, '確定？')) { const [doc] = c.docs.splice(+d.deldoc, 1); saveCase(c); if (doc) { Files.remove(doc.fileId, { coll: 'cases', recId: c.id, doc }); toast('已移到「最近刪除」，30 天內可以救回'); } App.render(); } return; }
@@ -1810,6 +1812,14 @@ async function rotateBlob(fileId) { // 向右轉 90 度
   const cv = document.createElement('canvas'); cv.width = bmp.height; cv.height = bmp.width; const x = cv.getContext('2d');
   x.translate(cv.width, 0); x.rotate(Math.PI / 2); x.drawImage(bmp, 0, 0);
   return await new Promise((ok) => cv.toBlob(ok, 'image/jpeg', 0.9));
+}
+async function rotateDoc(rec, coll, i, btn) { // 案件、客戶文件轉方向：遮罩和記號跟著轉
+  const d = rec.docs[i]; if (!d || btn.disabled) return; btn.disabled = true;
+  try {
+    const old = d.fileId, blob = await rotateBlob(old); d.fileId = await Files.add(blob, d.name);
+    const r = rotateMarks({ masks: d.masks || [], marks: d.marks || [] }); d.masks = r.masks; d.marks = r.marks;
+    Files.remove(old); coll === 'cases' ? saveCase(rec) : Vault.put(coll, rec); App.render();
+  } catch (e) { toast('轉不了，請確認網路後再試'); btn.disabled = false; }
 }
 function rotateCanvas(src) { const cv = document.createElement('canvas'); cv.width = src.height; cv.height = src.width; const x = cv.getContext('2d'); x.translate(cv.width, 0); x.rotate(Math.PI / 2); x.drawImage(src, 0, 0); return cv; }
 function solveH(dst, src) {
