@@ -1588,9 +1588,9 @@ const CLIENT_DOC_NAMES = ['身分證正面', '身分證反面', '存摺封面', 
 function openScanner(c, opts = {}) { SC = { c, folder: opts.folder || '', coll: opts.coll || 'cases', names: opts.names || CASE_DOC_NAMES, pages: [], img: null, corners: null, filter: opts.filter || 'gray', drag: -1, queue: [], onDone: opts.onDone, onCancel: opts.onCancel }; renderScanner(); }
 function scanForClient(cl) { if (!cl) { toast('先選一位客戶'); return; } openScanner(cl, { coll: 'clients', names: CLIENT_DOC_NAMES, filter: 'color' }); }
 function renderScanner() {
-  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>掃描文件</h2><span class="sub">${SC.pages.length} 頁</span><button class="btn" id="scCancel">取消</button><button class="btn pri" id="scDone">完成（${SC.pages.length}）</button></div>
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>掃描文件</h2><span class="sub">${SC.pages.length} 頁</span><button class="btn" id="scCancel">取消</button><button class="btn pri" id="scDone">完成（${SC.pages.length + (SC.img ? 1 : 0)}）</button></div>
   <div class="ovbody">${SC.img ? `<div class="stage"><canvas id="scCv"></canvas></div>
-  <div class="side"><div class="note">拖曳四個角對齊文件邊緣，再按「加入這頁」。</div>
+  <div class="side"><div class="note">拖曳四個角對齊文件邊緣；拖四邊中間的點可以整條邊一起移。對好按「加入這頁」，最後一張直接按「完成」也會收進去。</div>
    <div><div class="sub" style="margin-bottom:4px">效果</div><div class="seg">${[['color', '原色'], ['gray', '灰階增強'], ['bw', '黑白']].map(([k, l]) => `<button data-flt="${k}" class="${SC.filter === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>
    <label class="f">文件名稱<input id="scName" value="${SC.names[Math.min(SC.pages.length, SC.names.length - 1)]}"></label>
    <div class="actions"><button class="btn pri" id="scAdd">加入這頁</button><button class="btn" id="scRetake">重拍</button><button class="btn" id="scFull">用整張圖</button></div>
@@ -1599,6 +1599,12 @@ function renderScanner() {
   </div></div>`;
   $('scCancel').onclick = () => { const s = SC; s.pages.forEach((p) => URL.revokeObjectURL(p.url)); ov.innerHTML = ''; SC = null; if (s.onCancel) s.onCancel(); else App.render(); };
   $('scDone').onclick = async () => {
+    if (SC.img) { // 還沒按「加入這頁」就按完成：把眼前這張也收進去，不要弄丟
+      $('scDone').disabled = true; toast('整理中…');
+      SC.pages.push({ name: $('scName').value || '文件', blob: await warp(SC.img, SC.corners, SC.filter), url: '' });
+      for (const f of SC.queue.splice(0)) { const cv = await fileToCanvas(f); if (!cv) continue; const w = cv.width, h = cv.height; SC.pages.push({ name: SC.names[Math.min(SC.pages.length, SC.names.length - 1)], blob: await warp(cv, [[0, 0], [w, 0], [w, h], [0, h]], SC.filter), url: '' }); }
+      SC.img = null;
+    }
     const s = SC; ov.innerHTML = ''; SC = null;
     if (s.onDone) { if (s.pages.length) toast('加入中…'); await s.onDone(s.pages); return; }
     if (s.pages.length) {
@@ -1719,11 +1725,15 @@ function nextQueued() { if (SC.queue.length) loadFile(SC.queue.shift()); else re
 function onFiles(files) { if (!SC || !files.length) return; SC.queue.push(...[...files].slice(1)); loadFile(files[0]); }
 fileIn.onchange = () => { onFiles(fileIn.files); fileIn.value = ''; };
 fileLib.onchange = () => { onFiles(fileLib.files); fileLib.value = ''; };
-async function loadFile(f) {
-  const bmp = await createImageBitmap(f).catch(() => null);
-  if (!bmp) { toast('這張圖片打不開，換一張試試'); return; }
+async function fileToCanvas(f) {
+  const bmp = await createImageBitmap(f).catch(() => null); if (!bmp) return null;
   const s = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
   const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * s); cv.height = Math.round(bmp.height * s); cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+  return cv;
+}
+async function loadFile(f) {
+  const cv = await fileToCanvas(f);
+  if (!cv) { toast('這張圖片打不開，換一張試試'); return; }
   SC.img = cv; const w = cv.width, h = cv.height, m = 0.06; SC.corners = [[w * m, h * m], [w * (1 - m), h * m], [w * (1 - m), h * (1 - m)], [w * m, h * (1 - m)]];
   renderScanner();
 }
@@ -1734,12 +1744,28 @@ function setupCornerCanvas() {
     x.fillStyle = 'rgba(20,22,16,.45)'; x.beginPath(); x.rect(0, 0, cv.width, cv.height); x.moveTo(...k[0]); x.lineTo(...k[3]); x.lineTo(...k[2]); x.lineTo(...k[1]); x.closePath(); x.fill('evenodd');
     x.strokeStyle = '#9DBA88'; x.lineWidth = R / 4; x.beginPath(); k.forEach((p, i) => (i ? x.lineTo(...p) : x.moveTo(...p))); x.closePath(); x.stroke();
     k.forEach((p) => { x.beginPath(); x.arc(p[0], p[1], R, 0, 7); x.fillStyle = 'rgba(157,186,136,.35)'; x.fill(); x.lineWidth = R / 5; x.stroke(); });
+    mids().forEach((p) => { x.beginPath(); x.arc(p[0], p[1], R * 0.62, 0, 7); x.fillStyle = 'rgba(255,255,255,.85)'; x.fill(); x.lineWidth = R / 5; x.stroke(); });
   };
+  // 四邊中間的點：拖它會讓這條邊的兩個角一起移動（0-1 上、1-2 右、2-3 下、3-0 左）
+  const EDGE = [[0, 1], [1, 2], [2, 3], [3, 0]];
+  const mids = () => EDGE.map(([a, b]) => [(SC.corners[a][0] + SC.corners[b][0]) / 2, (SC.corners[a][1] + SC.corners[b][1]) / 2]);
+  const clamp = (p) => [Math.max(0, Math.min(cv.width, p[0])), Math.max(0, Math.min(cv.height, p[1]))];
   draw();
   const pt = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * cv.width / r.width, (e.clientY - r.top) * cv.height / r.height]; };
-  cv.onpointerdown = (e) => { const p = pt(e); let best = -1, bd = R * 3.5; SC.corners.forEach((c, i) => { const d = Math.hypot(c[0] - p[0], c[1] - p[1]); if (d < bd) { bd = d; best = i; } }); SC.drag = best; if (best >= 0) cv.setPointerCapture(e.pointerId); };
-  cv.onpointermove = (e) => { if (SC.drag < 0) return; const p = pt(e); SC.corners[SC.drag] = [Math.max(0, Math.min(cv.width, p[0])), Math.max(0, Math.min(cv.height, p[1]))]; draw(); };
-  cv.onpointerup = cv.onpointercancel = () => (SC.drag = -1);
+  let start = null;
+  cv.onpointerdown = (e) => {
+    const p = pt(e); let best = -1, bd = R * 3.5;
+    [...SC.corners, ...mids()].forEach((c, i) => { const d = Math.hypot(c[0] - p[0], c[1] - p[1]) + (i >= 4 ? R * 0.3 : 0); if (d < bd) { bd = d; best = i; } }); // 角和中點很近時，優先抓角
+    SC.drag = best; start = best >= 4 ? { p, k: SC.corners.map((c) => [...c]) } : null;
+    if (best >= 0) cv.setPointerCapture(e.pointerId);
+  };
+  cv.onpointermove = (e) => {
+    if (SC.drag < 0) return; const p = pt(e);
+    if (SC.drag < 4) SC.corners[SC.drag] = clamp(p);
+    else { const [a, b] = EDGE[SC.drag - 4], dx = p[0] - start.p[0], dy = p[1] - start.p[1]; SC.corners[a] = clamp([start.k[a][0] + dx, start.k[a][1] + dy]); SC.corners[b] = clamp([start.k[b][0] + dx, start.k[b][1] + dy]); }
+    draw();
+  };
+  cv.onpointerup = cv.onpointercancel = () => { SC.drag = -1; start = null; };
 }
 function solveH(dst, src) {
   const A = [];
