@@ -171,6 +171,8 @@ body.dropping::after{content:"放開就加入這個案件";position:fixed;inset:
 .nimgwrap{position:relative}
 .nimgdel,.nimgrot{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;border:0;background:var(--ink);color:var(--bg);font-size:12px;line-height:26px;padding:0}
 .nimgrot{right:auto;left:4px;font-size:15px}
+.nimgmk{position:absolute;bottom:4px;left:4px;height:28px;padding:0 8px;border-radius:14px;border:0;background:var(--ink);color:var(--bg);font-size:13px}
+.nimgdot{position:absolute;bottom:10px;right:8px;width:10px;height:10px;border-radius:50%;background:#C8553D;box-shadow:0 0 0 2px var(--bg)}
 #eImgs{display:none}
 /* 客戶 */
 .linkbtn{border:0;background:none;color:var(--accent-ink);font-size:12px;padding:0;font-weight:500}
@@ -416,3 +418,6 @@ div.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mute
 select.linktpl{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 10px;color:var(--ink);font-size:14px;max-width:100%}
 #eSops{margin-bottom:4px}
 #eS{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 10px;color:var(--ink);font-size:14px}
+
+.scprev canvas{width:100%;height:auto;max-height:260px;object-fit:contain;border:1px solid var(--line,#ddd);border-radius:6px;background:#fff}
+#scLv{width:100%}
