@@ -1480,7 +1480,7 @@ function editNote(id, isNew) {
   const n = Vault.get('notes', id);
   const alsoHTML = () => `<div class="f" style="font-size:13px;color:var(--muted)">也放在（可不選）<div class="tags" id="eAlso">${(n.alsoCats || []).map((k) => `<button type="button" class="tag sm on" data-also="${esc(k)}">${esc(k)} ✕</button>`).join('')}<select id="eAlsoSel" class="linktpl" style="padding:3px 8px;font-size:13px"><option value="">＋ 也放在其他分類…</option>${catOptions('', '')}</select></div></div>`; const withImgs = n.kind !== 'quick';
   NE = withImgs ? n : null;
-  const imgsBlock = () => `<div class="sub">附圖 · 可以把圖片拖進來，或按 Ctrl+V 貼上截圖</div><div class="nimgs edit">${(n.images || []).map((f, i) => `<div class="nimgwrap"><button class="nimg" data-vimg="${f}" aria-label="放大看圖"><img data-fid="${f}" alt=""></button><button class="nimgdel" data-delimg="${i}" aria-label="移除這張圖">✕</button></div>`).join('')}<button class="adddoc nimgadd" id="eCam">${ICON.scan}拍照／掃描</button><button class="adddoc nimgadd" id="eAddImg">＋ 選圖片</button></div><input type="file" id="eImgs" accept="image/*" multiple>`;
+  const imgsBlock = () => `<div class="sub">附圖 · 可以把圖片拖進來，或按 Ctrl+V 貼上截圖</div><div class="nimgs edit">${(n.images || []).map((f, i) => `<div class="nimgwrap"><button class="nimg" data-vimg="${f}" aria-label="放大看圖"><img data-fid="${f}" alt=""></button><button class="nimgrot" data-rotimg="${i}" aria-label="向右轉 90 度" title="轉方向">↻</button><button class="nimgdel" data-delimg="${i}" aria-label="移除這張圖">✕</button></div>`).join('')}<button class="adddoc nimgadd" id="eCam">${ICON.scan}拍照／掃描</button><button class="adddoc nimgadd" id="eAddImg">＋ 選圖片</button></div><input type="file" id="eImgs" accept="image/*" multiple>`;
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${n.kind === 'quick' ? '電話' : '編輯'}</h2><button class="btn" id="eCancel">取消</button><button class="btn pri" id="eSave">儲存</button></div><div class="ovbody" style="flex-direction:column;max-width:720px;margin:0 auto;width:100%">${n.kind === 'sop' || n.kind === 'tpl' ? `<div class="f">業務別${lineSeg(lineN(n), 'eline', NLINES)}</div>` : ''}${n.kind === 'sop' ? `<label class="f">分類<select id="eC">${catOptions(catOf(n), '通用（不屬於特定分類）')}</select></label>${alsoHTML()}${Object.keys(TAGS).map((key) => `<div class="f" data-tagrow="${key}" style="font-size:13px;color:var(--muted)${tagShown(key, lineN(n)) ? '' : ';display:none'}">${TAGS[key].label}<div class="tags" data-etag="${key}">${[...new Set([...tagList(key), ...TAGS[key].of(n)])].map((t) => `<button type="button" class="tag sm${TAGS[key].of(n).includes(t) ? ' on' : ''}" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div></div>`).join('')}` : ''}${n.kind === 'tpl' ? `<label class="f">分類<select id="eC">${catOptions(n.cat, '通用')}</select></label>${alsoHTML()}<div class="f" style="font-size:13px;color:var(--muted)">用在哪裡（可複選）<div class="tags" data-etag="channels">${[...new Set([...TPLGROUPS, ...chOf(n)])].map((g) => `<button type="button" class="tag sm${chOf(n).includes(g) ? ' on' : ''}" data-t="${esc(g)}">${esc(g)}</button>`).join('')}</div></div><div class="f">掛在哪些 SOP 底下<div class="tags" id="eSops">${sopsOf(n).map((id) => Vault.get('notes', id)).filter(Boolean).map((x) => `<button type="button" class="tag sm on" data-sopid="${x.id}">${esc(x.title)} ✕</button>`).join('')}</div><select id="eS"><option value="">＋ 連結到 SOP…</option>${notes().filter((x) => x.kind === 'sop').sort((a, b) => (catOf(b) === n.cat) - (catOf(a) === n.cat) || (a.title || '').localeCompare(b.title || '')).map((x) => `<option value="${x.id}">${esc(x.title || '未命名')}${catOf(x) ? '（' + esc(catOf(x)) + '）' : ''}</option>`).join('')}</select></div><div class="sub">可以寫 {客戶}、{日期}，從案件複製時會自動帶入。</div>` : ''}<label class="f">${n.kind === 'quick' ? '名稱' : '標題'}<input id="eT" value="${esc(n.title)}"></label>${n.kind === 'quick' ? `<label class="f">電話<input id="eB" inputmode="tel" value="${esc(n.body)}"></label>` : `<label class="f">${n.kind === 'sop' ? '作業步驟' : '內容'}<textarea id="eB" rows="${n.kind === 'sop' ? 8 : 10}">${esc(n.body)}</textarea></label><div id="eImgBox">${imgsBlock()}</div>`}${n.kind === 'sop' ? `<div class="f etplbox"><b style="font-size:14px;color:var(--ink)">給客戶的範本</b><span class="sub">這個作業要傳給客戶的 LINE／簡訊，可以寫 {客戶}、{日期}。會同時出現在「範本」頁和同類案件裡。</span><div id="eTpls">${notes().filter((t) => t.kind === 'tpl' && sopsOf(t).includes(n.id)).map(tplRowHTML).join('')}</div><div class="actions" style="margin:0"><button type="button" class="btn" id="eAddTpl">＋ 寫一則新範本</button><select id="eLinkTpl" class="linktpl"><option value="">🔗 連結已有的範本…</option>${notes().filter((t) => t.kind === 'tpl' && !sopsOf(t).includes(n.id)).sort((a, b) => (b.cat === catOf(n)) - (a.cat === catOf(n)) || (a.title || '').localeCompare(b.title || '')).map((t) => `<option value="${t.id}">${esc(t.title || '未命名')}${t.cat ? '（' + esc(t.cat) + '）' : ''}</option>`).join('')}</select></div></div>` : ''}${n.kind === 'quick' && !isNew ? '<div class="actions"><button class="btn danger" id="eDel">刪除這支電話</button></div>' : ''}</div></div>`;
   const close = () => { NE = null; ov.innerHTML = ''; App.render(); };
   if ($('eS')) {
@@ -1535,6 +1535,11 @@ function editNote(id, isNew) {
     };
     $('eImgs').onchange = async (e) => { const fs = [...e.target.files]; e.target.value = ''; toast('加入中…'); await addNoteImages(n, fs); wireImgs(); };
     $('eImgBox').querySelectorAll('[data-vimg]').forEach((b) => (b.onclick = () => openViewer({ fileId: b.dataset.vimg, name: n.title || '附圖' }, true)));
+    $('eImgBox').querySelectorAll('[data-rotimg]').forEach((b) => (b.onclick = async () => { // 轉方向：存成新的一張，換掉舊的
+      if (b.disabled) return; b.disabled = true; const i = +b.dataset.rotimg, old = n.images[i];
+      try { const blob = await rotateBlob(old); n.images[i] = await Files.add(blob, n.title || '附圖'); Files.remove(old); Vault.put('notes', n); wireImgs(); }
+      catch (e) { toast('轉不了，請確認網路後再試'); b.disabled = false; }
+    }));
     $('eImgBox').querySelectorAll('[data-delimg]').forEach((b) => (b.onclick = () => { const [f] = n.images.splice(+b.dataset.delimg, 1); Files.remove(f); Vault.put('notes', n); wireImgs(); }));
   };
   NE && (NE.refresh = wireImgs);
@@ -1593,7 +1598,7 @@ function renderScanner() {
   <div class="side"><div class="note">拖曳四個角對齊文件邊緣；拖四邊中間的點可以整條邊一起移。對好按「加入這頁」，最後一張直接按「完成」也會收進去。</div>
    <div><div class="sub" style="margin-bottom:4px">效果</div><div class="seg">${[['color', '原色'], ['gray', '灰階增強'], ['bw', '黑白']].map(([k, l]) => `<button data-flt="${k}" class="${SC.filter === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>
    <label class="f">文件名稱<input id="scName" value="${SC.names[Math.min(SC.pages.length, SC.names.length - 1)]}"></label>
-   <div class="actions"><button class="btn pri" id="scAdd">加入這頁</button><button class="btn" id="scRetake">重拍</button><button class="btn" id="scFull">用整張圖</button></div>
+   <div class="actions"><button class="btn pri" id="scAdd">加入這頁</button><button class="btn" id="scRetake">重拍</button><button class="btn" id="scFull">用整張圖</button><button class="btn" id="scRot">↻ 轉方向</button></div>
    ${SC.pages.length ? `<div class="pages">${SC.pages.map((p) => `<img src="${p.url}" alt="${esc(p.name)}">`).join('')}</div>` : ''}</div>`
     : `<div class="pick">${ICON.scan}<div>拍一張文件、從相簿選照片，<br>或把圖片拖進來、按 Ctrl+V 貼上截圖</div><div class="actions" style="justify-content:center"><button class="btn pri" id="scCam">開相機</button><button class="btn" id="scLib">從相簿選</button></div>${SC.pages.length ? `<div class="pages">${SC.pages.map((p) => `<img src="${p.url}" alt="">`).join('')}</div>` : ''}</div>`}
   </div></div>`;
@@ -1616,6 +1621,7 @@ function renderScanner() {
   if (!SC.img) { $('scCam').onclick = () => fileIn.click(); $('scLib').onclick = () => fileLib.click(); return; }
   ov.querySelectorAll('[data-flt]').forEach((b) => (b.onclick = () => { SC.filter = b.dataset.flt; renderScanner(); }));
   $('scRetake').onclick = () => { SC.img = null; nextQueued(); };
+  $('scRot').onclick = () => { const h = SC.img.height; SC.img = rotateCanvas(SC.img); SC.corners = SC.corners.map(([x, y]) => [h - y, x]); SC.corners = [3, 0, 1, 2].map((i) => SC.corners[i]); renderScanner(); };
   $('scFull').onclick = () => { const w = SC.img.width, h = SC.img.height; SC.corners = [[0, 0], [w, 0], [w, h], [0, h]]; renderScanner(); };
   $('scAdd').onclick = async () => { const blob = await warp(SC.img, SC.corners, SC.filter); SC.pages.push({ name: $('scName').value || '文件', blob, url: URL.createObjectURL(blob) }); SC.img = null; nextQueued(); };
   setupCornerCanvas();
@@ -1767,6 +1773,14 @@ function setupCornerCanvas() {
   };
   cv.onpointerup = cv.onpointercancel = () => { SC.drag = -1; start = null; };
 }
+async function rotateBlob(fileId) { // 向右轉 90 度
+  const u = await Files.url(fileId); if (!u) throw new Error('讀不到圖片');
+  const bmp = await createImageBitmap(await (await fetch(u)).blob());
+  const cv = document.createElement('canvas'); cv.width = bmp.height; cv.height = bmp.width; const x = cv.getContext('2d');
+  x.translate(cv.width, 0); x.rotate(Math.PI / 2); x.drawImage(bmp, 0, 0);
+  return await new Promise((ok) => cv.toBlob(ok, 'image/jpeg', 0.9));
+}
+function rotateCanvas(src) { const cv = document.createElement('canvas'); cv.width = src.height; cv.height = src.width; const x = cv.getContext('2d'); x.translate(cv.width, 0); x.rotate(Math.PI / 2); x.drawImage(src, 0, 0); return cv; }
 function solveH(dst, src) {
   const A = [];
   for (let i = 0; i < 4; i++) { const [u, v] = dst[i], [x, y] = src[i]; A.push([u, v, 1, 0, 0, 0, -u * x, -v * x, x]); A.push([0, 0, 0, u, v, 1, -u * y, -v * y, y]); }
