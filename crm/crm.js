@@ -755,6 +755,9 @@ const GIFT_TYPES = [['client', '現有客戶'], ['call', '服務件'], ['other',
 const gevents = () => Vault.all('gevents').sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 const giftsOf = (evId) => Vault.all('gifts').filter((g) => g.eventId === evId);
 const giftWho = (g) => (g.who?.type === 'client' ? Vault.get('clients', g.who.id)?.name : g.who?.type === 'call' ? Vault.get('calls', g.who.id)?.name : '') || g.who?.name || '未填';
+const giftItemsSorted = (items) => items.map((it, i) => [it, i]).sort((a, b) => (a[0].cat || '￿').localeCompare(b[0].cat || '￿', 'zh-Hant') || a[1] - b[1]).map(([it]) => it);
+function giftCatRow(cat, arr, cnt) { const its = arr.filter((x) => (x.cat || '') === cat), sum = (f) => its.reduce((a, it) => a + f(it), 0); const q = sum((it) => it.qty || 0), pl = sum((it) => cnt[it.id]?.plan || 0), dn = sum((it) => cnt[it.id]?.done || 0);
+  return `<tr class="gcat"><td colspan="2">${esc(cat || '未分類')}</td><td>${q}</td><td>${pl}</td><td>${dn}</td><td class="${q - pl - dn < 0 ? 'gneg' : ''}">${q - pl - dn}</td></tr>`; }
 const giftItemsText = (g, ev) => Object.entries(g.items || {}).filter(([, n]) => n > 0).map(([id, n]) => { const it = ev?.items.find((x) => x.id === id); return `${it ? it.name || it.code || '品項' : '已刪品項'}×${n}`; }).join('、');
 function giftCounts(ev) {
   const out = {}; (ev.items || []).forEach((it) => (out[it.id] = { plan: 0, done: 0 }));
@@ -772,13 +775,13 @@ function giftsHTML() {
   const items = ev.items || [];
   return head + `<div class="sec"><h2>${S.gedit ? `<input class="nctxt" data-gevf="name" value="${esc(ev.name)}" style="max-width:260px">` : esc(ev.name || '未命名')} <span style="display:flex;gap:6px"><button class="btn sm${S.gedit ? ' pri' : ''}" data-act="geditems">${S.gedit ? '✓ 改好了' : '✎ 編修品項'}</button></span></h2>
    ${S.gedit ? `<div class="note">改品項名稱、代號、數量。刪除要按兩次。</div>` : ''}
-   ${items.length ? `<table class="gtable"><thead><tr><th>品項</th><th>代號</th><th>數量</th><th>預備</th><th>已送</th><th>剩下</th>${S.gedit ? '<th></th>' : ''}</tr></thead><tbody>
-    ${items.map((it) => { const c = cnt[it.id] || { plan: 0, done: 0 }, left = (it.qty || 0) - c.plan - c.done; return S.gedit
-      ? `<tr><td><input class="nctxt" data-gitem="${it.id}" data-gf="name" value="${esc(it.name)}" placeholder="例如：小熊維尼桌曆"></td><td><input class="nctxt" data-gitem="${it.id}" data-gf="code" value="${esc(it.code)}" style="width:110px"></td><td><input class="nctxt" data-gitem="${it.id}" data-gf="qty" inputmode="numeric" value="${it.qty || 0}" style="width:64px"></td><td>${c.plan}</td><td>${c.done}</td><td>${left}</td><td><button class="btn sm" data-gidel="${it.id}">✕</button></td></tr>`
-      : `<tr><td>${esc(it.name || '（未命名）')}</td><td class="sub">${esc(it.code)}</td><td>${it.qty || 0}</td><td>${c.plan}</td><td>${c.done}</td><td class="${left < 0 ? 'gneg' : ''}">${left}</td></tr>`; }).join('')}</tbody></table>` : '<div class="sub">還沒有品項。按「編修品項」新增。</div>'}
-   ${S.gedit ? `<div class="actions" style="margin:0"><button class="btn sm" data-act="gaddi">＋ 新增品項</button><button class="btn sm danger" data-act="gevdel">刪除這個活動</button></div>` : ''}
+   ${items.length ? `<table class="gtable"><thead><tr>${S.gedit ? '<th>分類</th>' : ''}<th>品項</th><th>代號</th><th>數量</th><th>預備</th><th>已送</th><th>剩下</th>${S.gedit ? '<th></th>' : ''}</tr></thead><tbody>
+    ${giftItemsSorted(items).map((it, ix, arr) => { const c = cnt[it.id] || { plan: 0, done: 0 }, left = (it.qty || 0) - c.plan - c.done; const catRow = !S.gedit && (ix === 0 || (arr[ix - 1].cat || '') !== (it.cat || '')) ? giftCatRow(it.cat || '', arr, cnt) : ''; return S.gedit
+      ? `<tr><td><input class="nctxt" data-gitem="${it.id}" data-gf="cat" value="${esc(it.cat)}" placeholder="例如：彩豐月曆" style="width:120px"></td><td><input class="nctxt" data-gitem="${it.id}" data-gf="name" value="${esc(it.name)}" placeholder="例如：小熊維尼"></td><td><input class="nctxt" data-gitem="${it.id}" data-gf="code" value="${esc(it.code)}" style="width:110px"></td><td><input class="nctxt" data-gitem="${it.id}" data-gf="qty" inputmode="numeric" value="${it.qty || 0}" style="width:64px"></td><td>${c.plan}</td><td>${c.done}</td><td>${left}</td><td><button class="btn sm" data-gidel="${it.id}">✕</button></td></tr>`
+      : catRow + `<tr><td>${esc(it.name || it.code || '（未命名）')}</td><td class="sub">${esc(it.code)}</td><td>${it.qty || 0}</td><td>${c.plan}</td><td>${c.done}</td><td class="${left < 0 ? 'gneg' : ''}">${left}</td></tr>`; }).join('')}</tbody></table>` : '<div class="sub">還沒有品項。按「編修品項」新增。</div>'}
+   ${S.gedit ? `<div class="actions" style="margin:0"><button class="btn sm" data-act="gaddi">＋ 新增品項</button><button class="btn sm" data-act="gbulki">貼上一批品項</button><button class="btn sm danger" data-act="gevdel">刪除這個活動</button></div>` : ''}
    ${ev.note || S.gedit ? `<label class="f">備註${S.gedit ? `<input class="nctxt" data-gevf="note" value="${esc(ev.note)}">` : `<span>${esc(ev.note)}</span>`}</label>` : ''}</div>
-  <div class="sec"><h2>送禮名單 <span class="sub">${all.length} 位・已送 ${all.filter((g) => g.status === '已送').length}</span><button class="btn sm pri" data-act="gaddwho">＋ 加對象</button></h2>
+  <div class="sec"><h2>送禮名單 <span class="sub">${all.length} 位・已送 ${all.filter((g) => g.status === '已送').length}</span><span style="display:flex;gap:6px"><button class="btn sm" data-act="gbulkw">貼上一批名單</button><button class="btn sm" data-act="gpickw">從客戶、服務件勾選</button><button class="btn sm pri" data-act="gaddwho">＋ 加一位</button></span></h2>
    <div class="chips">${[['全部', '全部'], ...GIFT_TYPES].map(([k, l]) => `<button class="chip${S.gtype === k ? ' on' : ''}" data-gtype="${k}">${l} <span class="cnt">${k === '全部' ? all.length : all.filter((g) => g.who?.type === k).length}</span></button>`).join('')}</div>
    <div class="chips">${['全部', '預備', '已送'].map((k) => `<button class="chip${S.gst === k ? ' on' : ''}" data-gst="${k}">${k} <span class="cnt">${k === '全部' ? all.length : all.filter((g) => (g.status || '預備') === k).length}</span></button>`).join('')}</div>
    ${list.length ? `<div class="glist">${list.map((g) => `<div class="grow2${g.status === '已送' ? ' done' : ''}"><button class="gmain" data-gopen="${g.id}"><span class="t"><b>${esc(giftWho(g))}</b><span class="pill p-go">${GIFT_TYPES.find(([t]) => t === g.who?.type)?.[1] || '其他'}</span>${g.group ? `<span class="pill">${esc(g.group)}</span>` : ''}${g.method ? `<span class="sub">${esc(g.method)}</span>` : ''}</span><span class="s">${esc(giftItemsText(g, ev)) || '還沒選品項'}${g.note ? ' · ' + esc(g.note) : ''}</span></button>
@@ -806,7 +809,7 @@ function openGiftEditor(g, preset) { // 新增或修改一筆送禮
       : `<label class="f">搜尋${t === 'client' ? '客戶' : '服務件'}<input id="gwQ" value="${esc(q)}" placeholder="打名字" autocomplete="off"></label>
       ${rec.who.id ? `<div class="sub">已選：<b>${esc(giftWho(rec))}</b></div>` : ''}<div class="list" style="padding:0">${found.map((x) => `<button class="item" data-gwp="${x.id}"><span class="t">${esc(x.name || '未填姓名')}</span></button>`).join('')}</div>`}`}
      <label class="f">分類（可不填）<input id="gwGroup" value="${esc(rec.group)}" placeholder="例如：朋友、張家、石家"></label>
-     <div class="f">品項和數量<div class="gqty">${(ev?.items || []).map((it) => { const c = cnt[it.id] || { plan: 0, done: 0 }; const left = (it.qty || 0) - c.plan - c.done + ((g && g.eventId === ev.id && g.items?.[it.id]) || 0); return `<div class="gqrow"><span>${esc(it.name || it.code || '品項')} <span class="sub">剩 ${left}</span></span><span class="gstep"><button class="btn sm" data-gq="${it.id}:-1">－</button><b>${rec.items[it.id] || 0}</b><button class="btn sm" data-gq="${it.id}:1">＋</button></span></div>`; }).join('') || '<span class="sub">這個活動還沒有品項，先到送禮專區按「編修品項」。</span>'}</div></div>
+     <div class="f">品項和數量<div class="gqty">${giftItemsSorted(ev?.items || []).map((it, ix, arr) => (ix === 0 || (arr[ix - 1].cat || '') !== (it.cat || '') ? `<div class="gqcat">${esc(it.cat || '未分類')}</div>` : '') + (() => { const c = cnt[it.id] || { plan: 0, done: 0 }; const left = (it.qty || 0) - c.plan - c.done + ((g && g.eventId === ev.id && g.items?.[it.id]) || 0); return `<div class="gqrow"><span>${esc(it.name || it.code || '品項')} <span class="sub">剩 ${left}</span></span><span class="gstep"><button class="btn sm" data-gq="${it.id}:-1">－</button><b>${rec.items[it.id] || 0}</b><button class="btn sm" data-gq="${it.id}:1">＋</button></span></div>`; })()).join('') || '<span class="sub">這個活動還沒有品項，先到送禮專區按「編修品項」。</span>'}</div></div>
      <div class="f">怎麼送<div class="tags">${['當面', '寄送', '放管理室'].map((m) => `<button class="tag${rec.method === m ? ' on' : ''}" data-gwm="${m}">${m}</button>`).join('')}</div></div>
      <div class="f">狀態<div class="tags">${['預備', '已送'].map((m) => `<button class="tag${(rec.status || '預備') === m ? ' on' : ''}" data-gws="${m}">${m}</button>`).join('')}</div></div>
      <label class="f">備註<input id="gwNote" value="${esc(rec.note)}"></label></div></div>`;
@@ -829,6 +832,60 @@ function openGiftEditor(g, preset) { // 新增或修改一筆送禮
   };
   draw();
 }
+function openGiftBulkItems() { // 一行一個品項：分類／名稱／代號／數量
+  const ev = Vault.get('gevents', S.gev); if (!ev) return;
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>貼上一批品項</h2><button class="btn" id="biX">取消</button><button class="btn pri" id="biOk">加入</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:680px;margin:0 auto;width:100%">
+   <div class="note">一行一個品項，用斜線隔開：<b>分類／名稱／代號／數量</b>。沒有名稱可以空著，例如「彩豐月曆／／A09／20」。</div>
+   <textarea id="biT" rows="14" placeholder="達標桌曆／小熊維尼／CAWP-014／5"></textarea><div class="sub" id="biN"></div></div></div>`;
+  const parse = () => $('biT').value.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => { const c = l.split(/[／/|｜]/).map((x) => x.trim()); return { id: uid(), cat: c[0] || '', name: c[1] || '', code: c[2] || '', qty: parseInt(c[3], 10) || 0 }; }).filter((x) => x.name || x.code);
+  $('biT').oninput = () => { const n = parse().length; $('biN').textContent = n ? `會加入 ${n} 個品項` : ''; };
+  $('biX').onclick = () => (ov.innerHTML = '');
+  $('biOk').onclick = () => { const its = parse(); if (!its.length) { toast('先貼上品項'); return; } ev.items = [...(ev.items || []), ...its]; Vault.put('gevents', ev); S.gedit = false; ov.innerHTML = ''; App.render(); toast(`已加入 ${its.length} 個品項`); };
+}
+function giftWhoMatch(name) { // 名字跟客戶或服務件一樣，就自動連過去
+  const cl = clients().find((x) => x.name === name); if (cl) return { type: 'client', id: cl.id, name };
+  const k = calls().find((x) => x.name === name); if (k) return { type: 'call', id: k.id, name };
+  return { type: 'other', id: '', name };
+}
+const giftHas = (evId, who) => giftsOf(evId).some((g) => g.who?.type === who.type && (who.id ? g.who.id === who.id : g.who.name === who.name));
+function openGiftBulkWho() { // 一行一位：名字／分類／備註／已送
+  const ev = Vault.get('gevents', S.gev); if (!ev) return;
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>貼上一批名單</h2><button class="btn" id="bwX">取消</button><button class="btn pri" id="bwOk">加入</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:680px;margin:0 auto;width:100%">
+   <div class="note">一行一位，用斜線隔開：<b>名字／分類／備註／已送</b>，後面三個可以不寫。名字跟客戶或服務件一模一樣的，會自動連過去；其他的放在「其他」。品項之後再點進去選。</div>
+   <textarea id="bwT" rows="14" placeholder="叔叔／石家／去年 6 套"></textarea><div id="bwP"></div></div></div>`;
+  const parse = () => $('bwT').value.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => { const c = l.split(/[／/|｜]/).map((x) => x.trim()); const done = c.slice(1).some((x) => x === '已送'); const rest = c.slice(1).filter((x) => x !== '已送'); return { who: giftWhoMatch(c[0]), group: rest[0] || '', note: rest[1] || '', status: done ? '已送' : '預備' }; }).filter((x) => x.who.name);
+  const lab = (t) => GIFT_TYPES.find(([k]) => k === t)?.[1];
+  $('bwT').oninput = () => { const rs = parse(); $('bwP').innerHTML = rs.length ? `<div class="sub">會加入 ${rs.filter((r) => !giftHas(ev.id, r.who)).length} 位${rs.some((r) => giftHas(ev.id, r.who)) ? '（已經在名單裡的會略過）' : ''}：</div><div class="tags">${rs.map((r) => `<span class="tag" style="cursor:default">${esc(r.who.name)} <span class="sub">${lab(r.who.type)}${r.group ? '・' + esc(r.group) : ''}${r.status === '已送' ? '・已送' : ''}</span></span>`).join('')}</div>` : ''; };
+  $('bwX').onclick = () => (ov.innerHTML = '');
+  $('bwOk').onclick = () => { const rs = parse().filter((r) => !giftHas(ev.id, r.who)); if (!rs.length) { toast('沒有新的人可以加'); return; } rs.forEach((r) => Vault.put('gifts', { eventId: ev.id, who: r.who, group: r.group, items: {}, method: '', status: r.status, doneDate: r.status === '已送' ? localDay() : '', note: r.note })); ov.innerHTML = ''; App.render(); toast(`已加入 ${rs.length} 位`); };
+}
+function openGiftPickWho() { // 從客戶或服務件直接勾，一次加很多位
+  const ev = Vault.get('gevents', S.gev); if (!ev) return; let type = 'call', lv = '全部', ar = '全部'; const pick = new Set();
+  const draw = () => {
+    const q = ($('pwQ')?.value || '').trim(); const pool = (type === 'client' ? clients() : calls()).filter((x) => !giftHas(ev.id, { type, id: x.id }));
+    const areas = type === 'call' ? [...new Set(calls().map((k) => k.area).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant')) : [];
+    const list = pool.filter((x) => (!q || [x.name, x.no].join(' ').includes(q)) && (type !== 'call' || ((lv === '全部' || x.level === lv) && (ar === '全部' || x.area === ar)))).sort(type === 'call' ? noCmp : (a, b) => (a.name || '').localeCompare(b.name || '', 'zh-Hant'));
+    ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>勾選要送的人</h2><span class="sub">已勾 ${pick.size} 位</span><button class="btn" id="pwX">取消</button><button class="btn pri" id="pwOk">加入 ${pick.size} 位</button></div>
+    <div class="ovbody" style="flex-direction:column;max-width:720px;margin:0 auto;width:100%">
+     <div class="tags">${[['call', '服務件'], ['client', '現有客戶']].map(([k, l]) => `<button class="tag${type === k ? ' on' : ''}" data-pwt="${k}">${l}</button>`).join('')}</div>
+     ${type === 'call' ? `<div class="chips">${['全部', ...LEVELS].map((x) => `<button class="chip${lv === x ? ' on' : ''}" data-pwl="${x}">${x}</button>`).join('')}</div>${areas.length ? `<div class="chips">${['全部', ...areas].map((x) => `<button class="chip${ar === x ? ' on' : ''}" data-pwa="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : ''}` : ''}
+     <input class="search" id="pwQ" value="${esc(q)}" placeholder="搜尋名字${type === 'call' ? '或序號' : ''}" autocomplete="off">
+     <div class="actions" style="margin:0"><button class="btn sm" id="pwAll">這些全選</button><button class="btn sm" id="pwNone">全部不選</button></div>
+     <div class="pwlist">${list.map((x) => `<label class="ncit"><input type="checkbox" data-pw="${x.id}"${pick.has(x.id) ? ' checked' : ''}><span>${x.no ? `<span class="kno">${esc(x.no)}</span>` : ''}${esc(x.name || '未填姓名')}${x.level ? ` <b class="lvl lv-${esc(x.level)}">${esc(x.level)}</b>` : ''}${x.area ? ` <span class="sub">${esc(x.area)}</span>` : ''}</span></label>`).join('') || '<div class="sub">沒有可以加的人（已經在名單裡的不會出現）。</div>'}</div></div></div>`;
+    $('pwX').onclick = () => (ov.innerHTML = '');
+    $('pwQ').oninput = () => { const v = $('pwQ').value; draw(); const el = $('pwQ'); el.focus(); el.setSelectionRange(v.length, v.length); };
+    ov.querySelectorAll('[data-pwt]').forEach((b) => (b.onclick = () => { type = b.dataset.pwt; pick.clear(); draw(); }));
+    ov.querySelectorAll('[data-pwl]').forEach((b) => (b.onclick = () => { lv = b.dataset.pwl; draw(); }));
+    ov.querySelectorAll('[data-pwa]').forEach((b) => (b.onclick = () => { ar = b.dataset.pwa; draw(); }));
+    ov.querySelectorAll('[data-pw]').forEach((c) => (c.onchange = () => { c.checked ? pick.add(c.dataset.pw) : pick.delete(c.dataset.pw); ov.querySelector('.ovhead .sub').textContent = `已勾 ${pick.size} 位`; $('pwOk').textContent = `加入 ${pick.size} 位`; }));
+    $('pwAll').onclick = () => { list.forEach((x) => pick.add(x.id)); draw(); };
+    $('pwNone').onclick = () => { pick.clear(); draw(); };
+    $('pwOk').onclick = () => { if (!pick.size) { toast('先勾要送的人'); return; } [...pick].forEach((id) => { const x = Vault.get(type === 'client' ? 'clients' : 'calls', id); if (x) Vault.put('gifts', { eventId: ev.id, who: { type, id, name: x.name || '' }, group: '', items: {}, method: '', status: '預備', note: '' }); }); ov.innerHTML = ''; App.render(); toast(`已加入 ${pick.size} 位`); };
+  };
+  draw();
+}
 function openNewGiftEvent() { // 新活動：可以從舊活動複製品項（和名單）
   const evs = gevents();
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>新活動</h2><button class="btn" id="neX">取消</button><button class="btn pri" id="neOk">建立</button></div>
@@ -841,7 +898,7 @@ function openNewGiftEvent() { // 新活動：可以從舊活動複製品項（�
   $('neOk').onclick = () => {
     const name = $('neName').value.trim(); if (!name) { toast('先取個名字'); return; }
     const from = $('neFrom')?.value && Vault.get('gevents', $('neFrom').value);
-    const ev = Vault.put('gevents', { name, note: '', items: from && $('neItems').checked ? from.items.map((it) => ({ id: uid(), name: it.name, code: it.code, qty: 0 })) : [] });
+    const ev = Vault.put('gevents', { name, note: '', items: from && $('neItems').checked ? from.items.map((it) => ({ id: uid(), cat: it.cat || '', name: it.name, code: it.code, qty: 0 })) : [] });
     if (from && $('neWho').checked) giftsOf(from.id).forEach((g) => Vault.put('gifts', { eventId: ev.id, who: { ...g.who }, group: g.group || '', items: {}, method: g.method || '', status: '預備', note: '' }));
     S.gev = ev.id; S.gedit = !ev.items.length; ov.innerHTML = ''; App.render(); toast('已建立「' + name + '」');
   };
@@ -1656,6 +1713,9 @@ app.addEventListener('click', async (e) => {
     case 'ktable': S.ktable = true; S.kfromTable = false; S.showDetail = false; App.render(); break;
     case 'klist': S.ktable = false; App.render(); break;
     case 'gaddwho': openGiftEditor(null, null); break;
+    case 'gbulki': openGiftBulkItems(); break;
+    case 'gbulkw': openGiftBulkWho(); break;
+    case 'gpickw': openGiftPickWho(); break;
     case 'geditems': S.gedit = !S.gedit; App.render(); break;
     case 'gaddi': { const ev = Vault.get('gevents', S.gev); if (!ev) break; ev.items = [...(ev.items || []), { id: uid(), name: '', code: '', qty: 0 }]; Vault.put('gevents', ev); App.render(); break; }
     case 'gevdel': { const ev = Vault.get('gevents', S.gev); if (!ev) break; if (!armConfirm(b, '連名單一起刪除，再按一次')) break; Vault.all('gifts').filter((g) => g.eventId === ev.id).forEach((g) => Vault.del('gifts', g.id)); Vault.del('gevents', ev.id); S.gev = null; App.render(); break; }
