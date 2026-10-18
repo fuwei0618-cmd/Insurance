@@ -432,7 +432,7 @@ const TPLGROUPS = ['LINE', '簡訊', '信件', '通話', '其他'];
 const linkify = (html) => html.replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.length > 60 ? u.slice(0, 57) + '…' : u}</a>`);
 
 /* ================= 狀態與畫面 ================= */
-const S = { ktable: false, kprog: '全部', kfromTable: false, kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
+const S = { gview: 'table', ktable: false, kprog: '全部', kfromTable: false, kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
 const cases = () => Vault.all('cases');
 const localDay = (d = new Date()) => { const t = new Date(d); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
 const caseDate = (c) => c.date || (c.createdAt ? localDay(c.createdAt) : '');
@@ -590,6 +590,21 @@ function callSlots(k) { // 三個時段：上午、下午、晚上，各打過�
   return m;
 }
 function callGift(k) { const gs = Vault.all('gifts').filter((g) => g.who?.type === 'call' && g.who?.id === k.id); if (gs.length) return gs.every((g) => g.status === '已送') ? '已送' : '預備'; return k.giftSkip ? '不送' : ''; }
+const CALL_FLOW = [
+  ['準備（做一次）', ['匯入名單：選 PDF，檢查前八位欄位對不對，按匯入。', '送禮專區建好「年曆」活動和品項。']],
+  ['每天打電話', ['開「總表」，進度點「未打」，再點一個地區，一次打完一區。', '撥號前看一眼「打電話前的功課」：住址觀察、保單概況。', '照話術六步打：開場、年曆、家戶、職業、聊天、收尾。']],
+  ['掛電話後三十秒內記完', ['記錄結果：未接、已接・聊過、約訪成功…', '分級：A、B、C-1、C-2、C-3。', '勾確認：服務人員、家戶、職業類別。', '年曆：要的按「＋ 預備贈送」選品項和送法；不要的按「不送年曆」。', '有加 LINE 就勾；約好了就填約訪日期。']],
+  ['沒接的人', ['總表點「未接」，看三時段哪個還是灰的，換那個時段再打。', '三個時段都紅了：傳簡訊或 LINE，年曆改成寄送。']],
+  ['排約訪、送年曆', ['年曆到貨後，總表點「已排訪」加地區，同一區排同一天，半天三到四家。', '見到面：「已見面」打勾，送禮那筆按成「已送」。', 'A、B 的人開一個建議書案件，接上準備清單和流程提醒。', '有人跟你買了，再按「轉成客戶」，才進客戶區。']],
+  ['每週看一次', ['總表最上面的進度條：打過、接通、要年曆、加 LINE、排訪、見面、年曆已送，看這週跑到哪。']],
+];
+function openCallFlow() {
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>服務件流程</h2><button class="btn pri" id="cfX">關閉</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:760px;margin:0 auto;width:100%">
+   <div class="note">分級：<b>A</b> VIP 高度優先・<b>B</b> 有預算有促約機會・<b>C-1</b> 有關鍵人物預算不夠・<b>C-2</b> 關係好觀念還沒到・<b>C-3</b> 排斥忙沒需求，用寄的</div>
+   ${CALL_FLOW.map(([h, l], i) => `<div class="sec"><h2>${i + 1}. ${h}</h2><ol class="cflow">${l.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>`).join('')}</div></div>`;
+  $('cfX').onclick = () => (ov.innerHTML = '');
+}
 function callTableHTML() {
   const all = calls(), q = S.q.trim();
   const areas = [...new Set(all.map((k) => k.area).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant')); if (S.kar !== '全部' && !areas.includes(S.kar)) S.kar = '全部';
@@ -598,7 +613,7 @@ function callTableHTML() {
   const funnel = [['名單', all.length], ['打過', n((k) => (k.logs || []).length)], ['接通', n((k) => ['已接通', '已排訪', '已見面'].includes(prog(k)))], ['要年曆', n((k) => ['預備', '已送'].includes(callGift(k)))], ['加 LINE', n((k) => k.line)], ['排訪', n((k) => ['已排訪', '已見面'].includes(prog(k)))], ['見面', n((k) => k.met)], ['年曆已送', n((k) => callGift(k) === '已送')]];
   const dot = (v, l) => `<span class="kdot ${v}" title="${l}${v === 'ok' ? '接了' : v === 'no' ? '沒接' : '還沒打'}">${l[0]}</span>`;
   const chip = (key, x, c) => `<button class="chip${S[key] === x ? ' on' : ''}" data-${key === 'kprog' ? 'kprog' : key === 'klv' ? 'klvf' : 'kar'}="${esc(x)}">${esc(x)} <span class="cnt">${c}</span></button>`;
-  return `<div class="colhead"><h1>服務件總表 <span style="display:flex;gap:6px"><button class="btn" data-act="klist">‹ 回到名單</button><button class="btn" data-act="importcalls">匯入名單</button></span></h1>
+  return `<div class="colhead"><h1>服務件總表 <span style="display:flex;gap:6px"><button class="btn" data-act="cflow">流程</button><button class="btn" data-act="klist">‹ 回到名單</button><button class="btn" data-act="importcalls">匯入名單</button></span></h1>
    <div class="kfunnel">${funnel.map(([l, v]) => `<div><span>${l}</span><b>${v}</b></div>`).join('<i>›</i>')}</div>
    <input class="search" id="q" placeholder="搜尋序號、姓名、電話、地址" value="${esc(S.q)}" autocomplete="off">
    <div class="chips"><span class="sub" style="align-self:center">進度</span>${['全部', ...PROGS].map((x) => chip('kprog', x, x === '全部' ? all.length : n((k) => prog(k) === x))).join('')}</div>
@@ -635,7 +650,7 @@ function callListHTML() {
   if (S.kar !== '全部' && !areas.includes(S.kar)) S.kar = '全部';
   const list = all.filter((k) => (S.kst === '全部' || k.status === S.kst) && (S.kar === '全部' || k.area === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && (!q || [k.name, k.phone, k.source, k.note, k.addr, k.area].join(' ').includes(q)))
     .sort((a, b) => rank(a) - rank(b) || (a.nextDate || '9999').localeCompare(b.nextDate || '9999') || noCmp(a, b));
-  return `<section class="col"><div class="colhead"><h1>服務件 <span style="display:flex;gap:6px"><button class="btn pri" data-act="ktable">總表</button><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="newcall">＋ 新增</button></span></h1>
+  return `<section class="col"><div class="colhead"><h1>服務件 <span style="display:flex;gap:6px"><button class="btn" data-act="cflow">流程</button><button class="btn pri" data-act="ktable">總表</button><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="newcall">＋ 新增</button></span></h1>
   <div class="mobsync">${syncHTML()}</div>
   <input class="search" id="q" placeholder="搜尋姓名、電話、地址、來源" value="${esc(S.q)}" autocomplete="off">
   <div class="chips">${['全部', ...CALL_ST].map((x) => `<button class="chip${S.kst === x ? ' on' : ''}" data-kst="${x}">${x} <span class="cnt">${x === '全部' ? all.length : all.filter((k) => k.status === x).length}</span></button>`).join('')}</div>
@@ -751,10 +766,25 @@ function openCallImport() {
   setTimeout(() => $('ciText')?.focus(), 50);
 }
 /* ================= 送禮專區：每個活動（年曆、中秋、出國伴手禮…）各有品項庫存和送禮名單 ================= */
-const GIFT_TYPES = [['client', '現有客戶'], ['call', '服務件'], ['other', '其他']];
+const GIFT_TYPES = [['client', '現有客戶'], ['call', '服務件'], ['other', '親友']];
 const gevents = () => Vault.all('gevents').sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 const giftsOf = (evId) => Vault.all('gifts').filter((g) => g.eventId === evId);
 const giftWho = (g) => (g.who?.type === 'client' ? Vault.get('clients', g.who.id)?.name : g.who?.type === 'call' ? Vault.get('calls', g.who.id)?.name : '') || g.who?.name || '未填';
+function giftTableHTML(list, ev) { // 像試算表：一列一個人，一欄一個品項，直接改數量
+  const items = giftItemsSorted(ev.items || []); const cats = []; items.forEach((it) => { const c = it.cat || '未分類'; const last = cats[cats.length - 1]; last && last.c === c ? last.n++ : cats.push({ c, n: 1 }); });
+  const tot = (id) => list.reduce((a, g) => a + (g.items?.[id] || 0), 0);
+  return `<div class="ktablewrap"><table class="ktable gsheet"><thead>
+   <tr><th rowspan="2" class="gstick">名字</th><th rowspan="2">類型</th><th rowspan="2">分類</th>${cats.map((c) => `<th colspan="${c.n}" class="gcath">${esc(c.c)}</th>`).join('')}<th rowspan="2">送法</th><th rowspan="2">已送</th><th rowspan="2">備註</th></tr>
+   <tr>${items.map((it) => `<th class="gith">${esc(it.name || it.code || '品項')}</th>`).join('')}</tr></thead><tbody>
+   ${list.map((g) => `<tr class="${g.status === '已送' ? 'gdone' : ''}"><td class="gstick"><button class="linkbtn" data-gopen="${g.id}">${esc(giftWho(g))}</button></td><td class="sub">${GIFT_TYPES.find(([t]) => t === g.who?.type)?.[1] || '親友'}</td>
+     <td><input class="gcell gw" data-gg="${g.id}:group" value="${esc(g.group)}"></td>
+     ${items.map((it) => `<td><input class="gcell gn" inputmode="numeric" data-gq2="${g.id}:${it.id}" value="${g.items?.[it.id] || ''}"></td>`).join('')}
+     <td><select class="gcell" data-gg="${g.id}:method">${['', '當面', '寄送', '放管理室'].map((m) => `<option${(g.method || '') === m ? ' selected' : ''}>${m}</option>`).join('')}</select></td>
+     <td style="text-align:center"><input type="checkbox" class="gchk" data-gdone="${g.id}"${g.status === '已送' ? ' checked' : ''}></td>
+     <td><input class="gcell gw2" data-gg="${g.id}:note" value="${esc(g.note)}"></td></tr>`).join('')}
+   <tr class="gtot"><td class="gstick">合計</td><td></td><td></td>${items.map((it) => `<td>${tot(it.id) || ''}</td>`).join('')}<td></td><td>${list.filter((g) => g.status === '已送').length}/${list.length}</td><td></td></tr>
+  </tbody></table></div><div class="sub" style="margin-top:6px">格子可以直接改，改完點別的地方就會存。點名字可以打開完整資料。</div>`;
+}
 const giftItemsSorted = (items) => items.map((it, i) => [it, i]).sort((a, b) => (a[0].cat || '￿').localeCompare(b[0].cat || '￿', 'zh-Hant') || a[1] - b[1]).map(([it]) => it);
 function giftCatRow(cat, arr, cnt) { const its = arr.filter((x) => (x.cat || '') === cat), sum = (f) => its.reduce((a, it) => a + f(it), 0); const q = sum((it) => it.qty || 0), pl = sum((it) => cnt[it.id]?.plan || 0), dn = sum((it) => cnt[it.id]?.done || 0);
   return `<tr class="gcat"><td colspan="2">${esc(cat || '未分類')}</td><td>${q}</td><td>${pl}</td><td>${dn}</td><td class="${q - pl - dn < 0 ? 'gneg' : ''}">${q - pl - dn}</td></tr>`; }
@@ -781,10 +811,10 @@ function giftsHTML() {
       : catRow + `<tr><td>${esc(it.name || it.code || '（未命名）')}</td><td class="sub">${esc(it.code)}</td><td>${it.qty || 0}</td><td>${c.plan}</td><td>${c.done}</td><td class="${left < 0 ? 'gneg' : ''}">${left}</td></tr>`; }).join('')}</tbody></table>` : '<div class="sub">還沒有品項。按「編修品項」新增。</div>'}
    ${S.gedit ? `<div class="actions" style="margin:0"><button class="btn sm" data-act="gaddi">＋ 新增品項</button><button class="btn sm" data-act="gbulki">貼上一批品項</button><button class="btn sm danger" data-act="gevdel">刪除這個活動</button></div>` : ''}
    ${ev.note || S.gedit ? `<label class="f">備註${S.gedit ? `<input class="nctxt" data-gevf="note" value="${esc(ev.note)}">` : `<span>${esc(ev.note)}</span>`}</label>` : ''}</div>
-  <div class="sec"><h2>送禮名單 <span class="sub">${all.length} 位・已送 ${all.filter((g) => g.status === '已送').length}</span><span style="display:flex;gap:6px"><button class="btn sm" data-act="gbulkw">貼上一批名單</button><button class="btn sm" data-act="gpickw">從客戶、服務件勾選</button><button class="btn sm pri" data-act="gaddwho">＋ 加一位</button></span></h2>
+  <div class="sec"><h2>送禮名單 <span class="sub">${all.length} 位・已送 ${all.filter((g) => g.status === '已送').length}</span><span style="display:flex;gap:6px;flex-wrap:wrap"><span class="seg2"><button class="btn sm${S.gview === 'table' ? ' pri' : ''}" data-gview="table">表格</button><button class="btn sm${S.gview === 'list' ? ' pri' : ''}" data-gview="list">清單</button></span><button class="btn sm" data-act="gbulkw">貼上一批名單</button><button class="btn sm" data-act="gpickw">從客戶、服務件勾選</button><button class="btn sm pri" data-act="gaddwho">＋ 加一位</button></span></h2>
    <div class="chips">${[['全部', '全部'], ...GIFT_TYPES].map(([k, l]) => `<button class="chip${S.gtype === k ? ' on' : ''}" data-gtype="${k}">${l} <span class="cnt">${k === '全部' ? all.length : all.filter((g) => g.who?.type === k).length}</span></button>`).join('')}</div>
    <div class="chips">${['全部', '預備', '已送'].map((k) => `<button class="chip${S.gst === k ? ' on' : ''}" data-gst="${k}">${k} <span class="cnt">${k === '全部' ? all.length : all.filter((g) => (g.status || '預備') === k).length}</span></button>`).join('')}</div>
-   ${list.length ? `<div class="glist">${list.map((g) => `<div class="grow2${g.status === '已送' ? ' done' : ''}"><button class="gmain" data-gopen="${g.id}"><span class="t"><b>${esc(giftWho(g))}</b><span class="pill p-go">${GIFT_TYPES.find(([t]) => t === g.who?.type)?.[1] || '其他'}</span>${g.group ? `<span class="pill">${esc(g.group)}</span>` : ''}${g.method ? `<span class="sub">${esc(g.method)}</span>` : ''}</span><span class="s">${esc(giftItemsText(g, ev)) || '還沒選品項'}${g.note ? ' · ' + esc(g.note) : ''}</span></button>
+   ${list.length && S.gview === 'table' ? giftTableHTML(list, ev) : list.length ? `<div class="glist">${list.map((g) => `<div class="grow2${g.status === '已送' ? ' done' : ''}"><button class="gmain" data-gopen="${g.id}"><span class="t"><b>${esc(giftWho(g))}</b><span class="pill p-go">${GIFT_TYPES.find(([t]) => t === g.who?.type)?.[1] || '親友'}</span>${g.group ? `<span class="pill">${esc(g.group)}</span>` : ''}${g.method ? `<span class="sub">${esc(g.method)}</span>` : ''}</span><span class="s">${esc(giftItemsText(g, ev)) || '還沒選品項'}${g.note ? ' · ' + esc(g.note) : ''}</span></button>
      <button class="btn sm${g.status === '已送' ? ' pri' : ''}" data-gtog="${g.id}">${g.status === '已送' ? '✓ 已送' : '預備中'}</button></div>`).join('')}</div>` : '<div class="sub">這裡還沒有人。</div>'}</div>`;
 }
 function giftSectionHTML(type, id) { // 服務件、客戶頁上的送禮紀錄，跟送禮專區是同一份資料
@@ -853,7 +883,7 @@ function openGiftBulkWho() { // 一行一位：名字／分類／備註／已送
   const ev = Vault.get('gevents', S.gev); if (!ev) return;
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>貼上一批名單</h2><button class="btn" id="bwX">取消</button><button class="btn pri" id="bwOk">加入</button></div>
   <div class="ovbody" style="flex-direction:column;max-width:680px;margin:0 auto;width:100%">
-   <div class="note">一行一位，用斜線隔開：<b>名字／分類／備註／已送</b>，後面三個可以不寫。名字跟客戶或服務件一模一樣的，會自動連過去；其他的放在「其他」。品項之後再點進去選。</div>
+   <div class="note">一行一位，用斜線隔開：<b>名字／分類／備註／已送</b>，後面三個可以不寫。名字跟客戶或服務件一模一樣的，會自動連過去；其他的放在「親友」。品項之後再點進去選。</div>
    <textarea id="bwT" rows="14" placeholder="叔叔／石家／去年 6 套"></textarea><div id="bwP"></div></div></div>`;
   const parse = () => $('bwT').value.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => { const c = l.split(/[／/|｜]/).map((x) => x.trim()); const done = c.slice(1).some((x) => x === '已送'); const rest = c.slice(1).filter((x) => x !== '已送'); return { who: giftWhoMatch(c[0]), group: rest[0] || '', note: rest[1] || '', status: done ? '已送' : '預備' }; }).filter((x) => x.who.name);
   const lab = (t) => GIFT_TYPES.find(([k]) => k === t)?.[1];
@@ -1642,6 +1672,7 @@ app.addEventListener('click', async (e) => {
   if (d.kchk) { const k = curCall(); if (!k) return; k[d.kchk] = !k[d.kchk]; Vault.put('calls', k); App.render(); return; }
   if (d.gev) { S.gev = d.gev; S.gedit = false; App.render(); return; }
   if (d.gtype) { S.gtype = d.gtype; App.render(); return; }
+  if (d.gview) { S.gview = d.gview; App.render(); return; }
   if (d.gst) { S.gst = d.gst; App.render(); return; }
   if (d.gtog) { const g = Vault.get('gifts', d.gtog); if (!g) return; g.status = g.status === '已送' ? '預備' : '已送'; g.doneDate = g.status === '已送' ? localDay() : ''; Vault.put('gifts', g); App.render(); toast(g.status === '已送' ? '已標成已送' : '改回預備'); return; }
   if (d.gopen) { openGiftEditor(Vault.get('gifts', d.gopen)); return; }
@@ -1712,6 +1743,7 @@ app.addEventListener('click', async (e) => {
     case 'nctpl': openNcTplEditor(); break;
     case 'ktable': S.ktable = true; S.kfromTable = false; S.showDetail = false; App.render(); break;
     case 'klist': S.ktable = false; App.render(); break;
+    case 'cflow': openCallFlow(); break;
     case 'gaddwho': openGiftEditor(null, null); break;
     case 'gbulki': openGiftBulkItems(); break;
     case 'gbulkw': openGiftBulkWho(); break;
@@ -1842,6 +1874,12 @@ app.addEventListener('change', (e) => { // 新契約清單：打勾、過程紀�
   const ds = e.target.dataset || {}; if (!ds.ncc && !ds.ncv) return; const c = cur(); if (!c) return; c.nc = c.nc || {};
   if (ds.ncc) { c.nc.chk = { ...(c.nc.chk || {}), [ds.ncc]: e.target.checked }; saveCase(c); App.render(); }
   else { c.nc.val = { ...(c.nc.val || {}), [ds.ncv]: e.target.value }; saveCase(c); }
+});
+app.addEventListener('change', (e) => { // 送禮表格：直接改數量、分類、送法、已送、備註
+  const ds = e.target.dataset || {};
+  if (ds.gq2) { const [gid, iid] = ds.gq2.split(':'); const g = Vault.get('gifts', gid); if (!g) return; const n = Math.max(0, parseInt(e.target.value, 10) || 0); g.items = { ...(g.items || {}) }; if (n) g.items[iid] = n; else delete g.items[iid]; Vault.put('gifts', g); App.render(); return; }
+  if (ds.gg) { const [gid, f] = ds.gg.split(':'); const g = Vault.get('gifts', gid); if (!g) return; g[f] = e.target.value.trim(); Vault.put('gifts', g); if (f === 'group') App.render(); return; }
+  if (ds.gdone) { const g = Vault.get('gifts', ds.gdone); if (!g) return; g.status = e.target.checked ? '已送' : '預備'; g.doneDate = e.target.checked ? localDay() : ''; Vault.put('gifts', g); App.render(); }
 });
 app.addEventListener('change', (e) => { // 送禮：品項和活動名稱
   const gi = e.target.dataset?.gitem; if (gi) { const ev = Vault.get('gevents', S.gev); const it = ev?.items.find((x) => x.id === gi); if (!it) return; const f = e.target.dataset.gf; it[f] = f === 'qty' ? Math.max(0, parseInt(e.target.value, 10) || 0) : e.target.value.trim(); Vault.put('gevents', ev); App.render(); return; }

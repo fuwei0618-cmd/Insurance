@@ -503,3 +503,19 @@ select.linktpl{border:1px solid var(--line);background:var(--surface);border-rad
 .gqcat{font-size:12px;color:var(--muted);margin-top:8px;padding-top:4px}
 .pwlist{display:flex;flex-direction:column;border-top:1px solid var(--line)}
 .pwlist .ncit{border-bottom:1px solid var(--line);padding:8px 2px}
+.seg2{display:inline-flex}.seg2 .btn:first-child{border-radius:8px 0 0 8px}.seg2 .btn:last-child{border-radius:0 8px 8px 0;margin-left:-1px}
+.gsheet{min-width:0}
+.gsheet td,.gsheet th{padding:4px 6px}
+.gsheet .gcath{text-align:center;border-left:1px solid var(--line)}
+.gsheet .gith{font-size:11px;white-space:normal;min-width:52px;text-align:center}
+.gstick{position:sticky;left:0;background:var(--card);z-index:1}
+.gsheet thead .gstick{background:var(--surface);z-index:2}
+.gcell{width:100%;padding:5px 6px;font-size:14px;border:1px solid transparent;background:transparent;border-radius:6px}
+.gcell:hover,.gcell:focus{border-color:var(--line);background:var(--surface)}
+.gn{width:52px;text-align:center}.gw{width:70px}.gw2{min-width:120px}
+.gchk{width:20px;height:20px}
+.gsheet tr.gdone td{color:var(--muted)}
+.gsheet tr.gtot td{font-weight:700;background:var(--surface);text-align:center}
+.gsheet tr.gtot td.gstick{text-align:left}
+.cflow{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px;font-size:15px;line-height:1.6}
+.gsheet .gn,.gsheet select.gcell{border-color:var(--line)}
