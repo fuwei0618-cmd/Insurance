@@ -509,8 +509,13 @@ function caseListHTML() {
   <div class="list">${list.length ? list.map((c) => `<button class="item${c.id === S.sel ? ' on' : ''}${itemCls(c.status)}" data-sel="${c.id}" title="${esc((c.client || '') + ' · ' + (c.title || ''))}"><span class="t"><span>${esc(c.client || '未填客戶')} · ${esc(c.title || '未命名')}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${fmtDay(caseDate(c))} · ${esc(caseSummary(c))}${latestStep(c) ? ' · 最新：' + esc(latestStep(c).title) : ''}</span></button>`).join('') : `<div class="empty">${cases().length ? '沒有符合的案件。' : '還沒有案件。按「＋ 新增」，或按「掃描」直接拍文件建案。'}</div>`}</div></section>`;
 }
 // 某些類別的案件一打開就有固定資料夾（只在還沒有任何資料夾時加，刪掉了不會再自己長回來）
-const DEFAULT_FOLDERS = { 理賠: ['理賠文件', '理賠明細'] };
+const DEFAULT_FOLDERS = { 理賠: ['理賠文件', '理賠明細'], 新契約: ['準備資料'], 建議書: ['準備資料'] };
 function ensureFolders(c) {
+  if (c.foldersCat && c.foldersCat !== c.cat) { // 換了類別：原本的預設資料夾還是空的，就換成新類別的預設
+    const old = DEFAULT_FOLDERS[c.foldersCat] || [], fs = c.folders || [];
+    if (fs.length && fs.every((f) => old.includes(f) && !(c.docs || []).some((d) => d.folder === f))) { c.folders = [...(DEFAULT_FOLDERS[c.cat] || [])]; }
+    c.foldersCat = c.cat; Vault.put('cases', c);
+  }
   const def = DEFAULT_FOLDERS[c.cat]; if (!def) return;
   if (c.foldersInit && !c.foldersV2) { // 上一版不管有沒有自己設過都加了：已經有自己資料夾的，把加進去、還是空的預設資料夾拿掉
     c.foldersV2 = true; const own = (c.folders || []).filter((f) => !def.includes(f));
@@ -518,7 +523,7 @@ function ensureFolders(c) {
     Vault.put('cases', c); return;
   }
   if (c.foldersInit) return;
-  c.foldersInit = c.foldersV2 = true;
+  c.foldersInit = c.foldersV2 = true; c.foldersCat = c.cat;
   if (!(c.folders || []).length) c.folders = [...def]; // 只有完全沒設過資料夾的才自動建
   Vault.put('cases', c);
 }
@@ -558,6 +563,7 @@ function caseDetailHTML() {
   ${caseDocsHTML(c)}
   ${linksHTML(c)}
   ${caseTplHTML(c)}
+  ${['新契約', '建議書'].includes(c.cat) ? ncCaseHTML(c) : ''}
   <div class="sec"><h2>備註</h2><textarea id="f_notes" class="grow" data-f="notes" rows="4" aria-label="備註">${esc(c.notes)}</textarea></div>
   <div class="actions"><button class="btn pri savebtn" data-act="savenow">儲存</button>${isClaim ? `<button class="btn${c.isRef ? ' on' : ''}" data-act="ref">${c.isRef ? '✓ 已在理賠參考' : '做成理賠參考'}</button>` : ''}${c.clientId && ['新契約', '建議書', '保全', '產險'].includes(c.cat) ? '<button class="btn" data-act="casedisc">記錄財務／體況告知</button>' : ''}<button class="btn danger" data-act="delcase">刪除案件</button></div>`;
 }
@@ -1333,7 +1339,7 @@ function quickHTML() {
   <div class="card"><h3>待辦案件 <span class="sub">${waiting.length} 件</span></h3>${waiting.slice(0, 6).map((c) => `<button class="item${itemCls(c.status)}" data-gocase="${c.id}"><span class="t"><span>${esc(c.client)} · ${esc(c.title)}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${esc(c.next || '未填下一步')}</span></button>`).join('') || '<div class="sub">沒有待辦。</div>'}</div>
   <div class="card"><h3>同步</h3>${syncHTML()}<div class="sub">資料加密後存在 OneDrive › 應用程式 › Work › ${esc(FOLDER)}。iPad 和手機登入同一個帳號就會自動同步。每天第一次打開會自動備份一份，保留 30 天。</div>
    <div class="actions"><button class="btn" data-act="backups">備份與還原</button><button class="btn" data-act="trash">最近刪除${Files.trashed().filter((f) => f.trashCtx).length ? ' ' + Files.trashed().filter((f) => f.trashCtx).length : ''}</button></div>
-   <div class="actions"><button class="btn" data-act="import">批次匯入</button><button class="btn" data-act="exportnotes">複製新契約備註（去掉姓名）</button><button class="btn" data-act="nctest">新契約清單（測試頁）</button><button class="btn" data-act="lock">鎖定</button><button class="btn" data-act="signout">登出</button></div></div>
+   <div class="actions"><button class="btn" data-act="import">批次匯入</button><button class="btn" data-act="exportnotes">複製新契約備註（去掉姓名）</button><button class="btn" data-act="lock">鎖定</button><button class="btn" data-act="signout">登出</button></div></div>
   </div>`;
 }
 
@@ -1474,6 +1480,7 @@ app.addEventListener('click', async (e) => {
   if (d.docbydate != null) { const rec = d.docbydate === 'c' ? curClient() : cur(); if (rec) { delete rec.docManual; Vault.put(d.docbydate === 'c' ? 'clients' : 'cases', rec); App.render(); toast('已改回依日期排序'); } return; }
   if (d.folder != null) { S.folder = d.folder; App.render(); return; }
   if (d.goclient) { S.ccat = '全部'; S.view = 'clients'; S.csel = d.goclient; S.showDetail = true; S.showIds = false; App.render(); return; }
+  if (d.ncflag) { const c2 = cur(); if (!c2) return; c2.nc = c2.nc || {}; c2.nc[d.ncflag] = !c2.nc[d.ncflag]; saveCase(c2); App.render(); return; }
   if (d.klvf) { S.klv = d.klvf; App.render(); return; }
   if (d.kar) { S.kar = d.kar; App.render(); return; }
   if (d.klv) { const k = curCall(); if (!k) return; k.level = k.level === d.klv ? '' : d.klv; Vault.put('calls', k); App.render(); return; }
@@ -1547,6 +1554,7 @@ app.addEventListener('click', async (e) => {
     case 'newcall': { const k = Vault.put('calls', { name: '', phone: '', source: '', status: '待撥', nextDate: '', logs: [] }); S.ksel = k.id; S.kres = ''; S.showDetail = true; S.view = 'calls'; App.render(); setTimeout(() => $('kf_name')?.focus(), 50); break; }
     case 'importcalls': openCallImport(); break;
     case 'newgevent': openNewGiftEvent(); break;
+    case 'nctpl': openNcTplEditor(); break;
     case 'gaddwho': openGiftEditor(null, null); break;
     case 'geditems': S.gedit = !S.gedit; App.render(); break;
     case 'gaddi': { const ev = Vault.get('gevents', S.gev); if (!ev) break; ev.items = [...(ev.items || []), { id: uid(), name: '', code: '', qty: 0 }]; Vault.put('gevents', ev); App.render(); break; }
@@ -1584,8 +1592,8 @@ app.addEventListener('click', async (e) => {
     case 'exportnotes': {
       const names = clients().map((x) => x.name).filter((n) => n && n.length >= 2).sort((a2, b2) => b2.length - a2.length);
       const clean = (t) => { let o = String(t || ''); names.forEach((n) => { o = o.split(n).join('○○'); }); return o.replace(/[A-Z][12]\d{8}/g, '［身分證］').replace(/09\d{2}[-\s]?\d{3}[-\s]?\d{3}/g, '［電話］').replace(/[\w.+-]+@[\w.-]+/g, '［Email］'); };
-      const list = cases().filter((x) => ['新契約', '建議書'].includes(x.cat) && ((x.notes || '').trim() || (x.timeline || []).some((e) => e.note))).sort(byDate);
-      const txt = list.map((x, i) => `#${i + 1}【${x.cat}】${clean(x.title)}\n${clean(x.notes)}${(x.timeline || []).filter((e) => e.note).map((e) => `\n・${e.title}：${clean(e.note)}`).join('')}`).join('\n\n---\n\n');
+      const list = cases().filter((x) => ['新契約', '建議書'].includes(x.cat) && ((x.notes || '').trim() || ncLogText(x) || (x.timeline || []).some((e) => e.note))).sort(byDate);
+      const txt = list.map((x, i) => `#${i + 1}【${x.cat}】${clean(x.title)}\n${ncLogText(x) ? clean(ncLogText(x)) + '\n' : ''}${clean(x.notes)}${(x.timeline || []).filter((e) => e.note).map((e) => `\n・${e.title}：${clean(e.note)}`).join('')}`).join('\n\n---\n\n');
       if (!txt) { toast('還沒有新契約或建議書的備註'); break; }
       try { await navigator.clipboard.writeText(txt); toast(`已複製 ${list.length} 件的備註，客戶姓名已換成 ○○`); } catch (err) { toast('無法複製，請在電腦上試試'); }
       break;
@@ -1606,7 +1614,7 @@ app.addEventListener('click', async (e) => {
     case 'linkcase': openLinkPicker(c); break;
     case 'convert': {
       const nc = saveCase({ date: localDay(), client: c.client, clientId: c.clientId || '', title: c.title, cat: '新契約', status: '進行中', items: [], causeType: '', causeDetail: '', diag: '', next: '送件', cost: '', ratio: '', payout: '', notes: '', docs: [], isRef: false,
-        people: JSON.parse(JSON.stringify(c.people || [])), links: [c.id], fromProposal: c.id,
+        people: JSON.parse(JSON.stringify(c.people || [])), links: [c.id], fromProposal: c.id, nc: c.nc ? JSON.parse(JSON.stringify(c.nc)) : undefined,
         timeline: [{ id: uid(), date: localDay(), title: '簽約', note: '', at: new Date().toISOString() }] });
       c.links = [...new Set([...(c.links || []), nc.id])]; c.outcome = '成交'; c.status = '已結案'; saveCase(c);
       S.sel = nc.id; S.folder = '全部'; if (S.cat === '建議書') { S.cat = '新契約'; S.cg = groupOf('新契約') || '全部'; } App.render(); toast('已建立新契約，記得記錄告知資料'); break;
@@ -1669,6 +1677,11 @@ app.addEventListener('input', (e) => {
     const ns = notes().filter((n) => (n.title + n.body).includes(q)).slice(0, 6), cs = cases().filter((c) => [c.client, c.title, c.notes, c.next].join(' ').includes(q)).slice(0, 6);
     box.innerHTML = `<div class="cards" style="margin-bottom:6px">${ks.map((x) => `<button class="item" data-gocall="${x.id}"><span class="t">${esc(x.name || '未填姓名')}</span><span class="s">電訪 · ${esc(x.status)}</span></button>`).join('')}${cls.map((x) => `<button class="item" data-goclient="${x.id}"><span class="t">${esc(x.name || '未填姓名')}</span><span class="s">客戶</span></button>`).join('')}${ns.map((n) => `<div class="card"><h3><span>${esc(n.title)}</span><span class="sub">${esc(n.group)}</span></h3><pre>${esc(n.body)}</pre></div>`).join('')}${cs.map((c) => `<button class="item${itemCls(c.status)}" data-gocase="${c.id}"><span class="t">${esc(c.client)} · ${esc(c.title)}</span><span class="s">${esc(caseSummary(c))}</span></button>`).join('')}</div>${!ks.length && !cls.length && !ns.length && !cs.length ? '<div class="sub">找不到。</div>' : ''}`;
   }
+});
+app.addEventListener('change', (e) => { // 新契約清單：打勾、過程紀錄
+  const ds = e.target.dataset || {}; if (!ds.ncc && !ds.ncv) return; const c = cur(); if (!c) return; c.nc = c.nc || {};
+  if (ds.ncc) { c.nc.chk = { ...(c.nc.chk || {}), [ds.ncc]: e.target.checked }; saveCase(c); App.render(); }
+  else { c.nc.val = { ...(c.nc.val || {}), [ds.ncv]: e.target.value }; saveCase(c); }
 });
 app.addEventListener('change', (e) => { // 送禮：品項和活動名稱
   const gi = e.target.dataset?.gitem; if (gi) { const ev = Vault.get('gevents', S.gev); const it = ev?.items.find((x) => x.id === gi); if (!it) return; const f = e.target.dataset.gf; it[f] = f === 'qty' ? Math.max(0, parseInt(e.target.value, 10) || 0) : e.target.value.trim(); Vault.put('gevents', ev); App.render(); return; }
@@ -2187,6 +2200,52 @@ const NC_FLOW = [
   ['收尾', ['Fitback', '電子投保確認書、保費授權、上傳成功', '開通行動服務、國泰人壽 APP、證券戶', '截圖存檔：身分證、存摺封面']],
 ];
 const NC_LOG = [['認識', ['名單來源', '背景', '關係建立']], ['需求', ['缺口與觀念', '預算', '體況與核保']], ['方案', ['規劃', '促約關鍵', '結果']], ['後續', ['待辦', '下次', '一句話心得（早會用）']]];
+/* 新契約、建議書案件裡的三塊：準備清單、流程提醒、過程紀錄。項目存在設定（所有案件共用），每件的打勾和文字存在案件 c.nc */
+function ncDefault() { let i = 0; const mk = (arr) => arr.map(([g, l, k]) => ({ g, k: k || '', items: l.map((t) => ({ id: 'd' + (++i), t, on: true })) })); return { id: 'nctpl', prep: mk(NC_PREP), flow: mk(NC_FLOW), log: mk(NC_LOG) }; }
+function ncTpl() { const t = Vault.get('settings', 'nctpl'); return t?.prep ? t : ncDefault(); }
+const NC_SECS = [['prep', '一、準備清單', '見客戶前要準備、要帶、要問到的'], ['flow', '二、流程提醒', '簽約當下照順序走'], ['log', '三、過程紀錄', '早會分享、自己的業務紀錄']];
+function ncCaseHTML(c) {
+  const t = ncTpl(), st = c.nc || {}, chk = st.chk || {}, val = st.val || {};
+  const prepDocs = (c.docs || []).filter((d) => d.folder === '準備資料').length;
+  const total = (sk) => t[sk].reduce((a, g) => a + ((!g.k || st[g.k]) ? g.items.length : 0), 0), done = (sk) => t[sk].reduce((a, g) => a + ((!g.k || st[g.k]) ? g.items.filter((it) => chk[it.id]).length : 0), 0);
+  let n = 0; const box = (it) => `<label class="ncit"><input type="checkbox" data-ncc="${it.id}"${chk[it.id] ? ' checked' : ''}><span class="ncno">${++n}</span><span>${esc(it.t)}</span></label>`;
+  const grp = (g) => `<div class="ncgrp"${g.k && !st[g.k] ? ' hidden' : ''}><div class="ncg">${esc(g.g)}${g.k ? '<span class="ncif">' + (g.k === 'inv' ? '外幣或投資型才出現' : '有人超過 65 歲才出現') + '</span>' : ''}</div>${g.items.map(box).join('')}</div>`;
+  return `<div class="sec nccase"><h2>這件有沒有： <button class="btn sm" data-act="nctpl">✎ 編修清單</button></h2><div class="tags"><button class="tag${st.inv ? ' on' : ''}" data-ncflag="inv">外幣或投資型</button><button class="tag${st.old ? ' on' : ''}" data-ncflag="old">有人超過 65 歲</button></div></div>
+  ${NC_SECS.map(([sk, title, sub]) => `<details class="sec" ${sk === 'log' || done(sk) < total(sk) ? 'open' : ''}><summary><h2 style="display:inline">${title} <span class="sub">${sk === 'log' ? sub : `${sub}・完成 ${done(sk)}/${total(sk)}`}</span></h2></summary>
+   ${sk === 'prep' ? `<div class="sub">建議書、保費明細表、商品簡介放進文件的「準備資料」資料夾${prepDocs ? `，目前有 ${prepDocs} 份 📎` : '，就不會忘記準備過什麼'}。</div>` : ''}
+   ${sk === 'log' ? `<div class="ncgrid">${t.log.map((g) => `<div class="nclg"><div class="ncg">${esc(g.g)}</div>${g.items.filter((it) => it.on).map((it) => `<label class="f">${esc(it.t)}<textarea class="grow" rows="2" data-ncv="${it.id}">${esc(val[it.id] || '')}</textarea></label>`).join('')}</div>`).join('')}</div>`
+    : `<div class="ncgrid${sk === 'prep' ? ' three' : ''}">${t[sk].map(grp).join('')}</div>`}</details>`).join('')}`;
+}
+function ncLogText(c) { // 匯出備註時，過程紀錄一起帶出來
+  const t = ncTpl(), val = c.nc?.val || {}; const out = [];
+  t.log.forEach((g) => g.items.forEach((it) => { const v = (val[it.id] || '').trim(); if (v) out.push(`【${it.t}】${v}`); }));
+  return out.join('\n');
+}
+function openNcTplEditor() { // 編修清單：改字、刪除、新增、拖曳排序（改的是所有新契約、建議書共用的清單）
+  const tpl = JSON.parse(JSON.stringify(ncTpl())); let nid = Date.now(); const v = document.createElement('div'); document.body.appendChild(v);
+  const render = () => {
+    v.innerHTML = `<div class="ov" style="z-index:30"><div class="ovhead"><h2>編修清單</h2><button class="btn" id="ntReset">恢復預設</button><button class="btn" id="ntX">取消</button><button class="btn pri" id="ntOk">儲存</button></div>
+    <div class="ovbody" style="flex-direction:column;max-width:1100px;margin:0 auto;width:100%">
+     <div class="note">這份清單所有新契約、建議書共用。可以改字、刪除（按兩次）、新增，按住 ⠿ 拖曳排序（也能拖到別的分類）。過程紀錄勾掉的項目不會出現。已經寫過的內容不會因為改名而消失。</div>
+     ${NC_SECS.map(([sk, title]) => `<div class="sec"><h2>${title}</h2><div class="ncgrid${sk === 'prep' ? ' three' : ''}" data-sec="${sk}">${tpl[sk].map((g, gi) => `<div class="ncgrp" data-gi="${gi}">
+       <div class="ncg"><span class="ncdrag ncgdrag">⠿</span><input class="nctxt ncgname" data-ntg="${sk}:${gi}" value="${esc(g.g)}"></div>
+       <div class="ncbody">${g.items.map((it) => `<div class="ncrow${it.on ? '' : ' off'}" data-iid="${it.id}"><span class="ncdrag">⠿</span>${sk === 'log' ? `<input type="checkbox" class="ncon" data-nton="${it.id}"${it.on ? ' checked' : ''} aria-label="使用">` : ''}<input class="nctxt" data-ntt="${it.id}" value="${esc(it.t)}"><button class="btn sm ncdel" data-ntd="${it.id}">✕</button></div>`).join('')}</div>
+       <button class="btn sm ncadd" data-nta="${sk}:${gi}">＋ 新增一項</button></div>`).join('')}</div></div>`).join('')}</div></div>`;
+    const find = (id) => { for (const sk of ['prep', 'flow', 'log']) for (const g of tpl[sk]) { const it = g.items.find((x) => x.id === id); if (it) return [g, it]; } return []; };
+    v.querySelector('#ntX').onclick = () => v.remove();
+    v.querySelector('#ntOk').onclick = () => { Vault.put('settings', tpl); v.remove(); App.render(); toast('清單已儲存'); };
+    v.querySelector('#ntReset').onclick = (e) => { const b = e.currentTarget; if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = '確定恢復預設？'; return; } const d = ncDefault(); tpl.prep = d.prep; tpl.flow = d.flow; tpl.log = d.log; render(); };
+    v.querySelectorAll('[data-ntg]').forEach((x) => (x.oninput = () => { const [sk, gi] = x.dataset.ntg.split(':'); tpl[sk][+gi].g = x.value; }));
+    v.querySelectorAll('[data-ntt]').forEach((x) => (x.oninput = () => { const [, it] = find(x.dataset.ntt); if (it) it.t = x.value; }));
+    v.querySelectorAll('[data-nton]').forEach((x) => (x.onchange = () => { const [, it] = find(x.dataset.nton); if (it) it.on = x.checked; x.closest('.ncrow').classList.toggle('off', !x.checked); }));
+    v.querySelectorAll('[data-ntd]').forEach((b) => (b.onclick = () => { if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = '刪？'; return; } const [g] = find(b.dataset.ntd); if (g) g.items = g.items.filter((x) => x.id !== b.dataset.ntd); render(); }));
+    v.querySelectorAll('[data-nta]').forEach((b) => (b.onclick = () => { const [sk, gi] = b.dataset.nta.split(':'); const it = { id: 'u' + (++nid), t: '', on: true }; tpl[sk][+gi].items.push(it); render(); v.querySelector(`[data-ntt="${it.id}"]`)?.focus(); }));
+    makeSortable(v, () => { for (const sk of ['prep', 'flow', 'log']) { const all = {}; tpl[sk].forEach((g) => g.items.forEach((it) => (all[it.id] = it))); const old = tpl[sk]; const box = v.querySelector(`[data-sec="${sk}"]`); tpl[sk] = [...box.querySelectorAll(':scope > .ncgrp')].map((ge) => ({ ...old[+ge.dataset.gi], items: [...ge.querySelectorAll('.ncrow')].map((r) => all[r.dataset.iid]).filter(Boolean) })); }
+      // 項目可能跨區拖不過去（只限同一區），所以每區各自重建即可
+      render(); });
+  };
+  render();
+}
 let NCT = null;
 function ncInit() {
   let id = 0; const mk = (arr) => arr.map(([g, l, k]) => ({ g, k, items: l.map((t) => ({ id: 'n' + (++id), t, on: true })) }));
