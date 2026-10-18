@@ -1946,31 +1946,52 @@ document.addEventListener('keydown', (e) => { if (!GV || !ov.querySelector('.gv'
 
 /* ================= 遮罩 ================= */
 /* 新契約清單：測試頁（不存任何資料，關掉就清空） */
-const NC_PREP = [['要問客戶的', ['身分證件', '身高體重', '工作', '法定繼承人（受益人）', '方便電話聯絡的時間']], ['我要帶的', ['金三角', '建議書', '商品簡介、重點條款', '保單健檢（保險存摺）', 'T字障', '好解說', '繳費：自動轉帳、信用卡、讀卡機']]];
+const NC_PREP = [
+  ['要問客戶的', ['身分證件', '身高體重', '工作', '法定繼承人（受益人）', '方便電話聯絡的時間']],
+  ['我要準備', ['金三角', '建議書', '商品簡介、重點條款、DM', '保單健檢（保險存摺）', 'T字障', '好解說']],
+  ['我要帶的', ['紙本或電子投保', '繳費：自動轉帳、信用卡、讀卡機、印泥', '文具：自動筆、原子筆、立可帶、釘書機', '其他文件：開通行動服務、A式變更（受益人）、產險投保', 'APP 更新、網路']],
+];
 const NC_FLOW = [
   ['個人', ['基本資料（★工作）', '投保紀錄、保險存摺、保單健檢']],
-  ['健康告知', ['兩個月、一年、兩年、五年的健檢', '看診、用藥、血壓血糖血脂、身高體重', '身體機能', '女性疾病', '其他公司的健康、傷害、長照、重疾險']],
-  ['生調表', ['★婚姻、服役、學歷', '菸酒檳榔安眠藥、身體健康', '★財務狀況（保費來源、家庭收入要跟財務告知一致）', '貸款、解約', '確認身分資料']],
+  ['生調表', ['★婚姻、服役、學歷', '菸酒檳榔安眠藥、身體健康', '★財務狀況', '貸款、解約']],
+  ['健康告知', ['兩個月、一年、兩年、五年的健檢', '看診用藥、血壓血糖血脂、身高體重']],
   ['投資評估', ['外幣收付', '投資型風險適性問卷'], 'inv'],
   ['高齡', ['高齡量表：婚姻、學歷、健康、居住、投保經驗、投資經驗、可支應年數、生活變化、認知評估', '錄音：要保人、被保人、繳款人誰超過 65 歲就錄誰（傳統、外幣、投資型）'], 'old'],
-  ['電訪提醒', ['先跟客戶說會問：保費、是否健康告知、等待期與免責期、給付上限、商品內容', '本人確認、說明商品、親簽、見簽、契撤權']],
-  ['收尾', ['紙本或電子投保', '開通行動服務、國泰人壽 APP', 'Fitback', 'APP 更新、網路', '截圖存檔']],
+  ['電訪提醒', ['投資型保費來源、有無解約']],
+  ['收尾', ['Fitback', '紙本或電子投保、保費授權、上傳成功', '開通行動服務、國泰人壽 APP、證券戶', '截圖存檔：身分證、存摺封面']],
 ];
-const NC_LOG = ['名單來源', '背景', '關係建立', '缺口與觀念', '預算', '體況與核保', '規劃', '促約關鍵', '結果', '待辦', '下次', '一句話心得（早會用）'];
+const NC_LOG = [['認識', ['名單來源', '背景', '關係建立']], ['需求', ['缺口與觀念', '預算', '體況與核保']], ['方案', ['規劃', '促約關鍵', '結果']], ['後續', ['待辦', '下次', '一句話心得（早會用）']]];
 let NCT = null;
 function openNcTest() {
-  NCT = NCT || { inv: false, old: false };
-  let n = 0; const box = (t) => `<label class="ncit"><input type="checkbox"><span class="ncno">${++n}</span><span>${esc(t)}</span></label>`;
+  NCT = NCT || { inv: false, old: false, edit: false, chk: {}, val: {}, log: NC_LOG.map(([g, l]) => ({ g, items: l.map((t) => ({ t, on: true })) })) };
+  const keepScroll = ov.querySelector('.ovbody')?.scrollTop || 0;
+  let n = 0; const box = (t) => { const k = 'c' + (++n); return `<label class="ncit"><input type="checkbox" data-nck2="${k}"${NCT.chk[k] ? ' checked' : ''}><span class="ncno">${n}</span><span>${esc(t)}</span></label>`; };
+  const grp = (g, l, k) => `<div${k ? ` data-nck="${k}"${NCT[k] ? '' : ' hidden'}` : ''}><div class="ncg">${g}${k ? '<span class="ncif">' + (k === 'inv' ? '勾了外幣或投資型才出現' : '勾了超過 65 歲才出現') + '</span>' : ''}</div>${l.map(box).join('')}</div>`;
+  const ed = NCT.edit;
+  const logHTML = NCT.log.map((c, ci) => `<div class="nclg"><div class="ncg">${esc(c.g)}${ed ? `<span class="ncmv"><button class="btn sm" data-nmv="g:${ci}:-1" aria-label="分類往上">↑</button><button class="btn sm" data-nmv="g:${ci}:1" aria-label="分類往下">↓</button></span>` : ''}</div>
+    ${c.items.map((it, ii) => ed ? `<div class="ncedit${it.on ? '' : ' off'}"><label><input type="checkbox" data-non="${ci}:${ii}"${it.on ? ' checked' : ''}> ${esc(it.t)}</label><span class="ncmv"><button class="btn sm" data-nmv="i:${ci}:${ii}:-1" aria-label="往上">↑</button><button class="btn sm" data-nmv="i:${ci}:${ii}:1" aria-label="往下">↓</button></span></div>`
+      : it.on ? `<label class="f">${esc(it.t)}<textarea rows="2" data-nval="${esc(it.t)}">${esc(NCT.val[it.t] || '')}</textarea></label>` : '').join('')}</div>`).join('');
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>新契約清單 · 測試頁</h2><button class="btn pri" id="ncX">關閉</button></div>
-  <div class="ovbody" style="flex-direction:column;max-width:860px;margin:0 auto;width:100%">
+  <div class="ovbody" style="flex-direction:column;max-width:900px;margin:0 auto;width:100%">
    <div class="note">這是測試頁，可以打勾、打字試用，<b>不會存任何資料</b>，關掉就清空。看哪個編號要改，直接跟 Claude 說。</div>
    <div class="sec"><h2>這件有沒有：</h2><div class="tags"><button class="tag${NCT.inv ? ' on' : ''}" data-nct="inv">外幣或投資型</button><button class="tag${NCT.old ? ' on' : ''}" data-nct="old">有人超過 65 歲</button></div></div>
-   <div class="sec"><h2>一、準備清單 <span class="sub">見客戶前要準備、要問到的</span></h2><div class="ncgrid">${NC_PREP.map(([g, l]) => `<div><div class="ncg">${g}</div>${l.map(box).join('')}</div>`).join('')}</div></div>
-   <div class="sec"><h2>二、流程提醒 <span class="sub">簽約當下照順序走</span></h2><div class="ncgrid">${NC_FLOW.map(([g, l, k]) => `<div${k ? ` data-nck="${k}"${NCT[k] ? '' : ' hidden'}` : ''}><div class="ncg">${g}${k ? '<span class="ncif">' + (k === 'inv' ? '勾了外幣或投資型才出現' : '勾了超過 65 歲才出現') + '</span>' : ''}</div>${l.map(box).join('')}</div>`).join('')}</div></div>
-   <div class="sec"><h2>三、過程紀錄 <span class="sub">早會分享、自己的業務紀錄</span></h2><div class="ncgrid">${NC_LOG.map((t) => `<label class="f"><span><span class="ncno">${++n}</span>${esc(t)}</span><textarea rows="2"></textarea></label>`).join('')}</div></div>
+   <div class="sec"><h2>一、準備清單 <span class="sub">見客戶前要準備、要帶、要問到的</span></h2><div class="ncgrid">${NC_PREP.map(([g, l]) => grp(g, l)).join('')}</div></div>
+   <div class="sec"><h2>二、流程提醒 <span class="sub">簽約當下照順序走</span></h2><div class="ncgrid">${NC_FLOW.map(([g, l, k]) => grp(g, l, k)).join('')}</div></div>
+   <div class="sec"><h2>三、過程紀錄 <span class="sub">早會分享、自己的業務紀錄</span><button class="btn sm${ed ? ' pri' : ''}" id="ncEd">${ed ? '調整好了' : '調整項目'}</button></h2>
+    ${ed ? '<div class="note">勾掉的項目不會出現；用 ↑↓ 調整順序。</div>' : ''}<div class="ncgrid">${logHTML}</div></div>
   </div></div>`;
+  ov.querySelector('.ovbody').scrollTop = keepScroll;
   $('ncX').onclick = () => { NCT = null; ov.innerHTML = ''; };
+  $('ncEd').onclick = () => { NCT.edit = !NCT.edit; openNcTest(); };
   ov.querySelectorAll('[data-nct]').forEach((b) => (b.onclick = () => { const k = b.dataset.nct; NCT[k] = !NCT[k]; b.classList.toggle('on', NCT[k]); ov.querySelector(`[data-nck="${k}"]`).hidden = !NCT[k]; }));
+  ov.querySelectorAll('[data-nck2]').forEach((c) => (c.onchange = () => { NCT.chk[c.dataset.nck2] = c.checked; }));
+  ov.querySelectorAll('[data-nval]').forEach((t) => (t.oninput = () => { NCT.val[t.dataset.nval] = t.value; }));
+  ov.querySelectorAll('[data-non]').forEach((c) => (c.onchange = () => { const [ci, ii] = c.dataset.non.split(':').map(Number); NCT.log[ci].items[ii].on = c.checked; openNcTest(); }));
+  ov.querySelectorAll('[data-nmv]').forEach((b) => (b.onclick = () => {
+    const p = b.dataset.nmv.split(':'); const sw = (a, i, d) => { const j = i + d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; };
+    if (p[0] === 'g') sw(NCT.log, +p[1], +p[2]); else sw(NCT.log[+p[1]].items, +p[2], +p[3]);
+    openNcTest();
+  }));
 }
 let MK = null;
 async function openMask(c, i, coll = 'cases', opts = null) { const d = c.docs[i]; const im = await getImg(d.fileId); if (!im) { toast('圖片讀取失敗，請確認網路'); return; } MK = { c, coll, d, im, masks: d.masks.map((m) => ({ ...m })), marks: (d.marks || []).map((m) => ({ ...m, pts: m.pts ? m.pts.map((p) => [...p]) : undefined })), tool: opts?.tool || 'mask', color: MARK_COLORS[0], hist: [], sel: -1, mode: null, start: null, preview: false, opts }; renderMask(); }
