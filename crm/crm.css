@@ -482,3 +482,20 @@ select.linktpl{border:1px solid var(--line);background:var(--surface);border-rad
 .gqrow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
 .gstep{display:inline-flex;align-items:center;gap:10px}
 .gstep b{min-width:22px;text-align:center}
+.kno{font-size:11px;color:var(--muted);margin-right:6px;font-family:var(--f-num,inherit)}
+.kfunnel{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0 10px}
+.kfunnel div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 12px;display:flex;flex-direction:column;align-items:center;min-width:64px}
+.kfunnel span{font-size:12px;color:var(--muted)}.kfunnel b{font-size:20px;font-weight:600}
+.kfunnel i{color:var(--muted);font-style:normal}
+.ktablewrap{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:12px}
+.ktable{width:100%;border-collapse:collapse;font-size:14px;min-width:900px}
+.ktable th{position:sticky;top:0;background:var(--surface);font-size:12px;color:var(--muted);font-weight:500;text-align:left;padding:8px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.ktable td{padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.ktable tr{cursor:pointer}.ktable tbody tr:hover{background:var(--surface)}
+.ktable .knote{white-space:normal;min-width:160px;color:var(--muted);font-size:13px}
+.kdots{display:inline-flex;gap:3px;vertical-align:middle}
+.kdot{width:22px;height:22px;border-radius:50%;font-size:11px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);color:var(--muted)}
+.kdot.no{background:#F7C1C1;border-color:#F09595;color:#791F1F}.kdot.ok{background:#9FE1CB;border-color:#5DCAA5;color:#04342C}
+.kprog{font-size:12px;padding:2px 7px;border-radius:6px;background:var(--surface);border:1px solid var(--line)}
+.kp-已見面 .kprog{background:#9FE1CB;border-color:#9FE1CB}.kp-已排訪 .kprog{background:#B5D4F4;border-color:#B5D4F4}.kp-已接通 .kprog{background:#FAEEDA;border-color:#FAC775}.kp-不經營{opacity:.5}
+.kg{font-size:12px;padding:1px 6px;border-radius:5px}.kg-預備{background:#FAEEDA}.kg-已送{background:#9FE1CB}.kg-不送{color:var(--muted)}
