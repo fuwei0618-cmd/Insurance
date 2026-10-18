@@ -1958,39 +1958,70 @@ const NC_FLOW = [
   ['投資評估', ['外幣收付', '投資型風險適性問卷'], 'inv'],
   ['高齡', ['高齡量表：婚姻、學歷、健康、居住、投保經驗、投資經驗、可支應年數、生活變化、認知評估', '錄音：要保人、被保人、繳款人誰超過 65 歲就錄誰（傳統、外幣、投資型）'], 'old'],
   ['電訪提醒', ['投資型保費來源、有無解約']],
-  ['收尾', ['Fitback', '紙本或電子投保、保費授權、上傳成功', '開通行動服務、國泰人壽 APP、證券戶', '截圖存檔：身分證、存摺封面']],
+  ['收尾', ['Fitback', '電子投保確認書、保費授權、上傳成功', '開通行動服務、國泰人壽 APP、證券戶', '截圖存檔：身分證、存摺封面']],
 ];
 const NC_LOG = [['認識', ['名單來源', '背景', '關係建立']], ['需求', ['缺口與觀念', '預算', '體況與核保']], ['方案', ['規劃', '促約關鍵', '結果']], ['後續', ['待辦', '下次', '一句話心得（早會用）']]];
 let NCT = null;
+function ncInit() {
+  let id = 0; const mk = (arr) => arr.map(([g, l, k]) => ({ g, k, items: l.map((t) => ({ id: 'n' + (++id), t, on: true })) }));
+  return { inv: false, old: false, edit: false, chk: {}, val: {}, sec: { prep: mk(NC_PREP), flow: mk(NC_FLOW), log: mk(NC_LOG) }, nid: id };
+}
 function openNcTest() {
-  NCT = NCT || { inv: false, old: false, edit: false, chk: {}, val: {}, log: NC_LOG.map(([g, l]) => ({ g, items: l.map((t) => ({ t, on: true })) })) };
+  NCT = NCT || ncInit();
   const keepScroll = ov.querySelector('.ovbody')?.scrollTop || 0;
-  let n = 0; const box = (t) => { const k = 'c' + (++n); return `<label class="ncit"><input type="checkbox" data-nck2="${k}"${NCT.chk[k] ? ' checked' : ''}><span class="ncno">${n}</span><span>${esc(t)}</span></label>`; };
-  const grp = (g, l, k) => `<div${k ? ` data-nck="${k}"${NCT[k] ? '' : ' hidden'}` : ''}><div class="ncg">${g}${k ? '<span class="ncif">' + (k === 'inv' ? '勾了外幣或投資型才出現' : '勾了超過 65 歲才出現') + '</span>' : ''}</div>${l.map(box).join('')}</div>`;
-  const ed = NCT.edit;
-  const logHTML = NCT.log.map((c, ci) => `<div class="nclg"><div class="ncg">${esc(c.g)}${ed ? `<span class="ncmv"><button class="btn sm" data-nmv="g:${ci}:-1" aria-label="分類往上">↑</button><button class="btn sm" data-nmv="g:${ci}:1" aria-label="分類往下">↓</button></span>` : ''}</div>
-    ${c.items.map((it, ii) => ed ? `<div class="ncedit${it.on ? '' : ' off'}"><label><input type="checkbox" data-non="${ci}:${ii}"${it.on ? ' checked' : ''}> ${esc(it.t)}</label><span class="ncmv"><button class="btn sm" data-nmv="i:${ci}:${ii}:-1" aria-label="往上">↑</button><button class="btn sm" data-nmv="i:${ci}:${ii}:1" aria-label="往下">↓</button></span></div>`
-      : it.on ? `<label class="f">${esc(it.t)}<textarea rows="2" data-nval="${esc(it.t)}">${esc(NCT.val[it.t] || '')}</textarea></label>` : '').join('')}</div>`).join('');
-  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>新契約清單 · 測試頁</h2><button class="btn pri" id="ncX">關閉</button></div>
-  <div class="ovbody" style="flex-direction:column;max-width:900px;margin:0 auto;width:100%">
-   <div class="note">這是測試頁，可以打勾、打字試用，<b>不會存任何資料</b>，關掉就清空。看哪個編號要改，直接跟 Claude 說。</div>
-   <div class="sec"><h2>這件有沒有：</h2><div class="tags"><button class="tag${NCT.inv ? ' on' : ''}" data-nct="inv">外幣或投資型</button><button class="tag${NCT.old ? ' on' : ''}" data-nct="old">有人超過 65 歲</button></div></div>
-   <div class="sec"><h2>一、準備清單 <span class="sub">見客戶前要準備、要帶、要問到的</span></h2><div class="ncgrid">${NC_PREP.map(([g, l]) => grp(g, l)).join('')}</div></div>
-   <div class="sec"><h2>二、流程提醒 <span class="sub">簽約當下照順序走</span></h2><div class="ncgrid">${NC_FLOW.map(([g, l, k]) => grp(g, l, k)).join('')}</div></div>
-   <div class="sec"><h2>三、過程紀錄 <span class="sub">早會分享、自己的業務紀錄</span><button class="btn sm${ed ? ' pri' : ''}" id="ncEd">${ed ? '調整好了' : '調整項目'}</button></h2>
-    ${ed ? '<div class="note">勾掉的項目不會出現；用 ↑↓ 調整順序。</div>' : ''}<div class="ncgrid">${logHTML}</div></div>
+  const ed = NCT.edit; let n = 0;
+  const cond = (k) => k ? '<span class="ncif">' + (k === 'inv' ? '勾了外幣或投資型才出現' : '勾了超過 65 歲才出現') + '</span>' : '';
+  const row = (sk, it) => {
+    if (ed) return `<div class="ncrow${it.on ? '' : ' off'}" data-iid="${it.id}"><span class="ncdrag" aria-label="拖曳排序">⠿</span>${sk === 'log' ? `<input type="checkbox" class="ncon" data-on="${it.id}"${it.on ? ' checked' : ''} aria-label="使用">` : ''}<input class="nctxt" data-txt="${it.id}" value="${esc(it.t)}"><button class="btn sm ncdel" data-del="${it.id}" aria-label="刪除">✕</button></div>`;
+    if (sk === 'log') return it.on ? `<label class="f">${esc(it.t)}<textarea rows="2" data-nval="${it.id}">${esc(NCT.val[it.id] || '')}</textarea></label>` : '';
+    return `<label class="ncit"><input type="checkbox" data-nck2="${it.id}"${NCT.chk[it.id] ? ' checked' : ''}><span class="ncno">${++n}</span><span>${esc(it.t)}</span></label>`;
+  };
+  const grp = (sk, g, gi) => `<div class="ncgrp" data-gi="${gi}"${!ed && g.k ? ` data-nck="${g.k}"${NCT[g.k] ? '' : ' hidden'}` : ''}>
+    <div class="ncg">${ed ? `<span class="ncdrag ncgdrag" aria-label="拖曳分類">⠿</span><input class="nctxt ncgname" data-gname="${sk}:${gi}" value="${esc(g.g)}">` : esc(g.g)}${cond(g.k)}</div>
+    <div class="ncbody" data-sk="${sk}" data-gi="${gi}">${g.items.map((it) => row(sk, it)).join('')}</div>
+    ${ed ? `<button class="btn sm ncadd" data-add="${sk}:${gi}">＋ 新增一項</button>` : ''}</div>`;
+  const sec = (sk, title, sub) => `<div class="sec"><h2>${title} <span class="sub">${sub}</span></h2><div class="ncgrid${sk === 'prep' ? ' three' : ''}" data-sec="${sk}">${NCT.sec[sk].map((g, gi) => grp(sk, g, gi)).join('')}</div></div>`;
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>新契約清單 · 測試頁</h2><button class="btn${ed ? ' pri' : ''}" id="ncEd">${ed ? '✓ 改好了' : '✎ 編修模式'}</button><button class="btn" id="ncX">關閉</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:1180px;margin:0 auto;width:100%">
+   <div class="note">${ed ? '編修模式：可以改字、刪除（✕）、新增，按住 ⠿ 拖曳排順序（也可以拖到別的分類）。過程紀錄勾掉的項目不會出現。改好按右上角「改好了」。' : '這是測試頁，可以打勾、打字試用，<b>不會存任何資料</b>，關掉就清空。要改項目，按右上角「編修模式」。'}</div>
+   ${ed ? '' : `<div class="sec"><h2>這件有沒有：</h2><div class="tags"><button class="tag${NCT.inv ? ' on' : ''}" data-nct="inv">外幣或投資型</button><button class="tag${NCT.old ? ' on' : ''}" data-nct="old">有人超過 65 歲</button></div></div>`}
+   ${sec('prep', '一、準備清單', '見客戶前要準備、要帶、要問到的')}
+   ${sec('flow', '二、流程提醒', '簽約當下照順序走')}
+   ${sec('log', '三、過程紀錄', '早會分享、自己的業務紀錄')}
   </div></div>`;
   ov.querySelector('.ovbody').scrollTop = keepScroll;
   $('ncX').onclick = () => { NCT = null; ov.innerHTML = ''; };
   $('ncEd').onclick = () => { NCT.edit = !NCT.edit; openNcTest(); };
-  ov.querySelectorAll('[data-nct]').forEach((b) => (b.onclick = () => { const k = b.dataset.nct; NCT[k] = !NCT[k]; b.classList.toggle('on', NCT[k]); ov.querySelector(`[data-nck="${k}"]`).hidden = !NCT[k]; }));
+  const find = (id) => { for (const sk in NCT.sec) for (const g of NCT.sec[sk]) { const i = g.items.findIndex((x) => x.id === id); if (i >= 0) return [g, i]; } return [null, -1]; };
+  ov.querySelectorAll('[data-nct]').forEach((b) => (b.onclick = () => { const k = b.dataset.nct; NCT[k] = !NCT[k]; b.classList.toggle('on', NCT[k]); ov.querySelectorAll(`[data-nck="${k}"]`).forEach((x) => (x.hidden = !NCT[k])); }));
   ov.querySelectorAll('[data-nck2]').forEach((c) => (c.onchange = () => { NCT.chk[c.dataset.nck2] = c.checked; }));
   ov.querySelectorAll('[data-nval]').forEach((t) => (t.oninput = () => { NCT.val[t.dataset.nval] = t.value; }));
-  ov.querySelectorAll('[data-non]').forEach((c) => (c.onchange = () => { const [ci, ii] = c.dataset.non.split(':').map(Number); NCT.log[ci].items[ii].on = c.checked; openNcTest(); }));
-  ov.querySelectorAll('[data-nmv]').forEach((b) => (b.onclick = () => {
-    const p = b.dataset.nmv.split(':'); const sw = (a, i, d) => { const j = i + d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; };
-    if (p[0] === 'g') sw(NCT.log, +p[1], +p[2]); else sw(NCT.log[+p[1]].items, +p[2], +p[3]);
-    openNcTest();
+  if (!ed) return;
+  ov.querySelectorAll('[data-txt]').forEach((t) => (t.oninput = () => { const [g, i] = find(t.dataset.txt); if (g) g.items[i].t = t.value; }));
+  ov.querySelectorAll('[data-gname]').forEach((t) => (t.oninput = () => { const [sk, gi] = t.dataset.gname.split(':'); NCT.sec[sk][+gi].g = t.value; }));
+  ov.querySelectorAll('[data-on]').forEach((c) => (c.onchange = () => { const [g, i] = find(c.dataset.on); if (g) g.items[i].on = c.checked; c.closest('.ncrow').classList.toggle('off', !c.checked); }));
+  ov.querySelectorAll('[data-del]').forEach((b) => (b.onclick = () => { if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = '刪？'; setTimeout(() => { if (b.isConnected) { delete b.dataset.sure; b.textContent = '✕'; } }, 3000); return; } const [g, i] = find(b.dataset.del); if (g) { g.items.splice(i, 1); openNcTest(); } }));
+  ov.querySelectorAll('[data-add]').forEach((b) => (b.onclick = () => { const [sk, gi] = b.dataset.add.split(':'); const it = { id: 'n' + (++NCT.nid), t: '', on: true }; NCT.sec[sk][+gi].items.push(it); openNcTest(); ov.querySelector(`[data-txt="${it.id}"]`)?.focus(); }));
+  // 拖曳排序：按住 ⠿ 拖；項目可以拖到同一區的別的分類，分類也可以拖
+  const syncFromDom = () => {
+    const all = {}; for (const sk in NCT.sec) NCT.sec[sk].forEach((g) => g.items.forEach((it) => (all[it.id] = it)));
+    for (const sk in NCT.sec) {
+      const old = NCT.sec[sk];
+      NCT.sec[sk] = [...ov.querySelectorAll(`[data-sec="${sk}"] > .ncgrp`)].map((ge) => ({ ...old[+ge.dataset.gi], items: [...ge.querySelectorAll('.ncrow')].map((r) => all[r.dataset.iid]) }));
+    }
+  };
+  ov.querySelectorAll('.ncdrag').forEach((h) => (h.onpointerdown = (e) => {
+    e.preventDefault(); const isG = h.classList.contains('ncgdrag'); const el = h.closest(isG ? '.ncgrp' : '.ncrow'); const home = el.closest('[data-sec]');
+    el.classList.add('ncdragging');
+    const mv = (ev) => {
+      const under = document.elementFromPoint(ev.clientX, ev.clientY); if (!under) return;
+      if (isG) { const t = under.closest('.ncgrp'); if (!t || t === el || t.parentElement !== home) return; const r = t.getBoundingClientRect(); const after = ev.clientY > r.top + r.height / 2 || (ev.clientX > r.left + r.width / 2 && ev.clientY > r.top); t.parentElement.insertBefore(el, after ? t.nextSibling : t); return; }
+      const t = under.closest('.ncrow'), body = under.closest('.ncbody');
+      if (t && t !== el && t.closest('[data-sec]') === home) { const r = t.getBoundingClientRect(); t.parentElement.insertBefore(el, ev.clientY > r.top + r.height / 2 ? t.nextSibling : t); }
+      else if (!t && body && body.closest('[data-sec]') === home && !body.contains(el)) body.appendChild(el);
+    };
+    const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); el.classList.remove('ncdragging'); syncFromDom(); openNcTest(); };
+    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
   }));
 }
 let MK = null;
