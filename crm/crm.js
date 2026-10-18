@@ -1013,7 +1013,7 @@ function clientDetailHTML() {
   <div class="sec"><h2>證件與文件 <button class="btn" data-act="toggleids" style="padding:4px 10px;font-size:13px">${S.showIds ? '隱藏證件' : '顯示證件'}</button>${x.docManual ? '<button class="linkbtn" data-docbydate="c">改回依日期排序</button>' : ''}</h2>
    <div class="docs${S.showIds ? '' : ' veiled'}">${docIdx(x).map((i) => docTile(docs[i], i, 'c', null)).join('')}
    <button class="adddoc" data-act="cscan">${ICON.scan}拍身分證、存摺<span style="font-size:11px">也可以拖曳圖片、PDF 進來</span></button><button class="adddoc" data-act="pasteimg">📋 貼上圖片</button><label class="adddoc">＋ 上傳 PDF 或圖片<input type="file" id="docUpC" accept="image/*,application/pdf,.pdf" multiple></label></div>
-   ${docs.some((d) => !isPdf(d)) ? '<div class="actions"><button class="btn" data-act="cpdf">圖片合成 PDF</button><button class="btn" data-act="cshare">匯出遮罩版</button></div>' : ''}</div>
+   ${docs.some((d) => !isPdf(d)) ? '<div class="actions"><button class="btn" data-act="cpdf">選頁做成 PDF／列印</button><button class="btn" data-act="cshare">匯出遮罩版</button></div>' : ''}</div>
   <div class="sec"><h2>案件 <button class="btn" data-act="ccase" style="padding:4px 10px;font-size:13px">＋ 新增${S.ccat !== '全部' ? esc(S.ccat) : '案件'}</button></h2>
    ${cs.length ? `<div class="chips">${['全部', ...CATS.filter((k) => cs.some((c) => c.cat === k))].map((k) => `<button class="chip${S.ccat === k ? ' on' : ''}" data-ccat="${k}">${k} <span class="cnt">${k === '全部' ? cs.length : cs.filter((c) => c.cat === k).length}</span></button>`).join('')}</div>` : ''}
    ${cs.length ? cs.filter((c) => S.ccat === '全部' || c.cat === S.ccat).map((c) => `<button class="item${itemCls(c.status)}" data-gocase="${c.id}"><span class="t"><span>${esc(c.title || '未命名')}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span>${casePeopleLine(c, x.id)}<span class="s">${fmtDay(caseDate(c))} · ${esc(caseSummary(c))}${c.next ? ' · 下一步：' + esc(c.next) : ''}</span></button>`).join('') : '<div class="sub">還沒有案件。</div>'}</div>
@@ -1103,7 +1103,7 @@ function caseDocsHTML(c) {
    <button class="adddoc" data-act="scan">${ICON.scan}拍照／掃描<span style="font-size:11px">也可以拖曳圖片、PDF 進來</span></button>
    <button class="adddoc" data-act="pasteimg">📋 貼上圖片<span style="font-size:11px">電腦可直接按 Ctrl+V</span></button>
    <label class="adddoc">＋ 上傳 PDF 或圖片<input type="file" id="docUp" accept="image/*,application/pdf,.pdf" multiple></label></div>
-   ${hasImg ? `<div class="actions"><button class="btn" data-act="pdf">圖片合成 PDF</button><button class="btn" data-act="share">匯出分享版</button>${c.isRef ? `<button class="btn" data-act="pickref">選理賠參考要放的文件（已選 ${refDocs(c).length} 張）</button>` : ''}</div>` : ''}</div>`;
+   ${hasImg ? `<div class="actions"><button class="btn" data-act="pdf">選頁做成 PDF／列印</button><button class="btn" data-act="share">匯出分享版</button>${c.isRef ? `<button class="btn" data-act="pickref">選理賠參考要放的文件（已選 ${refDocs(c).length} 張）</button>` : ''}</div>` : ''}</div>`;
 }
 async function addPdfs(rec, coll, files, folder) {
   let n = 0;
@@ -1210,10 +1210,60 @@ function quickHTML() {
 /* ---------- 縮圖 ---------- */
 // 文件上用筆畫的記號（畫筆、圈選），座標都是 0~1 的比例，跟原圖分開存
 const MARK_COLORS = ['#E53935', '#1E6FD9', '#2E9E4F', '#F2A900', '#111111'];
+/* ---------- 印章：文字章、標籤長條、圓章、色塊、大括號、底線（座標 0~1，跟原圖分開存） ---------- */
+const STAMP_FONT = '"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif';
+const STAMP_COLORS = ['#E24B4A', '#185FA5', '#0F6E56', '#D85A30', '#BA7517', '#993556', '#2B2724', '#FAC775', '#9FE1CB', '#F4C0D1', '#C0DD97', '#B5D4F4'];
+const STAMP_KINDS = [['text', '文字'], ['uline', '文字＋底線'], ['tag', '標籤長條'], ['dot', '圓章'], ['hl', '色塊'], ['brace', '大括號'], ['line', '底線']];
+const STAMP_DEFAULT = [
+  ['險種', [['text', '壽險', '#0F6E56'], ['text', '意外', '#E24B4A'], ['text', '疾病', '#185FA5'], ['text', '實支', '#185FA5'], ['text', '住院', '#185FA5'], ['text', '手術', '#185FA5'], ['text', '骨折', '#E24B4A'], ['text', '無呼吸', '#185FA5'], ['text', '癌／重大', '#D85A30'], ['text', '長照', '#0F6E56']]],
+  ['保障', [['uline', '意外', '#E24B4A'], ['uline', '疾病', '#185FA5']]],
+  ['期間', [['text', '定期', '#185FA5'], ['text', '終身', '#185FA5'], ['dot', '定', '#185FA5'], ['dot', '終', '#1D9E75'], ['text', '繳費期間', '#D85A30']]],
+  ['標籤', [['tag', '主約', '#FAC775'], ['tag', '附約', '#C0DD97'], ['text', '見卡即賠', '#E24B4A']]],
+  ['色塊、括號', [['hl', '', '#FAC775'], ['hl', '', '#9FE1CB'], ['hl', '', '#F4C0D1'], ['brace', '', '#E24B4A'], ['line', '', '#E24B4A']]],
+];
+const stampAlpha = (k) => (k === 'hl' ? 0.45 : k === 'tag' ? 0.9 : 1);
+function stampLib() { const st = Vault.get('settings', 'stamps'); return st?.groups ? st : stampDefaultLib(); }
+function stampDefaultLib() {
+  let i = 0; return { id: 'stamps', groups: STAMP_DEFAULT.map(([g, l]) => ({ g, items: l.map(([k, t, c]) => ({ id: 'st' + (++i), k, s: t, c, a: stampAlpha(k) })) })), recent: [] };
+}
+const tagInk = (c) => { const n = parseInt(c.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255; return 0.3 * r + 0.59 * g + 0.11 * b > 150 ? '#3b2a08' : '#ffffff'; };
+function drawStamp(x, m, ox, oy, w, h) {
+  const X = ox + m.x * w, Y = oy + m.y * h, BW = m.w * w, BH = m.h * h; if (BH <= 0) return;
+  x.save(); x.globalAlpha = m.a ?? 1; x.fillStyle = m.c; x.strokeStyle = m.c; x.textBaseline = 'middle';
+  const font = (px) => `bold ${px}px ${STAMP_FONT}`;
+  if (m.k === 'hl') { x.fillRect(X, Y, BW, BH); }
+  else if (m.k === 'line') { x.lineWidth = Math.max(1.5, BH); x.lineCap = 'round'; x.beginPath(); x.moveTo(X, Y + BH / 2); x.lineTo(X + BW, Y + BH / 2); x.stroke(); }
+  else if (m.k === 'brace') {
+    x.lineWidth = Math.max(1.5, BW * 0.22); x.lineCap = 'round'; x.lineJoin = 'round'; const r = BW, my = Y + BH / 2, L = X + BW * 0.15, Rr = X + BW;
+    x.beginPath(); x.moveTo(Rr, Y); x.quadraticCurveTo(L + r * 0.35, Y, L + r * 0.35, Y + Math.min(r, BH * 0.15)); x.lineTo(L + r * 0.35, my - Math.min(r, BH * 0.12)); x.quadraticCurveTo(L + r * 0.35, my, L - r * 0.05, my);
+    x.quadraticCurveTo(L + r * 0.35, my, L + r * 0.35, my + Math.min(r, BH * 0.12)); x.lineTo(L + r * 0.35, Y + BH - Math.min(r, BH * 0.15)); x.quadraticCurveTo(L + r * 0.35, Y + BH, Rr, Y + BH); x.stroke();
+  }
+  else if (m.k === 'dot') { const d = Math.min(BW, BH); x.beginPath(); x.arc(X + d / 2, Y + d / 2, d / 2, 0, Math.PI * 2); x.fill(); x.globalAlpha = 1; x.fillStyle = '#fff'; x.font = font(d * 0.6); x.textAlign = 'center'; x.fillText(m.s || '', X + d / 2, Y + d / 2 + d * 0.03); }
+  else if (m.k === 'tag') { const r = BH * 0.22; x.beginPath(); x.roundRect ? x.roundRect(X, Y, BW, BH, r) : x.rect(X, Y, BW, BH); x.fill(); x.globalAlpha = 1; x.fillStyle = tagInk(m.c); x.font = font(BH * 0.68); x.fillText(m.s || '', X + BH * 0.3, Y + BH / 2 + BH * 0.03); }
+  else { x.font = font(BH * 0.86); x.fillText(m.s || '', X, Y + BH / 2 + BH * 0.03); if (m.k === 'uline') { x.lineWidth = Math.max(1.5, BH * 0.07); x.beginPath(); x.moveTo(X, Y + BH * 0.98); x.lineTo(X + BW, Y + BH * 0.98); x.stroke(); } }
+  x.restore();
+}
+function stampFit(m, W, H) { // 文字章依文字長度決定寬度
+  if (!['text', 'uline', 'tag', 'dot'].includes(m.k)) return m;
+  const c = document.createElement('canvas').getContext('2d'); const px = m.h * H;
+  if (m.k === 'dot') { m.w = px / W; return m; }
+  c.font = `bold ${m.k === 'tag' ? px * 0.68 : px * 0.86}px ${STAMP_FONT}`; const tw = c.measureText(m.s || '').width;
+  const need = (m.k === 'tag' ? tw + px * 0.6 : tw) / W; if (m.k !== 'tag' || m.w < need) m.w = need; return m;
+}
+function stampChip(it) { // 側欄上的小樣
+  const t = esc(it.s || ''), c = it.c;
+  if (it.k === 'hl') return `<span class="stc" style="width:44px;height:14px;background:${c};opacity:.75;border-radius:3px"></span>`;
+  if (it.k === 'brace') return `<span class="stc" style="color:${c};font-size:22px;line-height:18px;font-weight:300">{</span>`;
+  if (it.k === 'line') return `<span class="stc" style="width:40px;height:0;border-top:3px solid ${c}"></span>`;
+  if (it.k === 'dot') return `<span class="stc stdot" style="background:${c}">${t}</span>`;
+  if (it.k === 'tag') return `<span class="stc sttag" style="background:${c};color:${tagInk(c)}">${t}</span>`;
+  return `<span class="stc sttx" style="color:${c}${it.k === 'uline' ? ';text-decoration:underline' : ''}">${t}</span>`;
+}
 function drawMarks(x, marks, ox, oy, w, h) {
   (marks || []).forEach((m) => {
     x.save(); x.strokeStyle = m.c; x.lineWidth = Math.max(2, Math.max(w, h) * 0.004); x.lineCap = 'round'; x.lineJoin = 'round';
     if (m.t === 'pen' && m.pts.length) { x.beginPath(); m.pts.forEach(([px, py], i) => (i ? x.lineTo(ox + px * w, oy + py * h) : x.moveTo(ox + px * w, oy + py * h))); if (m.pts.length === 1) x.lineTo(ox + m.pts[0][0] * w + 0.5, oy + m.pts[0][1] * h); x.stroke(); }
+    if (m.t === 'stamp') drawStamp(x, m, ox, oy, w, h);
     if (m.t === 'circle') { x.beginPath(); x.ellipse(ox + (m.x + m.w / 2) * w, oy + (m.y + m.h / 2) * h, Math.max(1, m.w * w / 2), Math.max(1, m.h * h / 2), 0, 0, Math.PI * 2); x.stroke(); }
     x.restore();
   });
@@ -1227,7 +1277,7 @@ async function noteImgURL(fid) { // 有標註就回傳畫好標註的版本
 }
 function rotateMarks(m) { // 跟著圖片向右轉 90 度
   if (!m) return m; const box = (r) => ({ ...r, x: 1 - (r.y + r.h), y: r.x, w: r.h, h: r.w });
-  return { ...m, masks: (m.masks || []).map(box), marks: (m.marks || []).map((k) => (k.t === 'pen' ? { ...k, pts: k.pts.map(([a, b]) => [1 - b, a]) } : box(k))) };
+  return { ...m, masks: (m.masks || []).map(box), marks: (m.marks || []).map((k) => (k.t === 'pen' ? { ...k, pts: k.pts.map(([a, b]) => [1 - b, a]) } : k.t === 'stamp' ? { ...k, x: 1 - (k.y + k.h / 2) - k.w / 2, y: k.x + k.w / 2 - k.h / 2 } : box(k))) };
 }
 async function drawThumbTo(cv, d, solid) {
   if (isPdf(d)) return;
@@ -1347,7 +1397,7 @@ app.addEventListener('click', async (e) => {
     case 'newclient': { const n = Vault.put('clients', { name: '', docs: [] }); S.csel = n.id; S.q = ''; S.showDetail = true; S.showIds = false; S.view = 'clients'; App.render(); setTimeout(() => $('cf_name')?.focus(), 50); break; }
     case 'cscan': scanForClient(ccl); break;
     case 'toggleids': S.showIds = !S.showIds; App.render(); break;
-    case 'cpdf': makePDF(ccl.docs, false, (ccl.name || '客戶') + '-證件'); break;
+    case 'cpdf': openPrintPick(ccl.docs, (ccl.name || '客戶') + '-證件'); break;
     case 'cshare': openShare(ccl, (ccl.name || '客戶') + '-證件'); break;
     case 'ccase': { const c = newCase(S.ccat !== '全部' ? S.ccat : '理賠'); c.client = ccl.name; c.clientId = ccl.id; saveCase(c); S.view = 'cases'; App.render(); break; }
     case 'delclient': if (armConfirm(b, '再按一次確定刪除（證件照片也會刪掉）')) { (ccl.docs || []).forEach((doc) => Files.remove(doc.fileId)); cases().filter((c) => c.clientId === ccl.id).forEach((c) => { c.clientId = ''; saveCase(c); }); Vault.all('rels').filter((r) => r.a === ccl.id || r.b === ccl.id).forEach((r) => Vault.del('rels', r.id)); Vault.del('clients', ccl.id); S.csel = null; S.showDetail = false; App.render(); } break;
@@ -1421,7 +1471,7 @@ app.addEventListener('click', async (e) => {
     case 'back': S.showDetail = false; App.render(); break;
     case 'ref': c.isRef = !c.isRef; saveCase(c); App.render(); toast(c.isRef ? '已加入理賠參考（不顯示客戶姓名）' : '已從理賠參考移除'); break;
     case 'delcase': if (armConfirm(b, '再按一次確定刪除')) { c.docs.forEach((doc) => Files.remove(doc.fileId)); (c.links || []).forEach((id) => { const o = Vault.get('cases', id); if (o) { o.links = (o.links || []).filter((x) => x !== c.id); saveCase(o); } }); Vault.del('cases', c.id); S.sel = null; S.showDetail = false; App.render(); } break;
-    case 'pdf': makePDF(c.docs, false, (c.client || '案件') + '-' + (c.title || '文件')); break;
+    case 'pdf': openPrintPick(c.docs, (c.client || '案件') + '-' + (c.title || '文件')); break;
     case 'share': openShare(c); break;
     case 'rshare': { const rc = Vault.get('cases', S.refSel); if (rc) openShare(rc, null, refDocs(rc).map(([d]) => d)); break; }
     case 'gocase': S.view = 'cases'; S.sel = S.refSel; S.showDetail = true; App.render(); break;
@@ -2050,9 +2100,9 @@ function renderMask() {
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${MK.opts?.title || '遮罩'} · ${esc(MK.d.name)}</h2><button class="btn" id="mkCancel">取消</button><button class="btn pri" id="mkSave">儲存</button></div>
   <div class="ovbody"><div class="stage${MK.zoom > 1 ? ' zoomed' : ''}${MK.pan ? ' panning' : ''}"><canvas id="mkCv"></canvas></div>
   <div class="side"><div class="actions zoombar" style="margin:0"><button class="btn" id="mkZo" aria-label="縮小" ${MK.zoom > 1 ? '' : 'disabled'}>－</button><span class="sub">${Math.round(MK.zoom * 100)}%</span><button class="btn" id="mkZi" aria-label="放大" ${MK.zoom < 4 ? '' : 'disabled'}>＋</button>${MK.zoom > 1 ? `<button class="btn${MK.pan ? ' on' : ''}" id="mkPan">${MK.pan ? '✋ 移動中' : '✋ 移動畫面'}</button>` : ''}</div>
-  <div class="mktools">${[['mask', '▭ 遮罩'], ['pen', '✏️ 畫筆'], ['circle', '◯ 圈選'], ['erase', '⌫ 橡皮擦']].map(([k, l]) => `<button class="btn${MK.tool === k && !MK.pan ? ' on' : ''}" data-mktool="${k}">${l}</button>`).join('')}</div>
+  <div class="mktools">${[['mask', '▭ 遮罩'], ['pen', '✏️ 畫筆'], ['circle', '◯ 圈選'], ['stamp', '🔖 印章'], ['erase', '⌫ 橡皮擦']].map(([k, l]) => `<button class="btn${MK.tool === k && !MK.pan ? ' on' : ''}" data-mktool="${k}">${l}</button>`).join('')}</div>
   ${MK.tool === 'pen' || MK.tool === 'circle' ? `<div class="mkcolors">${MARK_COLORS.map((c) => `<button class="mkcolor${MK.color === c ? ' on' : ''}" data-mkcolor="${c}" style="background:${c}" aria-label="顏色"></button>`).join('')}</div>` : ''}
-  <div class="note">${MK.tool === 'mask' ? '在要遮的地方拖曳畫框。點一下框可以選取、拖曳移動。' : MK.tool === 'pen' ? '直接在圖上畫。' : MK.tool === 'circle' ? '拖曳畫出圈圈，把重點圈起來。' : '在畫過的記號上點或拖，就會擦掉。'}原圖不會被改動。${MK.zoom > 1 ? '放大後要移動畫面，按「✋ 移動畫面」再拖。' : ''}</div>
+  ${MK.tool === 'stamp' ? stampPanelHTML() : ''}<div class="note">${MK.tool === 'stamp' ? '點一個章，再點頁面要蓋的地方，可以連續蓋。點已經蓋好的章可以選取：拖曳移動、拉右下角改大小。' : MK.tool === 'mask' ? '在要遮的地方拖曳畫框。點一下框可以選取、拖曳移動。' : MK.tool === 'pen' ? '直接在圖上畫。' : MK.tool === 'circle' ? '拖曳畫出圈圈，把重點圈起來。' : '在畫過的記號上點或拖，就會擦掉。'}原圖不會被改動。${MK.zoom > 1 ? '放大後要移動畫面，按「✋ 移動畫面」再拖。' : ''}</div>
   <div class="actions" style="margin:0;align-items:center"><button class="btn" id="mkUndo" ${MK.hist.length ? '' : 'disabled'}>↶ 復原</button><span class="sub">Ctrl+Z 也可以${MK.marks.length ? `・記號 ${MK.marks.length} 個` : ''}</span></div>
   <label class="f">筆記<textarea id="mkNote" class="grow" rows="3" placeholder="這份文件的重點，例如：急診 2 天、住院日額可申請">${esc(MK.note)}</textarea></label>
   <div class="actions"><button class="btn${MK.preview ? ' on' : ''}" id="mkPrev">${MK.preview ? '回到編輯' : '看分享版效果'}</button></div>
@@ -2063,15 +2113,15 @@ function renderMask() {
   $('mkZi').onclick = () => { MK.zoom = Math.min(4, MK.zoom * 1.5); renderMask(); };
   $('mkZo').onclick = () => { MK.zoom = Math.max(1, MK.zoom / 1.5); if (MK.zoom < 1.05) { MK.zoom = 1; MK.pan = false; } renderMask(); };
   if ($('mkPan')) $('mkPan').onclick = () => { MK.pan = !MK.pan; renderMask(); };
-  ov.querySelectorAll('[data-mktool]').forEach((b) => (b.onclick = () => { MK.tool = b.dataset.mktool; MK.pan = false; MK.sel = -1; renderMask(); }));
+  ov.querySelectorAll('[data-mktool]').forEach((b) => (b.onclick = () => { MK.tool = b.dataset.mktool; MK.pan = false; MK.sel = -1; MK.ssel = -1; renderMask(); }));
   ov.querySelectorAll('[data-mkcolor]').forEach((b) => (b.onclick = () => { MK.color = b.dataset.mkcolor; renderMask(); }));
   $('mkUndo').onclick = mkUndo;
-  $('mkSave').onclick = () => { if (MK.opts?.onSave) { const o = MK.opts, r = { masks: MK.masks, marks: MK.marks, note: MK.note.trim() }; ov.innerHTML = ''; MK = null; o.onSave(r); return; } MK.d.masks = MK.masks; MK.d.marks = MK.marks; MK.d.note = MK.note.trim(); Vault.put(MK.coll, MK.c); ov.innerHTML = ''; MK = null; App.render(); toast('已儲存，原圖保留'); };
+  $('mkSave').onclick = () => { stampSaveRecent(); if (MK.opts?.onSave) { const o = MK.opts, r = { masks: MK.masks, marks: MK.marks, note: MK.note.trim() }; ov.innerHTML = ''; MK = null; o.onSave(r); return; } MK.d.masks = MK.masks; MK.d.marks = MK.marks; MK.d.note = MK.note.trim(); Vault.put(MK.coll, MK.c); ov.innerHTML = ''; MK = null; App.render(); toast('已儲存，原圖保留'); };
   $('mkPrev').onclick = () => { MK.preview = !MK.preview; renderMask(); };
   $('mkDel').onclick = mkDelSel;
   $('mkClear').onclick = () => { const pre = mkState(); MK.masks = []; MK.sel = -1; mkCommit(pre); renderMask(); };
   const cv = $('mkCv'); cv.width = MK.im.width; cv.height = MK.im.height; const x = cv.getContext('2d'); const W = cv.width, H = cv.height;
-  const draw = (tmp) => { x.drawImage(MK.im, 0, 0); const all = tmp ? [...MK.masks, tmp] : MK.masks; all.forEach((m, i) => { if (MK.preview) { x.fillStyle = '#111'; x.fillRect(m.x * W, m.y * H, m.w * W, m.h * H); } else { x.fillStyle = 'rgba(17,17,17,.6)'; x.fillRect(m.x * W, m.y * H, m.w * W, m.h * H); x.lineWidth = Math.max(2, W / 300); x.strokeStyle = i === MK.sel ? '#E2B56A' : '#9DBA88'; x.strokeRect(m.x * W, m.y * H, m.w * W, m.h * H); } }); drawMarks(x, MK.cur ? [...MK.marks, MK.cur] : MK.marks, 0, 0, W, H); };
+  const draw = (tmp) => { x.drawImage(MK.im, 0, 0); const all = tmp ? [...MK.masks, tmp] : MK.masks; all.forEach((m, i) => { if (MK.preview) { x.fillStyle = '#111'; x.fillRect(m.x * W, m.y * H, m.w * W, m.h * H); } else { x.fillStyle = 'rgba(17,17,17,.6)'; x.fillRect(m.x * W, m.y * H, m.w * W, m.h * H); x.lineWidth = Math.max(2, W / 300); x.strokeStyle = i === MK.sel ? '#E2B56A' : '#9DBA88'; x.strokeRect(m.x * W, m.y * H, m.w * W, m.h * H); } }); drawMarks(x, MK.cur ? [...MK.marks, MK.cur] : MK.marks, 0, 0, W, H); const sm = MK.marks[MK.ssel]; if (MK.tool === 'stamp' && sm?.t === 'stamp' && !MK.preview) { x.save(); x.setLineDash([W / 120, W / 160]); x.lineWidth = Math.max(2, W / 400); x.strokeStyle = '#1E6FD9'; const pd = W / 200; x.strokeRect(sm.x * W - pd, sm.y * H - pd, sm.w * W + pd * 2, sm.h * H + pd * 2); x.setLineDash([]); x.fillStyle = '#1E6FD9'; const hs = Math.max(10, W / 70); x.fillRect((sm.x + sm.w) * W + pd - hs / 2, (sm.y + sm.h) * H + pd - hs / 2, hs, hs); x.restore(); } }; MK.redraw = draw;
   draw();
   MK.fit = cv.getBoundingClientRect().width;
   if (MK.zoom > 1) { cv.style.maxWidth = 'none'; cv.style.maxHeight = 'none'; cv.style.width = MK.fit * MK.zoom + 'px'; }
@@ -2092,8 +2142,9 @@ function renderMask() {
   if (MK.preview || MK.pan) return;
   const pt = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]; };
   let tmp = null;
+  if (MK.tool === 'stamp') { wireStamps(cv, pt, W, H, draw); return; }
   if (MK.tool !== 'mask') {
-    const eraseAt = (px, py) => { const n = MK.marks.length; MK.marks = MK.marks.filter((m) => { if (m.t === 'pen') return !m.pts.some(([a, b]) => Math.hypot(a - px, b - py) < 0.025); const rx = m.w / 2, ry = m.h / 2, v = ((px - m.x - rx) / (rx || 1e-3)) ** 2 + ((py - m.y - ry) / (ry || 1e-3)) ** 2; return !(v > 0.55 && v < 1.6); }); const k = MK.masks.length; MK.masks = MK.masks.filter((m) => !(px >= m.x && px <= m.x + m.w && py >= m.y && py <= m.y + m.h)); if (MK.marks.length !== n || MK.masks.length !== k) { MK.sel = -1; draw(); } };
+    const eraseAt = (px, py) => { const n = MK.marks.length; MK.marks = MK.marks.filter((m) => { if (m.t === 'stamp') return !(px >= m.x - 0.01 && px <= m.x + m.w + 0.01 && py >= m.y - 0.01 && py <= m.y + m.h + 0.01); if (m.t === 'pen') return !m.pts.some(([a, b]) => Math.hypot(a - px, b - py) < 0.025); const rx = m.w / 2, ry = m.h / 2, v = ((px - m.x - rx) / (rx || 1e-3)) ** 2 + ((py - m.y - ry) / (ry || 1e-3)) ** 2; return !(v > 0.55 && v < 1.6); }); const k = MK.masks.length; MK.masks = MK.masks.filter((m) => !(px >= m.x && px <= m.x + m.w && py >= m.y && py <= m.y + m.h)); if (MK.marks.length !== n || MK.masks.length !== k) { MK.sel = -1; draw(); } };
     cv.onpointerdown = (e) => { const [px, py] = pt(e); cv.setPointerCapture(e.pointerId); MK.pre = mkState(); MK.mode = MK.tool; if (MK.tool === 'pen') MK.cur = { t: 'pen', c: MK.color, pts: [[px, py]] }; else if (MK.tool === 'circle') { MK.cur = { t: 'circle', c: MK.color, x: px, y: py, w: 0, h: 0 }; MK.start = [px, py]; } else eraseAt(px, py); draw(); };
     cv.onpointermove = (e) => { if (!MK.mode) return; const [px, py] = pt(e); if (MK.mode === 'pen') { MK.cur.pts.push([+px.toFixed(4), +py.toFixed(4)]); draw(); } else if (MK.mode === 'circle') { const [sx, sy] = MK.start; Object.assign(MK.cur, { x: Math.min(sx, px), y: Math.min(sy, py), w: Math.abs(px - sx), h: Math.abs(py - sy) }); draw(); } else eraseAt(px, py); };
     cv.onpointerup = cv.onpointercancel = () => { if (!MK.mode) return; if (MK.cur && (MK.cur.t === 'pen' || MK.cur.w > 0.01 || MK.cur.h > 0.01)) MK.marks.push(MK.cur); MK.cur = null; MK.mode = null; mkCommit(MK.pre); MK.pre = null; renderMask(); };
@@ -2102,6 +2153,132 @@ function renderMask() {
   cv.onpointerdown = (e) => { const [px, py] = pt(e); cv.setPointerCapture(e.pointerId); MK.pre = mkState(); const hit = MK.masks.findIndex((m) => px >= m.x && px <= m.x + m.w && py >= m.y && py <= m.y + m.h); if (hit >= 0) { MK.sel = hit; MK.mode = 'move'; MK.start = [px, py, { ...MK.masks[hit] }]; } else { MK.sel = -1; MK.mode = 'draw'; MK.start = [px, py]; } draw(); };
   cv.onpointermove = (e) => { if (!MK.mode) return; const [px, py] = pt(e); if (MK.mode === 'move') { const [sx, sy, o] = MK.start; const m = MK.masks[MK.sel]; m.x = Math.max(0, Math.min(1 - m.w, o.x + px - sx)); m.y = Math.max(0, Math.min(1 - m.h, o.y + py - sy)); draw(); } else { const [sx, sy] = MK.start; tmp = { x: Math.min(sx, px), y: Math.min(sy, py), w: Math.abs(px - sx), h: Math.abs(py - sy) }; draw(tmp); } };
   cv.onpointerup = cv.onpointercancel = () => { if (!MK.mode) return; if (MK.mode === 'draw' && tmp && tmp.w > 0.01 && tmp.h > 0.008) { MK.masks.push(tmp); MK.sel = MK.masks.length - 1; } MK.mode = null; tmp = null; mkCommit(MK.pre); MK.pre = null; renderMask(); };
+}
+
+function stampPanelHTML() {
+  const lib = stampLib(); MK.lib = lib; const cur = MK.stampPick;
+  const chip = (it, key) => `<button class="stbtn${cur && cur.key === key ? ' on' : ''}" data-stk="${key}">${stampChip(it)}</button>`;
+  const recent = [...(MK.recent || []), ...(lib.recent || [])].filter((it, i, a) => a.findIndex((y) => y.k === it.k && y.s === it.s && y.c === it.c) === i).slice(0, 8);
+  MK.recentShown = recent;
+  const sm = MK.marks[MK.ssel]; const sel = sm?.t === 'stamp' ? sm : null;
+  return `<div class="stpal">${recent.length ? `<div class="stcat">最近用過</div><div class="stchips">${recent.map((it, i) => chip(it, 'r' + i)).join('')}</div>` : ''}
+   ${lib.groups.map((g, gi) => `<div class="stcat">${esc(g.g)}</div><div class="stchips">${g.items.map((it, ii) => chip(it, gi + ':' + ii)).join('')}</div>`).join('')}
+   <button class="btn sm" id="stEdit" style="margin-top:8px">✎ 編修印章</button></div>
+   ${sel ? `<div class="stprop"><div class="stcat">選到的印章</div>
+    <div class="stchips">${STAMP_COLORS.map((c) => `<button class="mkcolor${sel.c === c ? ' on' : ''}" data-stc="${c}" style="background:${c};width:26px;height:26px" aria-label="顏色"></button>`).join('')}</div>
+    <label class="f">大小<input type="range" id="stSize" min="20" max="300" value="100"></label>
+    <label class="f">透明度<input type="range" id="stAlpha" min="10" max="100" value="${Math.round((sel.a ?? 1) * 100)}"></label>
+    <div class="actions" style="margin:0"><button class="btn sm" id="stDup">複製一個</button><button class="btn sm danger" id="stDel">刪除這個章</button></div></div>` : ''}`;
+}
+function stampSaveRecent() {
+  if (!MK?.recent?.length) return; const lib = stampLib();
+  lib.recent = [...MK.recent, ...(lib.recent || [])].filter((it, i, a) => a.findIndex((y) => y.k === it.k && y.s === it.s && y.c === it.c) === i).slice(0, 8);
+  Vault.put('settings', lib); MK.recent = [];
+}
+function wireStamps(cv, pt, W, H, draw) {
+  const lib = MK.lib || stampLib();
+  const pick = (key) => key[0] === 'r' ? MK.recentShown[+key.slice(1)] : (() => { const [gi, ii] = key.split(':').map(Number); return lib.groups[gi].items[ii]; })();
+  ov.querySelectorAll('[data-stk]').forEach((b) => (b.onclick = () => { const key = b.dataset.stk; MK.stampPick = MK.stampPick?.key === key ? null : { key, ...pick(key) }; MK.ssel = -1; renderMask(); }));
+  if ($('stEdit')) $('stEdit').onclick = () => openStampEditor(() => { MK.lib = null; MK.stampPick = null; renderMask(); });
+  const sel = () => { const m = MK.marks[MK.ssel]; return m?.t === 'stamp' ? m : null; };
+  ov.querySelectorAll('[data-stc]').forEach((b) => (b.onclick = () => { const m = sel(); if (!m) return; const pre = mkState(); m.c = b.dataset.stc; mkCommit(pre); renderMask(); }));
+  if ($('stSize')) { let base = null, pre = null; $('stSize').oninput = (e) => { const m = sel(); if (!m) return; if (!base) { base = { w: m.w, h: m.h }; pre = mkState(); } const f = +e.target.value / 100; m.h = base.h * f; m.w = base.w * f; if (['text', 'uline', 'dot'].includes(m.k)) stampFit(m, W, H); draw(); }; $('stSize').onchange = () => { mkCommit(pre); base = null; renderMask(); }; }
+  if ($('stAlpha')) { let pre = null; $('stAlpha').oninput = (e) => { const m = sel(); if (!m) return; pre = pre || mkState(); m.a = +e.target.value / 100; draw(); }; $('stAlpha').onchange = () => { mkCommit(pre); pre = null; }; }
+  if ($('stDel')) $('stDel').onclick = () => { const pre = mkState(); MK.marks.splice(MK.ssel, 1); MK.ssel = -1; mkCommit(pre); renderMask(); };
+  if ($('stDup')) $('stDup').onclick = () => { const m = sel(); if (!m) return; const pre = mkState(); MK.marks.push({ ...m, x: Math.min(1 - m.w, m.x + 0.02), y: Math.min(1 - m.h, m.y + 0.02) }); MK.ssel = MK.marks.length - 1; mkCommit(pre); renderMask(); };
+  const hit = (px, py) => { for (let i = MK.marks.length - 1; i >= 0; i--) { const m = MK.marks[i]; if (m.t !== 'stamp') continue; const pd = 0.012; if (px >= m.x - pd && px <= m.x + m.w + pd && py >= m.y - pd && py <= m.y + m.h + pd) return i; } return -1; };
+  let mode = null, start = null;
+  cv.onpointerdown = (e) => {
+    const [px, py] = pt(e); cv.setPointerCapture(e.pointerId); MK.pre = mkState();
+    const s = sel(); const hr = 0.03;
+    if (s && Math.abs(px - (s.x + s.w)) < hr && Math.abs(py - (s.y + s.h)) < hr) { mode = 'size'; start = { px, py, w: s.w, h: s.h }; return; }
+    const i = hit(px, py);
+    if (i >= 0) { MK.ssel = i; const m = MK.marks[i]; mode = 'move'; start = { px, py, x: m.x, y: m.y }; renderMaskSide(); draw(); return; }
+    if (MK.stampPick) {
+      const it = MK.stampPick; const k = it.k;
+      const m = { t: 'stamp', k, s: it.s, c: it.c, a: it.a ?? stampAlpha(k), x: px, y: py, w: 0.3, h: 0.032 };
+      if (k === 'hl') { m.w = 0.3; m.h = 0.028; } else if (k === 'brace') { m.w = 0.03; m.h = 0.14; } else if (k === 'line') { m.w = 0.2; m.h = 0.006; } else if (k === 'tag') { m.w = 0; m.h = 0.032; }
+      stampFit(m, W, H); m.x = Math.max(0, Math.min(1 - m.w, px - (k === 'hl' || k === 'line' ? 0 : m.w / 2))); m.y = Math.max(0, Math.min(1 - m.h, py - m.h / 2));
+      MK.marks.push(m); MK.ssel = MK.marks.length - 1; MK.recent = [{ k: it.k, s: it.s, c: it.c, a: it.a }, ...(MK.recent || [])].slice(0, 8);
+      mode = 'move'; start = { px, py, x: m.x, y: m.y }; draw(); return;
+    }
+    MK.ssel = -1; mode = null; renderMaskSide(); draw();
+  };
+  cv.onpointermove = (e) => {
+    if (!mode) return; const [px, py] = pt(e); const m = sel(); if (!m) return;
+    if (mode === 'move') { m.x = Math.max(-m.w * 0.5, Math.min(1 - m.w * 0.5, start.x + px - start.px)); m.y = Math.max(-m.h * 0.5, Math.min(1 - m.h * 0.5, start.y + py - start.py)); }
+    else { const nw = Math.max(0.01, start.w + px - start.px), nh = Math.max(0.004, start.h + py - start.py);
+      if (['text', 'uline', 'dot'].includes(m.k)) { m.h = nh; stampFit(m, W, H); } else if (m.k === 'tag') { m.w = nw; m.h = nh; stampFit(m, W, H); } else { m.w = nw; m.h = nh; } }
+    draw();
+  };
+  cv.onpointerup = cv.onpointercancel = () => { if (!mode) return; mode = null; mkCommit(MK.pre); MK.pre = null; renderMaskSide(); };
+}
+function renderMaskSide() { renderMask(); } // 側欄跟著選取更新
+function openStampEditor(done) { // 編修印章：改字、換顏色、換樣式、刪除、新增、拖曳排序
+  const lib = JSON.parse(JSON.stringify(stampLib())); let nid = Date.now();
+  const v = document.createElement('div'); document.body.appendChild(v);
+  const render = () => {
+    v.innerHTML = `<div class="ov" style="z-index:30"><div class="ovhead"><h2>編修印章</h2><button class="btn" id="seReset">恢復預設</button><button class="btn" id="seX">取消</button><button class="btn pri" id="seOk">儲存</button></div>
+    <div class="ovbody" style="flex-direction:column;max-width:860px;margin:0 auto;width:100%">
+     <div class="note">按住 ⠿ 拖曳排順序（也可以拖到別的分類）。刪除要按兩次。</div>
+     <div data-sec="st">${lib.groups.map((g, gi) => `<div class="ncgrp sec" data-gi="${gi}" style="margin-bottom:12px">
+       <div class="ncg"><span class="ncdrag ncgdrag">⠿</span><input class="nctxt ncgname" data-seg="${gi}" value="${esc(g.g)}"><button class="btn sm ncdel" data-segdel="${gi}">刪除分類</button></div>
+       <div class="ncbody" data-gi="${gi}">${g.items.map((it) => `<div class="ncrow serow" data-iid="${it.id}"><span class="ncdrag">⠿</span><span class="seprev">${stampChip(it)}</span>
+         <select data-sek="${it.id}">${STAMP_KINDS.map(([k, l]) => `<option value="${k}"${it.k === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
+         <input class="nctxt" data-ses="${it.id}" value="${esc(it.s)}" placeholder="${['hl', 'brace', 'line'].includes(it.k) ? '不用寫字' : '印章文字'}"${['hl', 'brace', 'line'].includes(it.k) ? ' disabled' : ''}>
+         <span class="secols">${STAMP_COLORS.map((c) => `<button class="mkcolor${it.c === c ? ' on' : ''}" data-sec2="${it.id}" data-c="${c}" style="background:${c};width:22px;height:22px;border-width:2px" aria-label="顏色"></button>`).join('')}</span>
+         <button class="btn sm ncdel" data-sedel="${it.id}">✕</button></div>`).join('')}</div>
+       <button class="btn sm ncadd" data-seadd="${gi}">＋ 新增印章</button></div>`).join('')}</div>
+     <button class="btn" id="seAddG">＋ 新增分類</button></div></div>`;
+    const find = (id) => { for (const g of lib.groups) { const it = g.items.find((x) => x.id === id); if (it) return it; } };
+    v.querySelector('#seX').onclick = () => v.remove();
+    v.querySelector('#seOk').onclick = () => { Vault.put('settings', lib); v.remove(); toast('印章已儲存'); done?.(); };
+    v.querySelector('#seReset').onclick = (e) => { const b = e.currentTarget; if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = '確定恢復？'; return; } lib.groups = stampDefaultLib().groups; render(); };
+    v.querySelector('#seAddG').onclick = () => { lib.groups.push({ g: '新分類', items: [] }); render(); };
+    v.querySelectorAll('[data-seg]').forEach((t) => (t.oninput = () => (lib.groups[+t.dataset.seg].g = t.value)));
+    v.querySelectorAll('[data-segdel]').forEach((b) => (b.onclick = () => { if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = '確定刪除整個分類？'; return; } lib.groups.splice(+b.dataset.segdel, 1); render(); }));
+    v.querySelectorAll('[data-sek]').forEach((t) => (t.onchange = () => { const it = find(t.dataset.sek); it.k = t.value; it.a = stampAlpha(it.k); render(); }));
+    v.querySelectorAll('[data-ses]').forEach((t) => (t.oninput = () => { const it = find(t.dataset.ses); it.s = t.value; t.closest('.serow').querySelector('.seprev').innerHTML = stampChip(it); }));
+    v.querySelectorAll('[data-sec2]').forEach((b) => (b.onclick = () => { find(b.dataset.sec2).c = b.dataset.c; render(); }));
+    v.querySelectorAll('[data-sedel]').forEach((b) => (b.onclick = () => { if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = '刪？'; return; } for (const g of lib.groups) g.items = g.items.filter((x) => x.id !== b.dataset.sedel); render(); }));
+    v.querySelectorAll('[data-seadd]').forEach((b) => (b.onclick = () => { lib.groups[+b.dataset.seadd].items.push({ id: 'st' + (++nid), k: 'text', s: '新印章', c: '#185FA5', a: 1 }); render(); }));
+    makeSortable(v, () => { const all = {}; lib.groups.forEach((g) => g.items.forEach((it) => (all[it.id] = it))); lib.groups = [...v.querySelectorAll('[data-sec="st"] > .ncgrp')].map((ge) => ({ ...lib.groups[+ge.dataset.gi], items: [...ge.querySelectorAll('.ncrow')].map((r) => all[r.dataset.iid]) })); render(); });
+  };
+  render();
+}
+function makeSortable(root, onDone) { // 按住 ⠿ 拖曳：項目可換分類，分類也可以拖
+  root.querySelectorAll('.ncdrag').forEach((h) => (h.onpointerdown = (e) => {
+    e.preventDefault(); const isG = h.classList.contains('ncgdrag'); const el = h.closest(isG ? '.ncgrp' : '.ncrow'); const home = el.closest('[data-sec]');
+    el.classList.add('ncdragging');
+    const mv = (ev) => {
+      const under = document.elementFromPoint(ev.clientX, ev.clientY); if (!under) return;
+      if (isG) { const t = under.closest('.ncgrp'); if (!t || t === el || t.parentElement !== el.parentElement) return; const r = t.getBoundingClientRect(); t.parentElement.insertBefore(el, ev.clientY > r.top + r.height / 2 ? t.nextSibling : t); return; }
+      const t = under.closest('.ncrow'), body = under.closest('.ncbody');
+      if (t && t !== el && t.closest('[data-sec]') === home) { const r = t.getBoundingClientRect(); t.parentElement.insertBefore(el, ev.clientY > r.top + r.height / 2 ? t.nextSibling : t); }
+      else if (!t && body && body.closest('[data-sec]') === home && !body.contains(el)) body.appendChild(el);
+    };
+    const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); el.classList.remove('ncdragging'); onDone(); };
+    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+  }));
+}
+
+/* ---------- 選頁做成 PDF／列印 ---------- */
+function openPrintPick(docs, name) {
+  const imgs = (docs || []).map((d, i) => [d, i]).filter(([d]) => !isPdf(d)); if (!imgs.length) { toast('沒有可以合成的圖片'); return; }
+  const pick = new Set(imgs.map(([, i]) => i)); let mask = false;
+  const render = () => {
+    ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>選要印的頁</h2><span class="sub">已選 ${pick.size} 頁</span><button class="btn" id="ppAll">${pick.size === imgs.length ? '全部不選' : '全選'}</button><button class="btn" id="ppX">取消</button><button class="btn pri" id="ppGo">做成 PDF（可列印）</button></div>
+    <div class="ovbody" style="flex-direction:column"><div class="note">點頁面勾選或取消。印章、圈選、畫筆都會一起印出來。做好後會跳出分享選單，選「列印」就能印，也可以傳 LINE。</div>
+     <label class="ncit" style="font-size:14px"><input type="checkbox" id="ppMask"${mask ? ' checked' : ''}> 遮罩也印上去（給客戶以外的人看時才需要）</label>
+     <div class="pppages">${imgs.map(([d, i]) => `<button class="pppage${pick.has(i) ? ' on' : ''}" data-pp="${i}"><canvas data-ppc="${i}" width="220" height="300"></canvas><span>${pick.has(i) ? '✓ ' : ''}${esc(d.name)}</span></button>`).join('')}</div></div></div>`;
+    ov.querySelectorAll('[data-ppc]').forEach((cv) => drawThumbTo(cv, docs[+cv.dataset.ppc], false).catch(() => {}));
+    ov.querySelectorAll('[data-pp]').forEach((b) => (b.onclick = () => { const i = +b.dataset.pp; pick.has(i) ? pick.delete(i) : pick.add(i); render(); }));
+    $('ppAll').onclick = () => { if (pick.size === imgs.length) pick.clear(); else imgs.forEach(([, i]) => pick.add(i)); render(); };
+    $('ppMask').onchange = (e) => (mask = e.target.checked);
+    $('ppX').onclick = () => { ov.innerHTML = ''; };
+    $('ppGo').onclick = async () => { if (!pick.size) { toast('先勾要印的頁'); return; } const sel = imgs.filter(([, i]) => pick.has(i)).map(([d]) => d); ov.innerHTML = ''; await makePDF(sel, mask, name); };
+  };
+  render();
 }
 
 /* ================= 分享版 / PDF ================= */
