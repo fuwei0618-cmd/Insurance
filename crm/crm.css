@@ -519,3 +519,4 @@ select.linktpl{border:1px solid var(--line);background:var(--surface);border-rad
 .gsheet tr.gtot td.gstick{text-align:left}
 .cflow{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px;font-size:15px;line-height:1.6}
 .gsheet .gn,.gsheet select.gcell{border-color:var(--line)}
+.gtype{min-width:84px;font-size:13px}

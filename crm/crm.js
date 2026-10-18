@@ -776,7 +776,7 @@ function giftTableHTML(list, ev) { // 像試算表：一列一個人，一欄一
   return `<div class="ktablewrap"><table class="ktable gsheet"><thead>
    <tr><th rowspan="2" class="gstick">名字</th><th rowspan="2">類型</th><th rowspan="2">分類</th>${cats.map((c) => `<th colspan="${c.n}" class="gcath">${esc(c.c)}</th>`).join('')}<th rowspan="2">送法</th><th rowspan="2">已送</th><th rowspan="2">備註</th></tr>
    <tr>${items.map((it) => `<th class="gith">${esc(it.name || it.code || '品項')}</th>`).join('')}</tr></thead><tbody>
-   ${list.map((g) => `<tr class="${g.status === '已送' ? 'gdone' : ''}"><td class="gstick"><button class="linkbtn" data-gopen="${g.id}">${esc(giftWho(g))}</button></td><td class="sub">${GIFT_TYPES.find(([t]) => t === g.who?.type)?.[1] || '親友'}</td>
+   ${list.map((g) => `<tr class="${g.status === '已送' ? 'gdone' : ''}"><td class="gstick"><button class="linkbtn" data-gopen="${g.id}">${esc(giftWho(g))}</button></td><td><select class="gcell gtype" data-gwho="${g.id}">${GIFT_TYPES.map(([t, l]) => `<option value="${t}"${(g.who?.type || 'other') === t ? ' selected' : ''}>${l}</option>`).join('')}</select></td>
      <td><input class="gcell gw" data-gg="${g.id}:group" value="${esc(g.group)}"></td>
      ${items.map((it) => `<td><input class="gcell gn" inputmode="numeric" data-gq2="${g.id}:${it.id}" value="${g.items?.[it.id] || ''}"></td>`).join('')}
      <td><select class="gcell" data-gg="${g.id}:method">${['', '當面', '寄送', '放管理室'].map((m) => `<option${(g.method || '') === m ? ' selected' : ''}>${m}</option>`).join('')}</select></td>
@@ -1879,6 +1879,12 @@ app.addEventListener('change', (e) => { // 送禮表格：直接改數量、分�
   const ds = e.target.dataset || {};
   if (ds.gq2) { const [gid, iid] = ds.gq2.split(':'); const g = Vault.get('gifts', gid); if (!g) return; const n = Math.max(0, parseInt(e.target.value, 10) || 0); g.items = { ...(g.items || {}) }; if (n) g.items[iid] = n; else delete g.items[iid]; Vault.put('gifts', g); App.render(); return; }
   if (ds.gg) { const [gid, f] = ds.gg.split(':'); const g = Vault.get('gifts', gid); if (!g) return; g[f] = e.target.value.trim(); Vault.put('gifts', g); if (f === 'group') App.render(); return; }
+  if (ds.gwho) { // 改類型：名字跟客戶或服務件一樣就自動連過去，不一樣就只標類型
+    const g = Vault.get('gifts', ds.gwho); if (!g) return; const t = e.target.value, name = giftWho(g);
+    const hit = t === 'client' ? clients().find((x) => x.name === name) : t === 'call' ? calls().find((x) => x.name === name) : null;
+    g.who = { type: t, id: hit?.id || '', name }; Vault.put('gifts', g); App.render();
+    toast(hit ? `已連到${t === 'client' ? '客戶' : '服務件'}「${name}」` : t === 'other' ? '已改成親友' : `已標成${t === 'client' ? '客戶' : '服務件'}（找不到同名的，先只標類型）`); return;
+  }
   if (ds.gdone) { const g = Vault.get('gifts', ds.gdone); if (!g) return; g.status = e.target.checked ? '已送' : '預備'; g.doneDate = e.target.checked ? localDay() : ''; Vault.put('gifts', g); App.render(); }
 });
 app.addEventListener('change', (e) => { // 送禮：品項和活動名稱
