@@ -1203,7 +1203,7 @@ function quickHTML() {
   <div class="card"><h3>待辦案件 <span class="sub">${waiting.length} 件</span></h3>${waiting.slice(0, 6).map((c) => `<button class="item${itemCls(c.status)}" data-gocase="${c.id}"><span class="t"><span>${esc(c.client)} · ${esc(c.title)}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${esc(c.next || '未填下一步')}</span></button>`).join('') || '<div class="sub">沒有待辦。</div>'}</div>
   <div class="card"><h3>同步</h3>${syncHTML()}<div class="sub">資料加密後存在 OneDrive › 應用程式 › Work › ${esc(FOLDER)}。iPad 和手機登入同一個帳號就會自動同步。每天第一次打開會自動備份一份，保留 30 天。</div>
    <div class="actions"><button class="btn" data-act="backups">備份與還原</button><button class="btn" data-act="trash">最近刪除${Files.trashed().filter((f) => f.trashCtx).length ? ' ' + Files.trashed().filter((f) => f.trashCtx).length : ''}</button></div>
-   <div class="actions"><button class="btn" data-act="import">批次匯入</button><button class="btn" data-act="exportnotes">複製新契約備註（去掉姓名）</button><button class="btn" data-act="lock">鎖定</button><button class="btn" data-act="signout">登出</button></div></div>
+   <div class="actions"><button class="btn" data-act="import">批次匯入</button><button class="btn" data-act="exportnotes">複製新契約備註（去掉姓名）</button><button class="btn" data-act="nctest">新契約清單（測試頁）</button><button class="btn" data-act="lock">鎖定</button><button class="btn" data-act="signout">登出</button></div></div>
   </div>`;
 }
 
@@ -1382,6 +1382,7 @@ app.addEventListener('click', async (e) => {
     case 'relgraph': openRelGraph(); break;
     case 'backups': openBackups(); break;
     case 'trash': openTrash(); break;
+    case 'nctest': openNcTest(); break;
     case 'exportnotes': {
       const names = clients().map((x) => x.name).filter((n) => n && n.length >= 2).sort((a2, b2) => b2.length - a2.length);
       const clean = (t) => { let o = String(t || ''); names.forEach((n) => { o = o.split(n).join('○○'); }); return o.replace(/[A-Z][12]\d{8}/g, '［身分證］').replace(/09\d{2}[-\s]?\d{3}[-\s]?\d{3}/g, '［電話］').replace(/[\w.+-]+@[\w.-]+/g, '［Email］'); };
@@ -1944,6 +1945,33 @@ async function showGallery(nav) {
 document.addEventListener('keydown', (e) => { if (!GV || !ov.querySelector('.gv')) return; if (e.key === 'ArrowRight') $('gvNext')?.click(); else if (e.key === 'ArrowLeft') $('gvPrev')?.click(); else if (e.key === 'Escape') $('vClose')?.click(); });
 
 /* ================= 遮罩 ================= */
+/* 新契約清單：測試頁（不存任何資料，關掉就清空） */
+const NC_PREP = [['要問客戶的', ['身分證件', '身高體重', '工作', '法定繼承人（受益人）', '方便電話聯絡的時間']], ['我要帶的', ['金三角', '建議書', '商品簡介、重點條款', '保單健檢（保險存摺）', 'T字障', '好解說', '繳費：自動轉帳、信用卡、讀卡機']]];
+const NC_FLOW = [
+  ['個人', ['基本資料（★工作）', '投保紀錄、保險存摺、保單健檢']],
+  ['健康告知', ['兩個月、一年、兩年、五年的健檢', '看診、用藥、血壓血糖血脂、身高體重', '身體機能', '女性疾病', '其他公司的健康、傷害、長照、重疾險']],
+  ['生調表', ['★婚姻、服役、學歷', '菸酒檳榔安眠藥、身體健康', '★財務狀況（保費來源、家庭收入要跟財務告知一致）', '貸款、解約', '確認身分資料']],
+  ['投資評估', ['外幣收付', '投資型風險適性問卷'], 'inv'],
+  ['高齡', ['高齡量表：婚姻、學歷、健康、居住、投保經驗、投資經驗、可支應年數、生活變化、認知評估', '錄音：要保人、被保人、繳款人誰超過 65 歲就錄誰（傳統、外幣、投資型）'], 'old'],
+  ['電訪提醒', ['先跟客戶說會問：保費、是否健康告知、等待期與免責期、給付上限、商品內容', '本人確認、說明商品、親簽、見簽、契撤權']],
+  ['收尾', ['紙本或電子投保', '開通行動服務、國泰人壽 APP', 'Fitback', 'APP 更新、網路', '截圖存檔']],
+];
+const NC_LOG = ['名單來源', '背景', '關係建立', '缺口與觀念', '預算', '體況與核保', '規劃', '促約關鍵', '結果', '待辦', '下次', '一句話心得（早會用）'];
+let NCT = null;
+function openNcTest() {
+  NCT = NCT || { inv: false, old: false };
+  let n = 0; const box = (t) => `<label class="ncit"><input type="checkbox"><span class="ncno">${++n}</span><span>${esc(t)}</span></label>`;
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>新契約清單 · 測試頁</h2><button class="btn pri" id="ncX">關閉</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:860px;margin:0 auto;width:100%">
+   <div class="note">這是測試頁，可以打勾、打字試用，<b>不會存任何資料</b>，關掉就清空。看哪個編號要改，直接跟 Claude 說。</div>
+   <div class="sec"><h2>這件有沒有：</h2><div class="tags"><button class="tag${NCT.inv ? ' on' : ''}" data-nct="inv">外幣或投資型</button><button class="tag${NCT.old ? ' on' : ''}" data-nct="old">有人超過 65 歲</button></div></div>
+   <div class="sec"><h2>一、準備清單 <span class="sub">見客戶前要準備、要問到的</span></h2><div class="ncgrid">${NC_PREP.map(([g, l]) => `<div><div class="ncg">${g}</div>${l.map(box).join('')}</div>`).join('')}</div></div>
+   <div class="sec"><h2>二、流程提醒 <span class="sub">簽約當下照順序走</span></h2><div class="ncgrid">${NC_FLOW.map(([g, l, k]) => `<div${k ? ` data-nck="${k}"${NCT[k] ? '' : ' hidden'}` : ''}><div class="ncg">${g}${k ? '<span class="ncif">' + (k === 'inv' ? '勾了外幣或投資型才出現' : '勾了超過 65 歲才出現') + '</span>' : ''}</div>${l.map(box).join('')}</div>`).join('')}</div></div>
+   <div class="sec"><h2>三、過程紀錄 <span class="sub">早會分享、自己的業務紀錄</span></h2><div class="ncgrid">${NC_LOG.map((t) => `<label class="f"><span><span class="ncno">${++n}</span>${esc(t)}</span><textarea rows="2"></textarea></label>`).join('')}</div></div>
+  </div></div>`;
+  $('ncX').onclick = () => { NCT = null; ov.innerHTML = ''; };
+  ov.querySelectorAll('[data-nct]').forEach((b) => (b.onclick = () => { const k = b.dataset.nct; NCT[k] = !NCT[k]; b.classList.toggle('on', NCT[k]); ov.querySelector(`[data-nck="${k}"]`).hidden = !NCT[k]; }));
+}
 let MK = null;
 async function openMask(c, i, coll = 'cases', opts = null) { const d = c.docs[i]; const im = await getImg(d.fileId); if (!im) { toast('圖片讀取失敗，請確認網路'); return; } MK = { c, coll, d, im, masks: d.masks.map((m) => ({ ...m })), marks: (d.marks || []).map((m) => ({ ...m, pts: m.pts ? m.pts.map((p) => [...p]) : undefined })), tool: opts?.tool || 'mask', color: MARK_COLORS[0], hist: [], sel: -1, mode: null, start: null, preview: false, opts }; renderMask(); }
 // 遮罩畫面：復原（Ctrl+Z）、刪除鍵、Ctrl+滾輪／雙指縮放
