@@ -112,7 +112,7 @@ const Mock = {
 };
 
 /* ================= 資料庫（記憶體中明文，存檔時加密） ================= */
-const COLLS = ['cases', 'notes', 'files', 'clients', 'settings', 'calls', 'rels'];
+const COLLS = ['cases', 'notes', 'files', 'clients', 'settings', 'calls', 'rels', 'gevents', 'gifts'];
 const emptyDb = () => Object.fromEntries([['v', 1], ...COLLS.map((c) => [c, {}])]);
 const PILL_LABEL = { synced: '✓ 已儲存', saving: '儲存中…', pending: '儲存中…', offline: '⚠ 離線，已存在這台裝置', editing: '編輯中…（離開欄位就會儲存）' };
 function savePill(s) {
@@ -239,6 +239,7 @@ function getImg(fileId) { if (!imgCache.has(fileId)) imgCache.set(fileId, Files.
 
 /* ================= 選項 ================= */
 const ICON = {
+  gift: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12M12 8c-1.5-3-5-4-5-1.5S9.5 8 12 8zm0 0c1.5-3 5-4 5-1.5S14.5 8 12 8z"/></svg>',
   scan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M4 12h16"/></svg>',
   bolt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3 4 14h7l-1 7 9-11h-7l1-7z"/></svg>',
   folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>',
@@ -248,7 +249,7 @@ const ICON = {
   user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
   msg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>',
 };
-const NAV = [['quick', '快查', 'bolt'], ['clients', '客戶', 'user'], ['cases', '案件', 'folder'], ['calls', '電訪', 'phone'], ['refs', '理賠參考', 'book'], ['sop', 'SOP', 'list'], ['tpl', '範本', 'msg']];
+const NAV = [['quick', '快查', 'bolt'], ['clients', '客戶', 'user'], ['cases', '案件', 'folder'], ['calls', '服務件', 'phone'], ['refs', '理賠參考', 'book'], ['sop', 'SOP', 'list'], ['tpl', '範本', 'msg'], ['gifts', '送禮', 'gift']];
 const DEFAULT_CATS = ['理賠', '建議書', '新契約', '保全', '保費', '保校', '服務', '其他'];
 const CATS = [...DEFAULT_CATS]; // 可以在 App 裡自己改，存在設定裡
 // 分類分兩層：大類（照公司拜訪事件）› 小類（案件、SOP、範本共用）
@@ -431,7 +432,7 @@ const TPLGROUPS = ['LINE', '簡訊', '信件', '通話', '其他'];
 const linkify = (html) => html.replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.length > 60 ? u.slice(0, 57) + '…' : u}</a>`);
 
 /* ================= 狀態與畫面 ================= */
-const S = { view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
+const S = { kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
 const cases = () => Vault.all('cases');
 const localDay = (d = new Date()) => { const t = new Date(d); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
 const caseDate = (c) => c.date || (c.createdAt ? localDay(c.createdAt) : '');
@@ -462,6 +463,7 @@ const App = {
     else if (v === 'sop') h += '<section class="wide">' + notesHTML('sop') + '</section>';
     else if (v === 'quick') h += '<section class="wide">' + quickHTML() + '</section>';
     else if (v === 'tpl') h += '<section class="wide">' + notesHTML('tpl') + '</section>';
+    else if (v === 'gifts') h += '<section class="wide">' + giftsHTML() + '</section>';
     h += tabsHTML();
     const keep = document.activeElement?.id, pos = document.activeElement?.selectionStart;
     const sc = [...app.querySelectorAll('section, .list')].map((el) => [el.className, el.scrollTop]), wy = window.scrollY; // 重畫後回到原本的捲動位置
@@ -564,20 +566,35 @@ const calls = () => Vault.all('calls');
 const curCall = () => Vault.get('calls', S.ksel);
 const CALL_ST = ['待撥', '再聯絡', '已約訪', '結案'];
 const RESULTS = [['未接', '再聯絡'], ['已接・聊過', '再聯絡'], ['約訪成功', '已約訪'], ['請我再打', '再聯絡'], ['拒絕', '結案'], ['空號／錯號', '結案']];
+const LEVELS = ['A', 'B', 'C-1', 'C-2', 'C-3'];
+const LEVEL_TIP = { A: 'VIP，高度優先', B: '有預算、有促約機會', 'C-1': '有關鍵人物，預算不夠', 'C-2': '關係好，觀念還沒到', 'C-3': '排斥、忙、沒需求，用寄的' };
+const CALL_CHECKS = [['chkAgent', '服務人員確認'], ['chkHouse', '家戶確認'], ['chkJob', '職業類別確認']];
+const WEEK = '日一二三四五六';
+const slotOf = (iso) => { const t = new Date(iso), h = t.getHours(), wk = t.getDay(); return (wk === 0 || wk === 6 ? '假日' : '平日') + (h < 12 ? '上午' : h < 18 ? '下午' : '晚上'); };
+const callWhen = (iso) => { const t = new Date(iso); return `週${WEEK[t.getDay()]} ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`; };
+function answerStatsHTML(k) { // 每通電話自動記下撥打時間，算出什麼時段比較會接
+  const logs = (k.logs || []).filter((l) => l.at); if (!logs.length) return '';
+  const m = {}; logs.forEach((l) => { const s = slotOf(l.at); m[s] = m[s] || { ok: 0, no: 0 }; ['未接', '空號／錯號'].includes(l.result) ? m[s].no++ : m[s].ok++; });
+  return `<div class="sec"><h2>接聽時段 <span class="sub">照每通電話的撥打時間自動統計</span></h2><div class="tags">${Object.entries(m).sort((a, b) => b[1].ok - a[1].ok).map(([s, v]) => `<span class="tag${v.ok ? ' on' : ''}" style="cursor:default">${s}：接 ${v.ok}・未接 ${v.no}</span>`).join('')}</div></div>`;
+}
 const scripts = () => notes().filter((n) => n.kind === 'script').sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
 const logsOf = (k) => (k.logs || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.at || '').localeCompare(a.at || ''));
 const stCls = (st) => (st === '已約訪' ? 'p-done' : st === '結案' ? 'p-off' : st === '再聯絡' ? 'p-wait' : 'p-go');
-const SAMPLE_SCRIPT = '1. 開場\n您好，請問是○○先生／小姐嗎？我是國泰人壽的服務人員馥瑋，之後由我負責您的保單服務。\n\n2. 確認時間\n請問現在講電話方便嗎？大概佔用您三分鐘。\n\n3. 說明來意\n這次打來主要是幫您確認聯絡資料，順便看看保單有沒有需要協助的地方。\n\n4. 了解近況\n最近家裡、工作有沒有什麼變化？之前有沒有理賠或保單上的問題？\n\n5. 約訪\n我可以帶一份保單整理給您看，您比較方便平日還是週末？\n\n6. 結尾\n謝謝您！我先加您 LINE，有任何保單問題都可以直接找我。';
+const SAMPLE_SCRIPT = '1. 開場、確認服務人員\n您好，請問是○○先生／小姐嗎？我是國泰人壽的服務人員馥瑋，之後由我負責您的保單服務。請問現在講電話方便嗎？大概三分鐘。\n\n2. 年曆\n年底我準備了年曆想送您，方便我親自送過去，還是寄給您比較方便？（確認地址）\n\n3. 確認家戶\n保單上的家人還住一起嗎？要不要也幫他們準備一份？\n\n4. 確認職業\n順便幫您確認一下，工作有沒有換？職業類別不一樣，意外險的理賠可能會受影響。\n\n5. 聊天（生活／工作／理財）\n最近工作忙嗎？家裡大家都好嗎？\n→ 邊聊邊判斷分級：A／B／C-1／C-2／C-3\n\n6. 收尾\n那我們約○月○日送過去，到時候再跟您聯絡。有任何保單的問題都可以直接找我。';
 function callListHTML() {
   const q = S.q.trim(), all = calls(), today = localDay();
   const rank = (k) => ({ 再聯絡: 0, 待撥: 1, 已約訪: 2, 結案: 3 }[k.status] ?? 1);
-  const list = all.filter((k) => (S.kst === '全部' || k.status === S.kst) && (!q || [k.name, k.phone, k.source, k.note].join(' ').includes(q)))
+  const areas = [...new Set(all.map((k) => k.area).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+  if (S.kar !== '全部' && !areas.includes(S.kar)) S.kar = '全部';
+  const list = all.filter((k) => (S.kst === '全部' || k.status === S.kst) && (S.kar === '全部' || k.area === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && (!q || [k.name, k.phone, k.source, k.note, k.addr, k.area].join(' ').includes(q)))
     .sort((a, b) => rank(a) - rank(b) || (a.nextDate || '9999').localeCompare(b.nextDate || '9999') || (a.name || '').localeCompare(b.name || '', 'zh-Hant'));
-  return `<section class="col"><div class="colhead"><h1>電訪 <span style="display:flex;gap:6px"><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="newcall">＋ 新增</button></span></h1>
+  return `<section class="col"><div class="colhead"><h1>服務件 <span style="display:flex;gap:6px"><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="newcall">＋ 新增</button></span></h1>
   <div class="mobsync">${syncHTML()}</div>
-  <input class="search" id="q" placeholder="搜尋姓名、電話、來源" value="${esc(S.q)}" autocomplete="off">
-  <div class="chips">${['全部', ...CALL_ST].map((x) => `<button class="chip${S.kst === x ? ' on' : ''}" data-kst="${x}">${x} <span class="cnt">${x === '全部' ? all.length : all.filter((k) => k.status === x).length}</span></button>`).join('')}</div></div>
-  <div class="list">${list.length ? list.map((k) => { const l = logsOf(k)[0], due = k.nextDate && k.status !== '結案' && k.nextDate <= today; return `<button class="item${k.id === S.ksel ? ' on' : ''}" data-ksel="${k.id}"><span class="t"><span>${esc(k.name || '未填姓名')}</span><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></span><span class="s">${l ? `上次 ${fmtDay(l.date).slice(5)} ${esc(l.result)}` : '還沒打過'}${k.nextDate && k.status !== '結案' ? ` · <span class="${due ? 'due' : ''}">下次 ${fmtDay(k.nextDate).slice(5)}</span>` : ''}${k.source ? ' · ' + esc(k.source) : ''}</span></button>`; }).join('') : `<div class="empty">${all.length ? '沒有符合的對象。' : '還沒有電訪名單。按「匯入名單」一次貼上很多人，或「＋ 新增」一個一個加。'}</div>`}</div></section>`;
+  <input class="search" id="q" placeholder="搜尋姓名、電話、地址、來源" value="${esc(S.q)}" autocomplete="off">
+  <div class="chips">${['全部', ...CALL_ST].map((x) => `<button class="chip${S.kst === x ? ' on' : ''}" data-kst="${x}">${x} <span class="cnt">${x === '全部' ? all.length : all.filter((k) => k.status === x).length}</span></button>`).join('')}</div>
+  <div class="chips subchips"><span class="sub" style="align-self:center">分級</span>${['全部', ...LEVELS, '未分級'].map((x) => `<button class="chip${S.klv === x ? ' on' : ''}" data-klvf="${x}">${x} <span class="cnt">${x === '全部' ? all.length : x === '未分級' ? all.filter((k) => !k.level).length : all.filter((k) => k.level === x).length}</span></button>`).join('')}</div>
+  ${areas.length ? `<div class="chips subchips"><span class="sub" style="align-self:center">地區</span>${['全部', ...areas].map((x) => `<button class="chip${S.kar === x ? ' on' : ''}" data-kar="${esc(x)}">${esc(x)} <span class="cnt">${x === '全部' ? all.length : all.filter((k) => k.area === x).length}</span></button>`).join('')}</div>` : ''}</div>
+  <div class="list">${list.length ? list.map((k) => { const l = logsOf(k)[0], due = k.nextDate && k.status !== '結案' && k.nextDate <= today; return `<button class="item${k.id === S.ksel ? ' on' : ''}" data-ksel="${k.id}"><span class="t"><span>${esc(k.name || '未填姓名')}</span><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></span><span class="s">${k.level ? `<b class="lvl lv-${esc(k.level)}">${esc(k.level)}</b> ` : ''}${k.area ? esc(k.area) + ' · ' : ''}${l ? `上次 ${fmtDay(l.date).slice(5)} ${esc(l.result)}` : '還沒打過'}${k.nextDate && k.status !== '結案' ? ` · <span class="${due ? 'due' : ''}">下次 ${fmtDay(k.nextDate).slice(5)}</span>` : ''}${k.source ? ' · ' + esc(k.source) : ''}</span></button>`; }).join('') : `<div class="empty">${all.length ? '沒有符合的對象。' : '還沒有服務件名單。按「匯入名單」一次貼上很多人，或「＋ 新增」一個一個加。'}</div>`}</div></section>`;
 }
 function callDetailHTML() {
   const k = curCall();
@@ -590,8 +607,23 @@ function callDetailHTML() {
    <label class="f"><span style="display:flex;justify-content:space-between">電話${k.phone ? `<a class="linkbtn" href="tel:${esc(k.phone.replace(/[^0-9+#*]/g, ''))}">撥打</a>` : ''}</span><input id="kf_phone" data-kf="phone" inputmode="tel" value="${esc(k.phone)}"></label>
    <label class="f">狀態<select id="kf_status" data-kf="status">${CALL_ST.map((x) => `<option${x === k.status ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
    <label class="f">下次聯絡<input type="date" id="kf_nextDate" data-kf="nextDate" value="${esc(k.nextDate)}"></label>
-   <label class="f">來源／名單<input id="kf_source" data-kf="source" value="${esc(k.source)}" placeholder="例如：10 月服務件"></label></div>
+   <label class="f">來源／名單<input id="kf_source" data-kf="source" value="${esc(k.source)}" placeholder="例如：10 月服務件"></label>
+   <label class="f">行政區<input id="kf_area" data-kf="area" value="${esc(k.area)}" placeholder="例如：桃園區"></label>
+   <label class="f">方便聯絡時段<input id="kf_slot" data-kf="slot" value="${esc(k.slot)}" placeholder="例如：平日晚上"></label></div>
+   <label class="f">地址<input id="kf_addr" data-kf="addr" value="${esc(k.addr)}"></label>
+   <div class="tags"><button class="tag${k.line ? ' on' : ''}" data-kchk="line">已加 LINE</button></div>
    <label class="f">備註<textarea id="kf_note" class="grow" data-kf="note" rows="2" placeholder="家庭、保單、個性…">${esc(k.note)}</textarea></label></div>
+  <div class="sec"><h2>分級 <span class="sub">打完電話再分，之後可以隨時改</span></h2>
+   <div class="tags">${LEVELS.map((x) => `<button class="tag lvtag${k.level === x ? ' on' : ''}" data-klv="${x}"><b>${x}</b> ${LEVEL_TIP[x]}</button>`).join('')}</div></div>
+  <div class="sec"><h2>電話裡要確認的</h2>
+   <div class="tags">${CALL_CHECKS.map(([key, l]) => `<button class="tag${k[key] ? ' on' : ''}" data-kchk="${key}">${k[key] ? '✓ ' : ''}${l}</button>`).join('')}</div>
+   <label class="f">職業類別／工作<input id="kf_job" data-kf="job" value="${esc(k.job)}" placeholder="例如：第一類、辦公室行政"></label>
+   <label class="f">家戶（同住家人、保單上的人）<input id="kf_house" data-kf="house" value="${esc(k.house)}"></label></div>
+  <details class="sec"${k.addrNote || k.policy ? ' open' : ''}><summary><h2 style="display:inline">打電話前、出發前的功課</h2></summary>
+   <label class="f">住址觀察<input id="kf_addrNote" data-kf="addrNote" value="${esc(k.addrNote)}" placeholder="例如：電梯大樓、透天、社區"></label>
+   <label class="f">保單概況<textarea id="kf_policy" class="grow" data-kf="policy" rows="2" placeholder="有哪些保單、繳費狀況…">${esc(k.policy)}</textarea></label></details>
+  ${giftSectionHTML('call', k.id, k.name)}
+  ${answerStatsHTML(k)}
   <details class="sec script" open><summary><h2 style="display:inline">話術 SOP</h2></summary>
    ${scs.length ? `<div class="actions" style="align-items:center"><select id="kScript" aria-label="選擇話術">${scs.map((x) => `<option value="${x.id}"${x.id === S.script ? ' selected' : ''}>${esc(x.title)}</option>`).join('')}</select><button class="linkbtn" data-act="editscript">編輯</button><button class="linkbtn" data-act="newscript">＋ 新話術</button></div><pre class="scripttext">${esc(sc?.body || '')}</pre>${nimgsHTML(sc || {})}`
     : `<div class="sub">還沒有話術。可以先用範例改成你自己的說法。</div><div class="actions"><button class="btn pri" data-act="samplescript">用範例開始</button><button class="btn" data-act="newscript">自己寫</button></div>`}</details>
@@ -600,7 +632,7 @@ function callDetailHTML() {
    <label class="f">聊了什麼<textarea id="kNote" rows="3" placeholder="重點、對方的需求、約了什麼…"></textarea></label>
    <div class="actions" style="align-items:flex-end"><label class="f" style="width:170px">下次聯絡（可不填）<input type="date" id="kNext"></label><button class="btn pri" data-act="logcall">記錄</button></div></div>
   <div class="sec"><h2>通話紀錄 <span class="sub">${logs.length ? logs.length + ' 通，新的在上面' : ''}</span></h2>
-   ${logs.length ? `<div class="tl">${logs.map((l) => `<div class="tli"><span class="tldot"></span><div class="tlrow"><span class="tldate" style="padding:3px 6px">${fmtDay(l.date)}</span><span class="tltitle" style="padding:3px 6px">${esc(l.result)}</span><button class="tldel" data-kdel="${l.id}" aria-label="刪除這通">✕</button></div>${l.note ? `<div class="lognote">${esc(l.note)}</div>` : ''}</div>`).join('')}</div>` : '<div class="sub">還沒有紀錄。</div>'}</div>
+   ${logs.length ? `<div class="tl">${logs.map((l) => `<div class="tli"><span class="tldot"></span><div class="tlrow"><span class="tldate" style="padding:3px 6px">${fmtDay(l.date)}${l.at ? ' ' + callWhen(l.at) : ''}</span><span class="tltitle" style="padding:3px 6px">${esc(l.result)}</span><button class="tldel" data-kdel="${l.id}" aria-label="刪除這通">✕</button></div>${l.note ? `<div class="lognote">${esc(l.note)}</div>` : ''}</div>`).join('')}</div>` : '<div class="sub">還沒有紀錄。</div>'}</div>
   <div class="actions"><button class="btn pri savebtn" data-act="savenow">儲存</button>${cl ? `<button class="btn" data-goclient="${cl.id}">看客戶資料 ›</button>` : '<button class="btn" data-act="tocliient">轉成客戶</button>'}<button class="btn danger" data-act="delcall">刪除</button></div>`;
 }
 function openCallImport() {
@@ -615,6 +647,103 @@ function openCallImport() {
   $('ciCancel').onclick = () => (ov.innerHTML = '');
   $('ciGo').onclick = () => { const rows = parse(); if (!rows.length) { toast('先貼上名單'); return; } const src = $('ciSrc').value.trim(); rows.forEach((r) => Vault.put('calls', { ...r, source: src, status: '待撥', nextDate: '', logs: [] })); ov.innerHTML = ''; S.kst = '全部'; App.render(); toast(`已匯入 ${rows.length} 位`); };
   setTimeout(() => $('ciText')?.focus(), 50);
+}
+/* ================= 送禮專區：每個活動（年曆、中秋、出國伴手禮…）各有品項庫存和送禮名單 ================= */
+const GIFT_TYPES = [['client', '現有客戶'], ['call', '服務件'], ['other', '其他']];
+const gevents = () => Vault.all('gevents').sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+const giftsOf = (evId) => Vault.all('gifts').filter((g) => g.eventId === evId);
+const giftWho = (g) => (g.who?.type === 'client' ? Vault.get('clients', g.who.id)?.name : g.who?.type === 'call' ? Vault.get('calls', g.who.id)?.name : '') || g.who?.name || '未填';
+const giftItemsText = (g, ev) => Object.entries(g.items || {}).filter(([, n]) => n > 0).map(([id, n]) => { const it = ev?.items.find((x) => x.id === id); return `${it ? it.name || it.code || '品項' : '已刪品項'}×${n}`; }).join('、');
+function giftCounts(ev) {
+  const out = {}; (ev.items || []).forEach((it) => (out[it.id] = { plan: 0, done: 0 }));
+  giftsOf(ev.id).forEach((g) => Object.entries(g.items || {}).forEach(([id, n]) => { if (!out[id]) return; out[id][g.status === '已送' ? 'done' : 'plan'] += n; }));
+  return out;
+}
+function giftsHTML() {
+  const evs = gevents(); if (!evs.some((x) => x.id === S.gev)) S.gev = evs[0]?.id || null; const ev = Vault.get('gevents', S.gev);
+  const head = `<div class="colhead"><h1>送禮專區 <span style="display:flex;gap:6px"><button class="btn" data-act="newgevent">＋ 新活動</button></span></h1>
+   <div class="chips">${evs.map((x) => `<button class="chip${x.id === S.gev ? ' on' : ''}" data-gev="${x.id}">${esc(x.name || '未命名')}</button>`).join('')}</div></div>`;
+  if (!ev) return head + `<div class="empty">還沒有活動。按「＋ 新活動」，例如「2027 年曆」。年曆、中秋、拜訪、出國伴手禮都可以用，下一次可以從舊活動複製品項。</div>`;
+  const cnt = giftCounts(ev), all = giftsOf(ev.id);
+  const list = all.filter((g) => (S.gtype === '全部' || g.who?.type === S.gtype) && (S.gst === '全部' || (g.status || '預備') === S.gst))
+    .sort((a, b) => ((a.status === '已送') - (b.status === '已送')) || GIFT_TYPES.findIndex(([t]) => t === a.who?.type) - GIFT_TYPES.findIndex(([t]) => t === b.who?.type) || (a.group || '').localeCompare(b.group || '', 'zh-Hant') || giftWho(a).localeCompare(giftWho(b), 'zh-Hant'));
+  const items = ev.items || [];
+  return head + `<div class="sec"><h2>${S.gedit ? `<input class="nctxt" data-gevf="name" value="${esc(ev.name)}" style="max-width:260px">` : esc(ev.name || '未命名')} <span style="display:flex;gap:6px"><button class="btn sm${S.gedit ? ' pri' : ''}" data-act="geditems">${S.gedit ? '✓ 改好了' : '✎ 編修品項'}</button></span></h2>
+   ${S.gedit ? `<div class="note">改品項名稱、代號、數量。刪除要按兩次。</div>` : ''}
+   ${items.length ? `<table class="gtable"><thead><tr><th>品項</th><th>代號</th><th>數量</th><th>預備</th><th>已送</th><th>剩下</th>${S.gedit ? '<th></th>' : ''}</tr></thead><tbody>
+    ${items.map((it) => { const c = cnt[it.id] || { plan: 0, done: 0 }, left = (it.qty || 0) - c.plan - c.done; return S.gedit
+      ? `<tr><td><input class="nctxt" data-gitem="${it.id}" data-gf="name" value="${esc(it.name)}" placeholder="例如：小熊維尼桌曆"></td><td><input class="nctxt" data-gitem="${it.id}" data-gf="code" value="${esc(it.code)}" style="width:110px"></td><td><input class="nctxt" data-gitem="${it.id}" data-gf="qty" inputmode="numeric" value="${it.qty || 0}" style="width:64px"></td><td>${c.plan}</td><td>${c.done}</td><td>${left}</td><td><button class="btn sm" data-gidel="${it.id}">✕</button></td></tr>`
+      : `<tr><td>${esc(it.name || '（未命名）')}</td><td class="sub">${esc(it.code)}</td><td>${it.qty || 0}</td><td>${c.plan}</td><td>${c.done}</td><td class="${left < 0 ? 'gneg' : ''}">${left}</td></tr>`; }).join('')}</tbody></table>` : '<div class="sub">還沒有品項。按「編修品項」新增。</div>'}
+   ${S.gedit ? `<div class="actions" style="margin:0"><button class="btn sm" data-act="gaddi">＋ 新增品項</button><button class="btn sm danger" data-act="gevdel">刪除這個活動</button></div>` : ''}
+   ${ev.note || S.gedit ? `<label class="f">備註${S.gedit ? `<input class="nctxt" data-gevf="note" value="${esc(ev.note)}">` : `<span>${esc(ev.note)}</span>`}</label>` : ''}</div>
+  <div class="sec"><h2>送禮名單 <span class="sub">${all.length} 位・已送 ${all.filter((g) => g.status === '已送').length}</span><button class="btn sm pri" data-act="gaddwho">＋ 加對象</button></h2>
+   <div class="chips">${[['全部', '全部'], ...GIFT_TYPES].map(([k, l]) => `<button class="chip${S.gtype === k ? ' on' : ''}" data-gtype="${k}">${l} <span class="cnt">${k === '全部' ? all.length : all.filter((g) => g.who?.type === k).length}</span></button>`).join('')}</div>
+   <div class="chips">${['全部', '預備', '已送'].map((k) => `<button class="chip${S.gst === k ? ' on' : ''}" data-gst="${k}">${k} <span class="cnt">${k === '全部' ? all.length : all.filter((g) => (g.status || '預備') === k).length}</span></button>`).join('')}</div>
+   ${list.length ? `<div class="glist">${list.map((g) => `<div class="grow2${g.status === '已送' ? ' done' : ''}"><button class="gmain" data-gopen="${g.id}"><span class="t"><b>${esc(giftWho(g))}</b><span class="pill p-go">${GIFT_TYPES.find(([t]) => t === g.who?.type)?.[1] || '其他'}</span>${g.group ? `<span class="pill">${esc(g.group)}</span>` : ''}${g.method ? `<span class="sub">${esc(g.method)}</span>` : ''}</span><span class="s">${esc(giftItemsText(g, ev)) || '還沒選品項'}${g.note ? ' · ' + esc(g.note) : ''}</span></button>
+     <button class="btn sm${g.status === '已送' ? ' pri' : ''}" data-gtog="${g.id}">${g.status === '已送' ? '✓ 已送' : '預備中'}</button></div>`).join('')}</div>` : '<div class="sub">這裡還沒有人。</div>'}</div>`;
+}
+function giftSectionHTML(type, id) { // 服務件、客戶頁上的送禮紀錄，跟送禮專區是同一份資料
+  const mine = Vault.all('gifts').filter((g) => g.who?.type === type && g.who?.id === id);
+  return `<div class="sec"><h2>送禮 <span class="sub">跟送禮專區同步</span><button class="btn sm" data-gnew="${type}:${id}">＋ 預備贈送</button></h2>
+   ${mine.length ? mine.map((g) => { const ev = Vault.get('gevents', g.eventId); return `<div class="grow2${g.status === '已送' ? ' done' : ''}"><button class="gmain" data-gopen="${g.id}"><span class="t"><b>${esc(ev?.name || '已刪活動')}</b>${g.method ? `<span class="sub">${esc(g.method)}</span>` : ''}</span><span class="s">${esc(giftItemsText(g, ev)) || '還沒選品項'}</span></button><button class="btn sm${g.status === '已送' ? ' pri' : ''}" data-gtog="${g.id}">${g.status === '已送' ? '✓ 已送' : '預備中'}</button></div>`; }).join('') : '<div class="sub">還沒有送禮紀錄。</div>'}</div>`;
+}
+function openGiftEditor(g, preset) { // 新增或修改一筆送禮
+  const evs = gevents(); if (!evs.length) { toast('先到送禮專區建一個活動'); S.view = 'gifts'; App.render(); return; }
+  const rec = g ? JSON.parse(JSON.stringify(g)) : { eventId: S.gev && Vault.get('gevents', S.gev) ? S.gev : evs[0].id, who: preset || { type: 'call', id: '', name: '' }, group: '', items: {}, method: '', status: '預備', note: '' };
+  const fixedWho = !!(preset && preset.id) || !!g;
+  const draw = () => {
+    const ev = Vault.get('gevents', rec.eventId), cnt = ev ? giftCounts(ev) : {}, t = rec.who.type, q = ($('gwQ')?.value || '').trim();
+    const pool = t === 'client' ? clients() : t === 'call' ? calls() : [];
+    const found = q ? pool.filter((x) => (x.name || '').includes(q)).slice(0, 12) : [];
+    ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${g ? '修改送禮' : '預備贈送'}</h2>${g ? '<button class="btn danger" id="gwDel">刪除</button>' : ''}<button class="btn" id="gwX">取消</button><button class="btn pri" id="gwOk">儲存</button></div>
+    <div class="ovbody" style="flex-direction:column;max-width:680px;margin:0 auto;width:100%">
+     <label class="f">活動<select id="gwEv">${evs.map((x) => `<option value="${x.id}"${x.id === rec.eventId ? ' selected' : ''}>${esc(x.name || '未命名')}</option>`).join('')}</select></label>
+     ${fixedWho ? `<div class="f">對象<div><b>${esc(giftWho(rec))}</b> <span class="pill p-go">${GIFT_TYPES.find(([k]) => k === t)?.[1]}</span></div></div>` : `
+     <div class="f">對象是<div class="tags">${GIFT_TYPES.map(([k, l]) => `<button class="tag${t === k ? ' on' : ''}" data-gwt="${k}">${l}</button>`).join('')}</div></div>
+     ${t === 'other' ? `<label class="f">名字<input id="gwName" value="${esc(rec.who.name)}" placeholder="例如：叔叔、年底聚餐"></label>`
+      : `<label class="f">搜尋${t === 'client' ? '客戶' : '服務件'}<input id="gwQ" value="${esc(q)}" placeholder="打名字" autocomplete="off"></label>
+      ${rec.who.id ? `<div class="sub">已選：<b>${esc(giftWho(rec))}</b></div>` : ''}<div class="list" style="padding:0">${found.map((x) => `<button class="item" data-gwp="${x.id}"><span class="t">${esc(x.name || '未填姓名')}</span></button>`).join('')}</div>`}`}
+     <label class="f">分類（可不填）<input id="gwGroup" value="${esc(rec.group)}" placeholder="例如：朋友、張家、石家"></label>
+     <div class="f">品項和數量<div class="gqty">${(ev?.items || []).map((it) => { const c = cnt[it.id] || { plan: 0, done: 0 }; const left = (it.qty || 0) - c.plan - c.done + ((g && g.eventId === ev.id && g.items?.[it.id]) || 0); return `<div class="gqrow"><span>${esc(it.name || it.code || '品項')} <span class="sub">剩 ${left}</span></span><span class="gstep"><button class="btn sm" data-gq="${it.id}:-1">－</button><b>${rec.items[it.id] || 0}</b><button class="btn sm" data-gq="${it.id}:1">＋</button></span></div>`; }).join('') || '<span class="sub">這個活動還沒有品項，先到送禮專區按「編修品項」。</span>'}</div></div>
+     <div class="f">怎麼送<div class="tags">${['當面', '寄送', '放管理室'].map((m) => `<button class="tag${rec.method === m ? ' on' : ''}" data-gwm="${m}">${m}</button>`).join('')}</div></div>
+     <div class="f">狀態<div class="tags">${['預備', '已送'].map((m) => `<button class="tag${(rec.status || '預備') === m ? ' on' : ''}" data-gws="${m}">${m}</button>`).join('')}</div></div>
+     <label class="f">備註<input id="gwNote" value="${esc(rec.note)}"></label></div></div>`;
+    const keep = () => { rec.group = $('gwGroup').value.trim(); rec.note = $('gwNote').value.trim(); if ($('gwName')) rec.who.name = $('gwName').value.trim(); };
+    $('gwX').onclick = () => { ov.innerHTML = ''; };
+    $('gwEv').onchange = (e) => { keep(); if (e.target.value !== rec.eventId) { rec.eventId = e.target.value; rec.items = {}; } draw(); };
+    if ($('gwQ')) { $('gwQ').oninput = () => { keep(); const v = $('gwQ').value; draw(); const el = $('gwQ'); el.focus(); el.setSelectionRange(v.length, v.length); }; }
+    ov.querySelectorAll('[data-gwt]').forEach((b) => (b.onclick = () => { keep(); rec.who = { type: b.dataset.gwt, id: '', name: '' }; draw(); }));
+    ov.querySelectorAll('[data-gwp]').forEach((b) => (b.onclick = () => { keep(); const x = Vault.get(t === 'client' ? 'clients' : 'calls', b.dataset.gwp); rec.who = { type: t, id: x.id, name: x.name || '' }; $('gwQ').value = ''; draw(); }));
+    ov.querySelectorAll('[data-gq]').forEach((b) => (b.onclick = () => { keep(); const [id, dlt] = b.dataset.gq.split(':'); rec.items[id] = Math.max(0, (rec.items[id] || 0) + +dlt); draw(); }));
+    ov.querySelectorAll('[data-gwm]').forEach((b) => (b.onclick = () => { keep(); rec.method = rec.method === b.dataset.gwm ? '' : b.dataset.gwm; draw(); }));
+    ov.querySelectorAll('[data-gws]').forEach((b) => (b.onclick = () => { keep(); rec.status = b.dataset.gws; draw(); }));
+    if ($('gwDel')) $('gwDel').onclick = (e) => { if (!e.currentTarget.dataset.sure) { e.currentTarget.dataset.sure = 1; e.currentTarget.textContent = '再按一次刪除'; return; } Vault.del('gifts', g.id); ov.innerHTML = ''; App.render(); };
+    $('gwOk').onclick = () => {
+      keep(); if (rec.who.type === 'other' ? !rec.who.name : !rec.who.id) { toast(rec.who.type === 'other' ? '先填名字' : '先搜尋並選一位'); return; }
+      Object.keys(rec.items).forEach((k) => { if (!rec.items[k]) delete rec.items[k]; });
+      if (rec.status === '已送' && !rec.doneDate) rec.doneDate = localDay(); if (rec.status !== '已送') rec.doneDate = '';
+      Vault.put('gifts', g ? Object.assign(g, rec) : rec); ov.innerHTML = ''; App.render(); toast('已儲存');
+    };
+  };
+  draw();
+}
+function openNewGiftEvent() { // 新活動：可以從舊活動複製品項（和名單）
+  const evs = gevents();
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>新活動</h2><button class="btn" id="neX">取消</button><button class="btn pri" id="neOk">建立</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:600px;margin:0 auto;width:100%">
+   <label class="f">活動名稱<input id="neName" placeholder="例如：2027 年曆、中秋、日本伴手禮"></label>
+   ${evs.length ? `<label class="f">從舊活動複製（可不選）<select id="neFrom"><option value="">不用，從空白開始</option>${evs.map((x) => `<option value="${x.id}">${esc(x.name || '未命名')}</option>`).join('')}</select></label>
+   <label class="ncit"><input type="checkbox" id="neItems" checked> 複製品項（數量歸零，再自己填）</label>
+   <label class="ncit"><input type="checkbox" id="neWho"> 名單也一起複製（全部改成預備、不帶品項）</label>` : ''}</div></div>`;
+  $('neX').onclick = () => (ov.innerHTML = '');
+  $('neOk').onclick = () => {
+    const name = $('neName').value.trim(); if (!name) { toast('先取個名字'); return; }
+    const from = $('neFrom')?.value && Vault.get('gevents', $('neFrom').value);
+    const ev = Vault.put('gevents', { name, note: '', items: from && $('neItems').checked ? from.items.map((it) => ({ id: uid(), name: it.name, code: it.code, qty: 0 })) : [] });
+    if (from && $('neWho').checked) giftsOf(from.id).forEach((g) => Vault.put('gifts', { eventId: ev.id, who: { ...g.who }, group: g.group || '', items: {}, method: g.method || '', status: '預備', note: '' }));
+    S.gev = ev.id; S.gedit = !ev.items.length; ov.innerHTML = ''; App.render(); toast('已建立「' + name + '」');
+  };
+  setTimeout(() => $('neName')?.focus(), 50);
 }
 /* 一個案件多位要保人／被保險人 */
 const ROLES = ['要保人', '被保險人', '受益人', '授權人', '其他'];
@@ -1014,6 +1143,7 @@ function clientDetailHTML() {
    <div class="docs${S.showIds ? '' : ' veiled'}">${docIdx(x).map((i) => docTile(docs[i], i, 'c', null)).join('')}
    <button class="adddoc" data-act="cscan">${ICON.scan}拍身分證、存摺<span style="font-size:11px">也可以拖曳圖片、PDF 進來</span></button><button class="adddoc" data-act="pasteimg">📋 貼上圖片</button><label class="adddoc">＋ 上傳 PDF 或圖片<input type="file" id="docUpC" accept="image/*,application/pdf,.pdf" multiple></label></div>
    ${docs.some((d) => !isPdf(d)) ? '<div class="actions"><button class="btn" data-act="cpdf">選頁做成 PDF／列印</button><button class="btn" data-act="cshare">匯出遮罩版</button></div>' : ''}</div>
+  ${giftSectionHTML('client', x.id)}
   <div class="sec"><h2>案件 <button class="btn" data-act="ccase" style="padding:4px 10px;font-size:13px">＋ 新增${S.ccat !== '全部' ? esc(S.ccat) : '案件'}</button></h2>
    ${cs.length ? `<div class="chips">${['全部', ...CATS.filter((k) => cs.some((c) => c.cat === k))].map((k) => `<button class="chip${S.ccat === k ? ' on' : ''}" data-ccat="${k}">${k} <span class="cnt">${k === '全部' ? cs.length : cs.filter((c) => c.cat === k).length}</span></button>`).join('')}</div>` : ''}
    ${cs.length ? cs.filter((c) => S.ccat === '全部' || c.cat === S.ccat).map((c) => `<button class="item${itemCls(c.status)}" data-gocase="${c.id}"><span class="t"><span>${esc(c.title || '未命名')}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span>${casePeopleLine(c, x.id)}<span class="s">${fmtDay(caseDate(c))} · ${esc(caseSummary(c))}${c.next ? ' · 下一步：' + esc(c.next) : ''}</span></button>`).join('') : '<div class="sub">還沒有案件。</div>'}</div>
@@ -1344,6 +1474,17 @@ app.addEventListener('click', async (e) => {
   if (d.docbydate != null) { const rec = d.docbydate === 'c' ? curClient() : cur(); if (rec) { delete rec.docManual; Vault.put(d.docbydate === 'c' ? 'clients' : 'cases', rec); App.render(); toast('已改回依日期排序'); } return; }
   if (d.folder != null) { S.folder = d.folder; App.render(); return; }
   if (d.goclient) { S.ccat = '全部'; S.view = 'clients'; S.csel = d.goclient; S.showDetail = true; S.showIds = false; App.render(); return; }
+  if (d.klvf) { S.klv = d.klvf; App.render(); return; }
+  if (d.kar) { S.kar = d.kar; App.render(); return; }
+  if (d.klv) { const k = curCall(); if (!k) return; k.level = k.level === d.klv ? '' : d.klv; Vault.put('calls', k); App.render(); return; }
+  if (d.kchk) { const k = curCall(); if (!k) return; k[d.kchk] = !k[d.kchk]; Vault.put('calls', k); App.render(); return; }
+  if (d.gev) { S.gev = d.gev; S.gedit = false; App.render(); return; }
+  if (d.gtype) { S.gtype = d.gtype; App.render(); return; }
+  if (d.gst) { S.gst = d.gst; App.render(); return; }
+  if (d.gtog) { const g = Vault.get('gifts', d.gtog); if (!g) return; g.status = g.status === '已送' ? '預備' : '已送'; g.doneDate = g.status === '已送' ? localDay() : ''; Vault.put('gifts', g); App.render(); toast(g.status === '已送' ? '已標成已送' : '改回預備'); return; }
+  if (d.gopen) { openGiftEditor(Vault.get('gifts', d.gopen)); return; }
+  if (d.gnew) { const [type, id] = d.gnew.split(':'); const nm = type === 'call' ? Vault.get('calls', id)?.name : Vault.get('clients', id)?.name; openGiftEditor(null, { type, id, name: nm || '' }); return; }
+  if (d.gidel) { const ev = Vault.get('gevents', S.gev); if (!ev) return; if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = '刪？'; return; } ev.items = ev.items.filter((x) => x.id !== d.gidel); Vault.put('gevents', ev); App.render(); return; }
   if (d.ksel) { S.ksel = d.ksel; S.kres = ''; S.showDetail = true; App.render(); return; }
   if (d.gocall) { S.view = 'calls'; S.ksel = d.gocall; S.kres = ''; S.showDetail = true; App.render(); return; }
   if (d.kst) { S.kst = d.kst; App.render(); return; }
@@ -1405,6 +1546,11 @@ app.addEventListener('click', async (e) => {
     case 'delclient': if (armConfirm(b, '再按一次確定刪除（證件照片也會刪掉）')) { (ccl.docs || []).forEach((doc) => Files.remove(doc.fileId)); cases().filter((c) => c.clientId === ccl.id).forEach((c) => { c.clientId = ''; saveCase(c); }); Vault.all('rels').filter((r) => r.a === ccl.id || r.b === ccl.id).forEach((r) => Vault.del('rels', r.id)); Vault.del('clients', ccl.id); S.csel = null; S.showDetail = false; App.render(); } break;
     case 'newcall': { const k = Vault.put('calls', { name: '', phone: '', source: '', status: '待撥', nextDate: '', logs: [] }); S.ksel = k.id; S.kres = ''; S.showDetail = true; S.view = 'calls'; App.render(); setTimeout(() => $('kf_name')?.focus(), 50); break; }
     case 'importcalls': openCallImport(); break;
+    case 'newgevent': openNewGiftEvent(); break;
+    case 'gaddwho': openGiftEditor(null, null); break;
+    case 'geditems': S.gedit = !S.gedit; App.render(); break;
+    case 'gaddi': { const ev = Vault.get('gevents', S.gev); if (!ev) break; ev.items = [...(ev.items || []), { id: uid(), name: '', code: '', qty: 0 }]; Vault.put('gevents', ev); App.render(); break; }
+    case 'gevdel': { const ev = Vault.get('gevents', S.gev); if (!ev) break; if (!armConfirm(b, '連名單一起刪除，再按一次')) break; Vault.all('gifts').filter((g) => g.eventId === ev.id).forEach((g) => Vault.del('gifts', g.id)); Vault.del('gevents', ev.id); S.gev = null; App.render(); break; }
     case 'samplescript': { const n = Vault.put('notes', { kind: 'script', group: '電訪', title: '服務件電訪', body: SAMPLE_SCRIPT, images: [] }); S.script = n.id; editNote(n.id); break; }
     case 'newscript': { const n = Vault.put('notes', { kind: 'script', group: '電訪', title: '', body: '', images: [] }); S.script = n.id; editNote(n.id, true); break; }
     case 'editscript': if (S.script) editNote(S.script); break;
@@ -1523,6 +1669,10 @@ app.addEventListener('input', (e) => {
     const ns = notes().filter((n) => (n.title + n.body).includes(q)).slice(0, 6), cs = cases().filter((c) => [c.client, c.title, c.notes, c.next].join(' ').includes(q)).slice(0, 6);
     box.innerHTML = `<div class="cards" style="margin-bottom:6px">${ks.map((x) => `<button class="item" data-gocall="${x.id}"><span class="t">${esc(x.name || '未填姓名')}</span><span class="s">電訪 · ${esc(x.status)}</span></button>`).join('')}${cls.map((x) => `<button class="item" data-goclient="${x.id}"><span class="t">${esc(x.name || '未填姓名')}</span><span class="s">客戶</span></button>`).join('')}${ns.map((n) => `<div class="card"><h3><span>${esc(n.title)}</span><span class="sub">${esc(n.group)}</span></h3><pre>${esc(n.body)}</pre></div>`).join('')}${cs.map((c) => `<button class="item${itemCls(c.status)}" data-gocase="${c.id}"><span class="t">${esc(c.client)} · ${esc(c.title)}</span><span class="s">${esc(caseSummary(c))}</span></button>`).join('')}</div>${!ks.length && !cls.length && !ns.length && !cs.length ? '<div class="sub">找不到。</div>' : ''}`;
   }
+});
+app.addEventListener('change', (e) => { // 送禮：品項和活動名稱
+  const gi = e.target.dataset?.gitem; if (gi) { const ev = Vault.get('gevents', S.gev); const it = ev?.items.find((x) => x.id === gi); if (!it) return; const f = e.target.dataset.gf; it[f] = f === 'qty' ? Math.max(0, parseInt(e.target.value, 10) || 0) : e.target.value.trim(); Vault.put('gevents', ev); App.render(); return; }
+  const gef = e.target.dataset?.gevf; if (gef) { const ev = Vault.get('gevents', S.gev); if (!ev) return; ev[gef] = e.target.value.trim(); Vault.put('gevents', ev); App.render(); }
 });
 app.addEventListener('compositionend', (e) => { if (e.target.id === 'q') { S.q = e.target.value; App.render(); } });
 const ov = $('ovRoot');
