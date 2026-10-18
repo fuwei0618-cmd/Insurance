@@ -1032,7 +1032,7 @@ function docTile(d, i, p, folders) { // p：'' 案件、'c' 客戶
   const media = isPdf(d) ? `<div class="pdftile">PDF<small>${esc(d.name)}</small></div>` : `<canvas data-${p}thumb="${i}" width="240" height="320"></canvas>`;
   const mv = folders ? `<select class="mv" data-movedoc="${i}" aria-label="移到資料夾"><option value="">未分類</option>${folders.map((f) => `<option${f === d.folder ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select>` : '';
   const dt = `<input type="date" class="ddate" data-${p}docdate="${i}" value="${esc(d.date || '')}" aria-label="文件日期">`;
-  return `<div class="doc" data-di="${i}" data-dp="${p}">${media}${dt}${d.note ? `<div class="docnote" title="${esc(d.note)}">📝 ${esc(d.note)}</div>` : ''}<div class="bar"><button class="docname" data-${p}rename="${i}" title="改名">${esc(d.name)}${d.masks?.length ? ' · 已遮 ' + d.masks.length : ''}</button><span><button data-${p}view="${i}" hidden>看</button>${isPdf(d) ? '' : `<button data-${p}rot="${i}" aria-label="向右轉 90 度" title="轉方向">↻</button><button data-${p}mask="${i}">遮罩</button>`}<button data-${p}deldoc="${i}" aria-label="刪除文件">刪</button></span></div>${mv}</div>`;
+  return `<div class="doc" data-di="${i}" data-dp="${p}">${media}${dt}${d.note ? `<div class="docnote" title="${esc(d.note)}">📝 ${esc(d.note)}</div>` : ''}<div class="bar"><button class="docname" data-${p}rename="${i}" title="改名">${esc(d.name)}${d.masks?.length ? ' · 已遮 ' + d.masks.length : ''}</button><span><button data-${p}view="${i}" hidden>看</button>${isPdf(d) ? '' : `<button data-${p}rot="${i}" aria-label="向右轉 90 度" title="轉方向">↻</button><button data-${p}mask="${i}">標註</button>`}<button data-${p}deldoc="${i}" aria-label="刪除文件">刪</button></span></div>${mv}</div>`;
 }
 const STEPS = {
   新契約: ['建議書', 'keyman 再解說', '簽約', '送件', '文件補全', '核保通過', '簽收回條', '紙本保單'],
@@ -2097,7 +2097,7 @@ document.addEventListener('wheel', (e) => {
 function renderMask() {
   const st0 = document.querySelector('#ovRoot .stage'), keepScroll = st0 ? [st0.scrollLeft, st0.scrollTop] : null; // 重畫後留在原本放大的位置
   if (MK.note == null) MK.note = MK.d.note || ''; MK.zoom = MK.zoom || 1;
-  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${MK.opts?.title || '遮罩'} · ${esc(MK.d.name)}</h2><button class="btn" id="mkCancel">取消</button><button class="btn pri" id="mkSave">儲存</button></div>
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${MK.opts?.title || '標註'} · ${esc(MK.d.name)}</h2><button class="btn" id="mkCancel">取消</button><button class="btn pri" id="mkSave">儲存</button></div>
   <div class="ovbody"><div class="stage${MK.zoom > 1 ? ' zoomed' : ''}${MK.pan ? ' panning' : ''}"><canvas id="mkCv"></canvas></div>
   <div class="side"><div class="actions zoombar" style="margin:0"><button class="btn" id="mkZo" aria-label="縮小" ${MK.zoom > 1 ? '' : 'disabled'}>－</button><span class="sub">${Math.round(MK.zoom * 100)}%</span><button class="btn" id="mkZi" aria-label="放大" ${MK.zoom < 4 ? '' : 'disabled'}>＋</button>${MK.zoom > 1 ? `<button class="btn${MK.pan ? ' on' : ''}" id="mkPan">${MK.pan ? '✋ 移動中' : '✋ 移動畫面'}</button>` : ''}</div>
   <div class="mktools">${[['mask', '▭ 遮罩'], ['pen', '✏️ 畫筆'], ['circle', '◯ 圈選'], ['stamp', '🔖 印章'], ['erase', '⌫ 橡皮擦']].map(([k, l]) => `<button class="btn${MK.tool === k && !MK.pan ? ' on' : ''}" data-mktool="${k}">${l}</button>`).join('')}</div>
