@@ -1245,10 +1245,13 @@ function drawDiscFiles() {
   const box = $('dFiles'); if (!box || !DSC) return;
   const sbox = $('dSlots');
   if (sbox) {
-    sbox.innerHTML = discSlotsShown(DSC.r).map(([k, t, d]) => { const i = (DSC.r.files || []).findIndex((f) => f.slot === k), f = DSC.r.files?.[i];
+    const slot = (k, t, d) => { const i = (DSC.r.files || []).findIndex((f) => f.slot === k), f = DSC.r.files?.[i];
       return `<div class="dslot${f ? ' ok' : ''}"><div class="dslh"><b>${t}</b><span>${d}</span></div>
        ${f ? `<div class="nimgwrap">${f.type === 'pdf' ? `<button class="nimg pdfmini" data-dv="${i}">PDF</button>` : `<button class="nimg" data-dv="${i}"><img data-fid="${f.fileId}" alt=""></button>`}<button class="nimgdel" data-dd="${i}" aria-label="移除">✕</button></div>` : '<div class="dsmiss">還沒拍</div>'}
-       <div class="actions" style="margin:0"><button type="button" class="btn sm" data-dsp="${k}">選照片</button><button type="button" class="btn sm" data-dsc="${k}">📋 貼上</button></div></div>`; }).join('');
+       <div class="dsbtn"><button type="button" class="btn sm" data-dsp="${k}">選照片</button><button type="button" class="btn sm" data-dsc="${k}">📋 貼上</button></div></div>`; };
+    const ps = DISC_SLOTS.filter(([k]) => k !== 'gen'), pDone = ps.filter(([k]) => (DSC.r.files || []).some((f) => f.slot === k)).length;
+    const wasOpen = sbox.querySelector('details')?.open;
+    sbox.innerHTML = slot(...DISC_SLOTS[0]) + (DSC.r.needAssets !== false ? `<details class="dsgroup"${(wasOpen ?? pDone < ps.length) ? ' open' : ''}><summary><b>財產版</b> <span class="${pDone < ps.length ? 'dsbad' : 'dsgood'}">${pDone}/${ps.length}${pDone < ps.length ? ' 還沒拍齊' : ' 齊全'}</span></summary><div class="dscol">${ps.map((x) => slot(...x)).join('')}</div></details>` : '');
     sbox.querySelectorAll('[data-dsp]').forEach((b) => (b.onclick = () => { DSC.slotPick = b.dataset.dsp; $('dSlotIn').click(); }));
     sbox.querySelectorAll('[data-dsc]').forEach((b) => (b.onclick = async () => { const fs = await clipFiles(); if (fs.length) discAddFiles(fs.slice(0, 1), ['gen', 'p3'].includes(b.dataset.dsc), b.dataset.dsc); }));
   }

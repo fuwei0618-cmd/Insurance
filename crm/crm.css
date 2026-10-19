@@ -523,9 +523,18 @@ select.linktpl{border:1px solid var(--line);background:var(--surface);border-rad
 .gsheet tr.gsvc td{background:var(--surface)}
 .ah{font-size:13px;color:var(--muted);font-weight:500;margin:10px 0 0;padding-top:8px;border-top:1px solid var(--line)}
 .are{border:1px dashed var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
-.dslots{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.dslots{display:flex;flex-direction:column;gap:10px}
 .dslot{border:2px dashed #E59A9A;border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:6px;background:var(--card)}
 .dslot.ok{border:1px solid var(--line)}
 .dslh{display:flex;flex-direction:column;gap:2px}.dslh b{font-size:14px}.dslh span{font-size:12px;color:var(--muted);line-height:1.4}
 .dsmiss{height:96px;border-radius:8px;background:#FCEBEB;color:#A32D2D;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600}
 .dslot .nimgwrap .nimg{width:100%;height:96px}.dslot .nimg img{width:100%;height:96px;object-fit:cover;object-position:top}
+.dslot{flex-direction:row;align-items:center;gap:12px}
+.dslot .dslh{flex:1;min-width:0}
+.dslot .nimgwrap,.dslot .dsmiss{width:150px;flex:none}
+.dsbtn{display:flex;flex-direction:column;gap:6px;flex:none}
+.dsgroup{border:1px solid var(--line);border-radius:12px;padding:6px 10px}
+.dsgroup summary{cursor:pointer;padding:6px 0;font-size:15px}
+.dscol{display:flex;flex-direction:column;gap:8px;padding:4px 0 6px}
+.dsbad{color:#A32D2D;font-size:13px;margin-left:6px}.dsgood{color:var(--muted);font-size:13px;margin-left:6px}
+@media (max-width:600px){.dslot{flex-wrap:wrap}.dslot .nimgwrap,.dslot .dsmiss{width:100%}.dsbtn{flex-direction:row}}
