@@ -1093,6 +1093,65 @@ function showCrmForm(data) {
 }
 /* ================= 告知資料（財務、體況） ================= */
 const ASSETS = [['job', '職業／職稱', ''], ['company', '公司', ''], ['deposit', '存款', '萬'], ['securities', '股票・基金', '萬'], ['realEstate', '不動產', '萬'], ['policyValue', '保單價值', '萬'], ['otherAssets', '其他資產', '萬'], ['mortgage', '房貸', '萬'], ['otherDebt', '信貸・其他負債', '萬']];
+/* 財產明細：照國泰「財務狀況告知書」的順序。舊資料（職業、公司、存款、股票、不動產、房貸、信貸）自動搬到新格子 */
+const A_PURPOSE = ['保障', '子女教育經費', '退休規劃', '房屋貸款', '其他'];
+const A_PREMSRC = ['薪資', '退休金', '閒置資金', '投資收益', '租金收入', '貸款（含保單借款）', '保險單解約金、部分提領、縮小保額', '其他'];
+const A_REL = ['配偶', '父母', '子女', '祖孫', '其他'];
+const A_RETYPE = ['無', '土地', '大樓', '公寓', '透天', '其他'];
+const A_READDR = ['同要保人住所', '同被保人住所', '其他'];
+const A_LOANS = ['房屋貸款', '保險單借款', '其他貸款'];
+function assetsMigrate(a0) {
+  const a = { ...(a0 || {}) };
+  if (a.job && !a.title) a.title = a.job; delete a.job;
+  if (a.securities && !a.stock) { a.stock = '是'; a.stockAmt = a.securities; } delete a.securities;
+  if (a.realEstate && !a.re1value) a.re1value = a.realEstate; delete a.realEstate;
+  const loans = new Set(a.loans || []); if (a.mortgage) loans.add('房屋貸款'); if (a.otherDebt) loans.add('其他貸款'); if (loans.size) a.loans = [...loans];
+  Object.keys(a).forEach((k) => { if (a[k] === '' || (Array.isArray(a[k]) && !a[k].length)) delete a[k]; });
+  return a;
+}
+function assetsFormHTML(a, inp) {
+  const checks = (key, opts) => `<div class="tags achk" data-achk="${key}">${opts.map((o) => `<button type="button" class="tag${(a[key] || []).includes(o) ? ' on' : ''}" data-t="${esc(o)}">${esc(o)}</button>`).join('')}</div>`;
+  const radio = (key, opts) => `<div class="tags arad" data-arad="${key}">${opts.map((o) => `<button type="button" class="tag${a[key] === o ? ' on' : ''}" data-t="${esc(o)}">${esc(o)}</button>`).join('')}</div>`;
+  const re = (n) => `<div class="are"><div class="f">不動產 ${n}${radio('re' + n + 'type', A_RETYPE)}</div>
+    <div class="f">地址${radio('re' + n + 'addrType', A_READDR)}</div>${inp('a_re' + n + 'addr', a['re' + n + 'addr'], '地址（選其他時填）', '')}
+    <div class="dgrid">${inp('a_re' + n + 'value', a['re' + n + 'value'], '市值', '萬', 'inputmode="decimal"')}${inp('a_re' + n + 'size', a['re' + n + 'size'], '坪數', '坪', 'inputmode="decimal"')}${inp('a_re' + n + 'age', a['re' + n + 'age'], '屋齡', '年', 'inputmode="decimal"')}</div></div>`;
+  return `<div class="f">投保目的（可複選）${checks('purpose', A_PURPOSE)}</div>${inp('a_purposeOther', a.purposeOther, '投保目的：其他', '')}
+   <div class="f">保費來源（可複選）<span class="sub" style="color:var(--warn)">生調表要跟這裡一致才能上傳</span>${checks('premSrc', A_PREMSRC)}</div>${inp('a_premSrcOther', a.premSrcOther, '保費來源：其他', '')}
+   <h3 class="ah">身份角色別</h3>
+   <div class="f">身份${radio('role', ['要保人', '主要經濟來源者'])}<span class="sub">要保人未成年或沒有經濟能力時，填主要經濟來源者的工作和財務</span></div>
+   <div class="f">主要經濟者與被保人關係${radio('earnerRel', A_REL)}</div>
+   <div class="dgrid">${inp('a_earnerRelOther', a.earnerRelOther, '關係：其他', '')}${inp('a_earnerName', a.earnerName, '主要經濟者姓名', '')}${inp('a_earnerId', a.earnerId, '主要經濟者身分證字號', '')}</div>
+   <h3 class="ah">工作狀況</h3>
+   <div class="dgrid">${inp('a_company', a.company, '公司名稱', '')}${inp('a_business', a.business, '營業項目', '')}${inp('a_title', a.title, '職稱', '')}${inp('a_years', a.years, '年資', '年', 'inputmode="decimal"')}</div>
+   ${inp('a_jobDesc', a.jobDesc, '工作內容', '')}<div class="f">公司股東${radio('shareholder', ['否', '是'])}</div>
+   <h3 class="ah">財務狀況</h3>
+   <div class="sub">工作年收入、其他年收入、家庭收入用上面「基本告知」的數字，不用再填一次。家庭收入選要保人時，生調表要一致。</div>
+   <div class="dgrid">${inp('a_bank1', a.bank1, '往來銀行一', '')}${inp('a_bank2', a.bank2, '往來銀行二', '')}${inp('a_deposit', a.deposit, '存款總額', '萬', 'inputmode="decimal"')}</div>
+   <div class="f">股票、基金、債券${radio('stock', ['否', '是'])}</div>${inp('a_stockAmt', a.stockAmt, '股票、基金、債券金額（自己參考，可不填）', '萬', 'inputmode="decimal"')}
+   ${re(1)}${re(2)}
+   <div class="f">借款（可複選）${checks('loans', A_LOANS)}</div>
+   <div class="dgrid">${inp('a_mortgage', a.mortgage, '房貸金額（自己參考）', '萬', 'inputmode="decimal"')}${inp('a_otherDebt', a.otherDebt, '其他借款金額（自己參考）', '萬', 'inputmode="decimal"')}</div>
+   <h3 class="ah">自己參考（公司表單沒有）</h3>
+   <div class="dgrid">${inp('a_policyValue', a.policyValue, '保單價值', '萬', 'inputmode="decimal"')}${inp('a_otherAssets', a.otherAssets, '其他資產', '萬', 'inputmode="decimal"')}</div>
+   ${inp('a_explain', a.explain, '資金來源／說明', '')}`;
+}
+const A_TEXT = ['purposeOther', 'premSrcOther', 'earnerRelOther', 'earnerName', 'earnerId', 'company', 'business', 'title', 'years', 'jobDesc', 'bank1', 'bank2', 'deposit', 'stockAmt', 're1addr', 're1value', 're1size', 're1age', 're2addr', 're2value', 're2size', 're2age', 'mortgage', 'otherDebt', 'policyValue', 'otherAssets', 'explain'];
+function assetsRead(g) {
+  const a = {}; A_TEXT.forEach((k) => { const v = g('a_' + k); if (v !== '') a[k] = v; });
+  ov.querySelectorAll('[data-achk]').forEach((box) => { const v = [...box.querySelectorAll('.tag.on')].map((x) => x.dataset.t); if (v.length) a[box.dataset.achk] = v; });
+  ov.querySelectorAll('[data-arad]').forEach((box) => { const v = box.querySelector('.tag.on')?.dataset.t; if (v) a[box.dataset.arad] = v; });
+  return a;
+}
+function assetsSummaryHTML(a0) {
+  const a = assetsMigrate(a0); if (!Object.keys(a).length) return '';
+  const kv = (l, v, u = '') => (v ? `<div class="kv"><span>${l}</span><b>${esc(Array.isArray(v) ? v.join('、') : v)}${u ? ' ' + u : ''}</b></div>` : '');
+  const re = (n) => a['re' + n + 'type'] && a['re' + n + 'type'] !== '無' ? kv('不動產 ' + n, [a['re' + n + 'type'], a['re' + n + 'addr'] || (a['re' + n + 'addrType'] !== '其他' ? a['re' + n + 'addrType'] : ''), a['re' + n + 'value'] ? '市值 ' + a['re' + n + 'value'] + ' 萬' : '', a['re' + n + 'size'] ? a['re' + n + 'size'] + ' 坪' : '', a['re' + n + 'age'] ? '屋齡 ' + a['re' + n + 'age'] + ' 年' : ''].filter(Boolean).join('・')) : kv('不動產 ' + n, a['re' + n + 'value'] ? '市值 ' + a['re' + n + 'value'] + ' 萬' : '');
+  return `<div class="sub">財產明細</div><div class="kvs">${kv('投保目的', [...(a.purpose || []).filter((x) => x !== '其他'), a.purposeOther].filter(Boolean))}${kv('保費來源', [...(a.premSrc || []).filter((x) => x !== '其他'), a.premSrcOther].filter(Boolean))}
+   ${kv('身份', a.role)}${kv('主要經濟者', [a.earnerName, a.earnerRel === '其他' ? a.earnerRelOther : a.earnerRel].filter(Boolean).join('・'))}
+   ${kv('公司', a.company)}${kv('營業項目', a.business)}${kv('職稱', a.title)}${kv('年資', a.years, '年')}${kv('工作內容', a.jobDesc)}${kv('公司股東', a.shareholder)}
+   ${kv('往來銀行', [a.bank1, a.bank2].filter(Boolean).join('、'))}${kv('存款總額', a.deposit, '萬')}${kv('股票基金債券', a.stock ? a.stock + (a.stockAmt ? '（' + a.stockAmt + ' 萬）' : '') : a.stockAmt ? a.stockAmt + ' 萬' : '')}
+   ${re(1)}${re(2)}${kv('借款', a.loans)}${kv('房貸', a.mortgage, '萬')}${kv('其他借款', a.otherDebt, '萬')}${kv('保單價值', a.policyValue, '萬')}${kv('其他資產', a.otherAssets, '萬')}</div>${a.explain ? `<div class="sub">說明：${esc(a.explain)}</div>` : ''}`;
+}
 const FIN = [['workIncome', '工作年收入', '萬'], ['otherIncome', '其他年收入', '萬'], ['personalAssets', '個人資產', '萬'], ['familyIncome', '家庭年收入', '萬'], ['familyAssets', '家庭資產', '萬']];
 function parseFin(raw) {
   const t = String(raw || '').replace(/[\uFF01-\uFF5E]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
@@ -1108,7 +1167,7 @@ function discSummary(r) {
   const b = bmi(h.height, h.weight);
   return `${fin || f.mainEarner || f.incomeSrc ? `<div class="sub">財務</div><div class="kvs">${fin}${f.incomeSrc ? `<div class="kv"><span>收入來源</span><b>${esc(f.incomeSrc)}</b></div>` : ''}${f.mainEarner ? `<div class="kv"><span>主要經濟來源</span><b>${esc(f.mainEarner)}${f.mainEarner === '否' && f.relation ? '（主要經濟者是' + esc(f.relation) + '）' : ''}</b></div>` : ''}</div>${f.reason ? `<div class="sub">收入不一致原因：${esc(f.reason)}</div>` : ''}` : ''}
    ${h.height || h.weight || h.smoke || h.drink || h.items ? `<div class="sub">體況</div><div class="kvs">${h.height ? `<div class="kv"><span>身高</span><b>${esc(h.height)} cm</b></div>` : ''}${h.weight ? `<div class="kv"><span>體重</span><b>${esc(h.weight)} kg${b ? '（BMI ' + b + '）' : ''}</b></div>` : ''}${h.smoke ? `<div class="kv"><span>吸菸</span><b>${esc(h.smoke)}</b></div>` : ''}${h.drink ? `<div class="kv"><span>飲酒</span><b>${esc(h.drink)}</b></div>` : ''}</div>${h.items ? `<pre class="discpre">${esc(h.items)}</pre>` : ''}` : ''}
-   ${(() => { const a = r.assets || {}; const kv = ASSETS.filter(([k]) => a[k]).map(([k, l, u]) => `<div class="kv"><span>${l}</span><b>${esc(a[k])}${u ? ' ' + u : ''}</b></div>`).join(''); return kv || a.explain ? `<div class="sub">財產明細</div><div class="kvs">${kv}</div>${a.explain ? `<div class="sub">說明：${esc(a.explain)}</div>` : ''}` : ''; })()}
+   ${assetsSummaryHTML(r.assets)}
    ${r.note ? `<pre class="discpre">${esc(r.note)}</pre>` : ''}
    ${(r.files || []).length ? `<div class="nimgs">${r.files.map((f, i) => f.type === 'pdf' ? `<button class="nimg pdfmini" data-discfile="${r.id}:${i}">PDF</button>` : `<button class="nimg" data-discfile="${r.id}:${i}"><img data-fid="${f.fileId}" alt=""></button>`).join('')}</div>` : ''}`;
 }
@@ -1127,7 +1186,7 @@ function openDisclosure(cl, id, caseId) {
   if (!base) { const prev = (cl.disclosures || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]; base = { id: uid(), date: localDay(), caseId: caseId || '', fin: { ...(prev?.fin || {}) }, health: { ...(prev?.health || {}) }, assets: { ...(prev?.assets || {}) }, note: '', files: [] }; }
   DSC = { cl, r: base, isNew: !old };
   const f = base.fin, h = base.health, a = base.assets || {};
-  const hasAssets = ASSETS.some(([k]) => a[k]), hasMore = h.smoke || h.drink || h.items || f.reason || base.note;
+  const hasAssets = Object.keys(assetsMigrate(a)).length > 0, hasMore = h.smoke || h.drink || h.items || f.reason || base.note;
   const inp = (k, v, l, u, extra = '') => `<label class="f">${l}<span class="unit"><input id="d_${k}" value="${esc(v ?? '')}" ${extra}>${u ? `<i>${u}</i>` : ''}</span></label>`;
   const cases2 = clientCases(cl);
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${old ? '編輯' : '新增'}告知資料 · ${esc(cl.name || '')}</h2><button class="btn" id="dX">取消</button><button class="btn pri" id="dSave">儲存</button></div>
@@ -1143,8 +1202,7 @@ function openDisclosure(cl, id, caseId) {
      <label class="f">收入來源<select id="d_incomeSrc">${['', '無', '薪津', '營業收入', '投資', '其他'].map((o) => `<option${o === (f.incomeSrc || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></label></div>
     ${inp('reason', f.reason, '收入不一致原因', '')}</div>
    <details class="sec fold"${hasAssets ? ' open' : ''}><summary><h2>財產明細 <span class="sub">需要交代財產時（財務狀況告知書）</span></h2></summary>
-    <div class="dgrid">${ASSETS.map(([k, l, u]) => inp('a_' + k, a[k], l, u, u ? 'inputmode="decimal"' : '')).join('')}</div>
-    ${inp('a_explain', a.explain, '資金來源／說明', '')}</details>
+    ${assetsFormHTML(assetsMigrate(a), inp)}</details>
    <details class="sec fold"${hasMore ? ' open' : ''}><summary><h2>體況詳細・其他 <span class="sub">不熟的客戶再填</span></h2></summary>
     <div class="dgrid"><label class="f">吸菸<select id="d_smoke">${['', '無', '有', '已戒'].map((o) => `<option${o === (h.smoke || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></label>
      <label class="f">飲酒<select id="d_drink">${['', '無', '偶爾', '經常'].map((o) => `<option${o === (h.drink || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></label></div>
@@ -1155,13 +1213,15 @@ function openDisclosure(cl, id, caseId) {
     <div class="actions"><label class="btn">＋ 加照片或 PDF<input type="file" id="dAdd" accept="image/*,application/pdf,.pdf" multiple></label><button class="btn" id="dPaste">📋 貼上</button></div></div>
   </div></div>`;
   drawDiscFiles(); fitNotes();
+  ov.querySelectorAll('[data-achk]').forEach((box) => (box.onclick = (e) => { const t = e.target.closest('[data-t]'); if (t) t.classList.toggle('on'); }));
+  ov.querySelectorAll('[data-arad]').forEach((box) => (box.onclick = (e) => { const t = e.target.closest('[data-t]'); if (!t) return; const on = t.classList.contains('on'); box.querySelectorAll('.tag').forEach((x) => x.classList.remove('on')); if (!on) t.classList.add('on'); }));
   $('dX').onclick = () => { if (DSC.isNew) (DSC.r.files || []).forEach((x) => Files.remove(x.fileId)); DSC = null; ov.innerHTML = ''; };
   $('dSave').onclick = () => {
     const r = DSC.r, g = (k) => $('d_' + k)?.value.trim() ?? '';
     r.date = g('date') || localDay(); r.caseId = $('d_case').value; r.note = g('note');
     r.fin = Object.fromEntries([...FIN.map(([k]) => [k, g(k)]), ['mainEarner', g('mainEarner')], ['relation', g('relation')], ['incomeSrc', g('incomeSrc')], ['reason', g('reason')]].filter(([, v]) => v !== ''));
     r.health = Object.fromEntries([['height', g('height')], ['weight', g('weight')], ['smoke', g('smoke')], ['drink', g('drink')], ['items', $('d_items').value.trim()]].filter(([, v]) => v !== ''));
-    r.assets = Object.fromEntries([...ASSETS.map(([k]) => [k, g('a_' + k)]), ['explain', g('a_explain')]].filter(([, v]) => v !== ''));
+    r.assets = assetsRead(g);
     const c2 = DSC.cl; c2.disclosures = [...(c2.disclosures || []).filter((x) => x.id !== r.id), r]; Vault.put('clients', c2);
     DSC = null; ov.innerHTML = ''; S.view = 'clients'; S.csel = c2.id; S.showDetail = true; S.showHealth = true; App.render(); toast('告知資料已儲存');
   };

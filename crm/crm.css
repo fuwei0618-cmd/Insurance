@@ -521,3 +521,5 @@ select.linktpl{border:1px solid var(--line);background:var(--surface);border-rad
 .gsheet .gn,.gsheet select.gcell{border-color:var(--line)}
 .gtype{min-width:84px;font-size:13px}
 .gsheet tr.gsvc td{background:var(--surface)}
+.ah{font-size:13px;color:var(--muted);font-weight:500;margin:10px 0 0;padding-top:8px;border-top:1px solid var(--line)}
+.are{border:1px dashed var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
