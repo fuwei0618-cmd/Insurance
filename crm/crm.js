@@ -1163,9 +1163,11 @@ function parseFin(raw) {
 const bmi = (h, w) => { h = +h; w = +w; return h > 50 && w > 10 ? (w / (h / 100) ** 2).toFixed(1) : ''; };
 function discSummary(r) {
   const f = r.fin || {}, h = r.health || {};
+  const shown = discSlotsShown(r), have = shown.filter(([k]) => (r.files || []).some((x) => x.slot === k)), miss = shown.filter((x) => !have.includes(x));
+  const shotLine = `<div class="sub" style="${miss.length ? 'color:#A32D2D' : ''}">截圖 ${have.length}/${shown.length}${miss.length ? '・還沒拍：' + miss.map(([, t]) => t).join('、') : '・齊全'}</div>`;
   const fin = FIN.filter(([k]) => f[k] !== undefined && f[k] !== '').map(([k, l, u]) => `<div class="kv"><span>${l}</span><b>${esc(f[k])} ${u}</b></div>`).join('');
   const b = bmi(h.height, h.weight);
-  return `${fin || f.mainEarner || f.incomeSrc ? `<div class="sub">財務</div><div class="kvs">${fin}${f.incomeSrc ? `<div class="kv"><span>收入來源</span><b>${esc(f.incomeSrc)}</b></div>` : ''}${f.mainEarner ? `<div class="kv"><span>主要經濟來源</span><b>${esc(f.mainEarner)}${f.mainEarner === '否' && f.relation ? '（主要經濟者是' + esc(f.relation) + '）' : ''}</b></div>` : ''}</div>${f.reason ? `<div class="sub">收入不一致原因：${esc(f.reason)}</div>` : ''}` : ''}
+  return shotLine + `${fin || f.mainEarner || f.incomeSrc ? `<div class="sub">財務</div><div class="kvs">${fin}${f.incomeSrc ? `<div class="kv"><span>收入來源</span><b>${esc(f.incomeSrc)}</b></div>` : ''}${f.mainEarner ? `<div class="kv"><span>主要經濟來源</span><b>${esc(f.mainEarner)}${f.mainEarner === '否' && f.relation ? '（主要經濟者是' + esc(f.relation) + '）' : ''}</b></div>` : ''}</div>${f.reason ? `<div class="sub">收入不一致原因：${esc(f.reason)}</div>` : ''}` : ''}
    ${h.height || h.weight || h.smoke || h.drink || h.items ? `<div class="sub">體況</div><div class="kvs">${h.height ? `<div class="kv"><span>身高</span><b>${esc(h.height)} cm</b></div>` : ''}${h.weight ? `<div class="kv"><span>體重</span><b>${esc(h.weight)} kg${b ? '（BMI ' + b + '）' : ''}</b></div>` : ''}${h.smoke ? `<div class="kv"><span>吸菸</span><b>${esc(h.smoke)}</b></div>` : ''}${h.drink ? `<div class="kv"><span>飲酒</span><b>${esc(h.drink)}</b></div>` : ''}</div>${h.items ? `<pre class="discpre">${esc(h.items)}</pre>` : ''}` : ''}
    ${assetsSummaryHTML(r.assets)}
    ${r.note ? `<pre class="discpre">${esc(r.note)}</pre>` : ''}
@@ -1201,14 +1203,17 @@ function openDisclosure(cl, id, caseId) {
      ${inp('relation', f.relation, '主要經濟者是', '', 'placeholder="例：配偶"')}
      <label class="f">收入來源<select id="d_incomeSrc">${['', '無', '薪津', '營業收入', '投資', '其他'].map((o) => `<option${o === (f.incomeSrc || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></label></div>
     ${inp('reason', f.reason, '收入不一致原因', '')}</div>
-   <details class="sec fold"${hasAssets ? ' open' : ''}><summary><h2>財產明細 <span class="sub">需要交代財產時（財務狀況告知書）</span></h2></summary>
+   <div class="sec"><h2>截圖 <span class="sub">照公司畫面一格一格放，紅色的就是還沒拍</span></h2>
+    <div class="tags"><button type="button" class="tag${DSC.r.needAssets !== false ? ' on' : ''}" id="dNeedA">這次有填財務狀況告知書（財產版）</button></div>
+    <div class="dslots" id="dSlots"></div><input type="file" id="dSlotIn" accept="image/*,application/pdf,.pdf" hidden></div>
+   <details class="sec fold"${hasAssets ? ' open' : ''}><summary><h2>財產明細手打 <span class="sub">可以不填，有截圖就夠了</span></h2></summary>
     ${assetsFormHTML(assetsMigrate(a), inp)}</details>
    <details class="sec fold"${hasMore ? ' open' : ''}><summary><h2>體況詳細・其他 <span class="sub">不熟的客戶再填</span></h2></summary>
     <div class="dgrid"><label class="f">吸菸<select id="d_smoke">${['', '無', '有', '已戒'].map((o) => `<option${o === (h.smoke || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></label>
      <label class="f">飲酒<select id="d_drink">${['', '無', '偶爾', '經常'].map((o) => `<option${o === (h.drink || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></label></div>
     <label class="f">告知事項（病史、住院、手術、用藥、體檢異常…）<textarea id="d_items" class="grow" rows="3">${esc(h.items)}</textarea></label>
     <label class="f">其他備註<textarea id="d_note" class="grow" rows="2">${esc(base.note)}</textarea></label></details>
-   <div class="sec"><h2>附件 <span class="sub">要保書、告知書、財務狀況告知書的照片或 PDF</span></h2>
+   <div class="sec"><h2>其他附件 <span class="sub">要保書、告知書等等</span></h2>
     <div class="nimgs edit" id="dFiles"></div>
     <div class="actions"><label class="btn">＋ 加照片或 PDF<input type="file" id="dAdd" accept="image/*,application/pdf,.pdf" multiple></label><button class="btn" id="dPaste">📋 貼上</button></div></div>
   </div></div>`;
@@ -1225,10 +1230,12 @@ function openDisclosure(cl, id, caseId) {
     const c2 = DSC.cl; c2.disclosures = [...(c2.disclosures || []).filter((x) => x.id !== r.id), r]; Vault.put('clients', c2);
     DSC = null; ov.innerHTML = ''; S.view = 'clients'; S.csel = c2.id; S.showDetail = true; S.showHealth = true; App.render(); toast('告知資料已儲存');
   };
-  $('dAdd').onchange = (e) => { const fs = [...e.target.files]; e.target.value = ''; discAddFiles(fs, false); };
-  $('dPaste').onclick = async () => { const fs = await clipFiles(); if (fs.length) discAddFiles(fs, false); };
-  $('dShot').onchange = (e) => { const fl = e.target.files[0]; e.target.value = ''; if (fl) discAddFiles([fl], true); };
-  $('dPasteShot').onclick = async () => { const fs = await clipFiles(); if (fs.length) discAddFiles(fs, true); };
+  $('dAdd').onchange = (e) => { const fs = [...e.target.files]; e.target.value = ''; discAddFiles(fs, false, null); };
+  $('dPaste').onclick = async () => { const fs = await clipFiles(); if (fs.length) discAddFiles(fs, false, null); };
+  $('dShot').onchange = (e) => { const fl = e.target.files[0]; e.target.value = ''; if (fl) discAddFiles([fl], true, 'gen'); };
+  $('dPasteShot').onclick = async () => { const fs = await clipFiles(); if (fs.length) discAddFiles(fs, true, 'gen'); };
+  $('dNeedA').onclick = (e) => { DSC.r.needAssets = DSC.r.needAssets === false; e.currentTarget.classList.toggle('on', DSC.r.needAssets !== false); drawDiscFiles(); };
+  $('dSlotIn').onchange = (e) => { const fs = [...e.target.files]; e.target.value = ''; if (fs.length && DSC.slotPick) discAddFiles(fs, ['gen', 'p3'].includes(DSC.slotPick), DSC.slotPick); };
 }
 async function clipFiles() {
   try { const out = []; for (const it of await navigator.clipboard.read()) { const t = it.types.find((y) => y.startsWith('image/')); if (t) out.push(new File([await it.getType(t)], 'shot.png', { type: t })); } if (!out.length) toast('剪貼簿裡沒有圖片'); return out; }
@@ -1236,19 +1243,35 @@ async function clipFiles() {
 }
 function drawDiscFiles() {
   const box = $('dFiles'); if (!box || !DSC) return;
-  box.innerHTML = (DSC.r.files || []).map((f, i) => `<div class="nimgwrap">${f.type === 'pdf' ? `<button class="nimg pdfmini" data-dv="${i}">PDF</button>` : `<button class="nimg" data-dv="${i}"><img data-fid="${f.fileId}" alt=""></button>`}<button class="nimgdel" data-dd="${i}" aria-label="移除">✕</button></div>`).join('') || '<span class="sub">還沒有附件</span>';
-  box.querySelectorAll('img[data-fid]').forEach(async (im) => { const u = await Files.url(im.dataset.fid).catch(() => null); if (u && im.isConnected) im.src = u; });
-  box.querySelectorAll('[data-dv]').forEach((b) => (b.onclick = () => { const f = DSC.r.files[+b.dataset.dv]; Files.url(f.fileId).then((u) => { if (!u) return; const v = document.createElement('div'); v.innerHTML = `<div class="ov" style="z-index:30"><div class="ovhead"><h2>${esc(f.name)}</h2><button class="btn pri">關閉</button></div>${f.type === 'pdf' ? `<iframe src="${u}" style="flex:1;width:100%;border:0;background:#fff"></iframe>` : `<div class="ovbody" style="justify-content:center"><img src="${u}" alt="" style="max-width:100%;height:auto;align-self:flex-start"></div>`}</div>`; v.querySelector('button').onclick = () => v.remove(); document.body.appendChild(v); }); }));
-  box.querySelectorAll('[data-dd]').forEach((b) => (b.onclick = () => { const [f] = DSC.r.files.splice(+b.dataset.dd, 1); if (f) Files.remove(f.fileId); drawDiscFiles(); }));
+  const sbox = $('dSlots');
+  if (sbox) {
+    sbox.innerHTML = discSlotsShown(DSC.r).map(([k, t, d]) => { const i = (DSC.r.files || []).findIndex((f) => f.slot === k), f = DSC.r.files?.[i];
+      return `<div class="dslot${f ? ' ok' : ''}"><div class="dslh"><b>${t}</b><span>${d}</span></div>
+       ${f ? `<div class="nimgwrap">${f.type === 'pdf' ? `<button class="nimg pdfmini" data-dv="${i}">PDF</button>` : `<button class="nimg" data-dv="${i}"><img data-fid="${f.fileId}" alt=""></button>`}<button class="nimgdel" data-dd="${i}" aria-label="移除">✕</button></div>` : '<div class="dsmiss">還沒拍</div>'}
+       <div class="actions" style="margin:0"><button type="button" class="btn sm" data-dsp="${k}">選照片</button><button type="button" class="btn sm" data-dsc="${k}">📋 貼上</button></div></div>`; }).join('');
+    sbox.querySelectorAll('[data-dsp]').forEach((b) => (b.onclick = () => { DSC.slotPick = b.dataset.dsp; $('dSlotIn').click(); }));
+    sbox.querySelectorAll('[data-dsc]').forEach((b) => (b.onclick = async () => { const fs = await clipFiles(); if (fs.length) discAddFiles(fs.slice(0, 1), ['gen', 'p3'].includes(b.dataset.dsc), b.dataset.dsc); }));
+  }
+  box.innerHTML = (DSC.r.files || []).map((f, i) => (f.slot ? '' : `<div class="nimgwrap">${f.type === 'pdf' ? `<button class="nimg pdfmini" data-dv="${i}">PDF</button>` : `<button class="nimg" data-dv="${i}"><img data-fid="${f.fileId}" alt=""></button>`}<button class="nimgdel" data-dd="${i}" aria-label="移除">✕</button></div>`)).join('') || '<span class="sub">還沒有附件</span>';
+  const both = [box, sbox].filter(Boolean), all = (sel) => both.flatMap((bx) => [...bx.querySelectorAll(sel)]);
+  all('img[data-fid]').forEach(async (im) => { const u = await Files.url(im.dataset.fid).catch(() => null); if (u && im.isConnected) im.src = u; });
+  all('[data-dv]').forEach((b) => (b.onclick = () => { const f = DSC.r.files[+b.dataset.dv]; Files.url(f.fileId).then((u) => { if (!u) return; const v = document.createElement('div'); v.innerHTML = `<div class="ov" style="z-index:30"><div class="ovhead"><h2>${esc(f.name)}</h2><button class="btn pri">關閉</button></div>${f.type === 'pdf' ? `<iframe src="${u}" style="flex:1;width:100%;border:0;background:#fff"></iframe>` : `<div class="ovbody" style="justify-content:center"><img src="${u}" alt="" style="max-width:100%;height:auto;align-self:flex-start"></div>`}</div>`; v.querySelector('button').onclick = () => v.remove(); document.body.appendChild(v); }); }));
+  all('[data-dd]').forEach((b) => (b.onclick = () => { const [f] = DSC.r.files.splice(+b.dataset.dd, 1); if (f) Files.remove(f.fileId); drawDiscFiles(); }));
 }
-async function discAddFiles(files, readFin) {
+const DISC_SLOTS = [['gen', '一般版', '生調表的收入狀況'], ['p1', '財產版 1', '投保目的、保費來源、身份角色別、主要經濟者'], ['p2', '財產版 2', '工作狀況：公司名稱、營業項目、職稱、年資、工作內容、公司股東'], ['p3', '財產版 3', '收入、往來銀行、存款、股票'], ['p4', '財產版 4', '不動產、借款']];
+const discSlotsShown = (r) => DISC_SLOTS.filter(([k]) => k === 'gen' || r.needAssets !== false);
+async function discAddFiles(files, readFin, slot) {
   if (!DSC) return; const r = DSC.r; r.files = r.files || [];
+  const nextEmpty = () => discSlotsShown(r).map(([k]) => k).find((k) => !r.files.some((f) => f.slot === k)) || null;
   for (const f of files) {
+    const sl = slot === undefined ? nextEmpty() : slot; // 直接貼上（Ctrl+V）或拖進來：放進第一個還沒拍的格子
     const pdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name || '');
     if (!pdf && !/^image\//.test(f.type)) continue;
     const blob = pdf ? new Blob([await f.arrayBuffer()], { type: 'application/pdf' }) : await shrink(f); if (!blob) continue;
     const fileId = await Files.add(blob, f.name || '告知');
-    r.files.push({ fileId, name: pdf ? (f.name || '').replace(/\.pdf$/i, '') || 'PDF' : '告知截圖', type: pdf ? 'pdf' : 'img', date: localDay() });
+    if (sl) r.files = r.files.filter((x) => { if (x.slot === sl) { Files.remove(x.fileId); return false; } return true; }); // 同一格放新的就換掉舊的
+    r.files.push({ fileId, name: sl ? DISC_SLOTS.find(([k]) => k === sl)[1] : pdf ? (f.name || '').replace(/\.pdf$/i, '') || 'PDF' : '告知截圖', type: pdf ? 'pdf' : 'img', date: localDay(), ...(sl ? { slot: sl } : {}) });
+    readFin = readFin && ['gen', 'p3'].includes(sl);
     if (readFin && !pdf) {
       $('dOcr').textContent = OCR ? '辨識中…' : '第一次使用要先下載辨識元件，請稍等…';
       try { const fin = parseFin(await ocrImage(f)); const ks = Object.keys(fin); ks.forEach((k) => { const el = $('d_' + k); if (el) el.value = fin[k]; }); if ($('dOcr')) $('dOcr').textContent = ks.length ? `已帶入 ${ks.length} 個欄位，請核對數字` : '沒有讀到數字，請手動填'; }
