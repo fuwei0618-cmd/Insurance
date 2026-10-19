@@ -776,7 +776,7 @@ function giftTableHTML(all, ev) { // 像試算表：一列一個人，一欄一�
   const tot = (id) => all.reduce((a, g) => a + (g.items?.[id] || 0), 0), stot = (id) => svc.reduce((a, g) => a + (g.items?.[id] || 0), 0);
   return `<div class="ktablewrap"><table class="ktable gsheet"><thead>
    <tr><th rowspan="2" class="gstick">名字</th><th rowspan="2">類型</th><th rowspan="2">分類</th>${cats.map((c) => `<th colspan="${c.n}" class="gcath">${esc(c.c)}</th>`).join('')}<th rowspan="2">送法</th><th rowspan="2">已送</th><th rowspan="2">備註</th></tr>
-   <tr>${items.map((it) => `<th class="gith">${esc(it.name || it.code || '品項')}</th>`).join('')}</tr></thead><tbody>
+   <tr>${items.map((it) => `<th class="gith">${giftThumb(it)}<div>${esc(it.name || it.code || '品項')}</div></th>`).join('')}</tr></thead><tbody>
    ${list.map((g) => `<tr class="${g.status === '已送' ? 'gdone' : ''}"><td class="gstick"><button class="linkbtn" data-gopen="${g.id}">${esc(giftWho(g))}</button></td><td><select class="gcell gtype" data-gwho="${g.id}">${GIFT_TYPES.map(([t, l]) => `<option value="${t}"${(g.who?.type || 'other') === t ? ' selected' : ''}>${l}</option>`).join('')}</select></td>
      <td><input class="gcell gw" data-gg="${g.id}:group" value="${esc(g.group)}"></td>
      ${items.map((it) => `<td><input class="gcell gn" inputmode="numeric" data-gq2="${g.id}:${it.id}" value="${g.items?.[it.id] || ''}"></td>`).join('')}
@@ -787,9 +787,27 @@ function giftTableHTML(all, ev) { // 像試算表：一列一個人，一欄一�
    <tr class="gtot"><td class="gstick">合計</td><td></td><td></td>${items.map((it) => `<td>${tot(it.id) || ''}</td>`).join('')}<td></td><td>${all.filter((g) => g.status === '已送').length}/${all.length}</td><td></td></tr>
   </tbody></table></div><div class="sub" style="margin-top:6px">格子可以直接改，改完點別的地方就會存。點名字可以打開完整資料。</div>`;
 }
+function giftThumb(it, edit) { // 品項小圖；編修時點一下可以換圖
+  const img = it.img ? `<img class="gthumbimg" data-fid="${it.img}" alt="">` : '';
+  if (edit) return `<button type="button" class="gthumb${it.img ? '' : ' empty'}" data-gimg="${it.id}" title="放圖片">${img || '＋圖'}</button>`;
+  return it.img ? `<button type="button" class="gthumb" data-gpic="${it.img}" title="看大圖">${img}</button>` : '<span class="gthumb none"></span>';
+}
+function giftItemImage(itemId) { // 選照片：可以直接用，或拉四個角裁出一個品項
+  const ev = Vault.get('gevents', S.gev); const it = ev?.items.find((x) => x.id === itemId); if (!it) return;
+  const save = async (blob) => { const old = it.img; it.img = await Files.add(blob, it.name || it.code || '品項'); if (old) Files.remove(old); Vault.put('gevents', ev); App.render(); toast('已放上圖片'); };
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${esc(it.name || it.code || '品項')} 的圖片</h2><button class="btn" id="giX">取消</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:560px;margin:0 auto;width:100%">
+   <div class="note">選一張照片或截圖。如果是整張型錄，選「裁切」拉四個角框出這一個品項。</div>
+   <div class="actions"><label class="btn pri">選照片（直接用）<input type="file" id="giPick" accept="image/*" hidden></label><label class="btn">選照片再裁切<input type="file" id="giCrop" accept="image/*" hidden></label><button class="btn" id="giPaste">📋 貼上</button>${it.img ? '<button class="btn danger" id="giDel">拿掉圖片</button>' : ''}</div></div></div>`;
+  $('giX').onclick = () => (ov.innerHTML = '');
+  $('giPick').onchange = async (e) => { const f = e.target.files[0]; if (!f) return; ov.innerHTML = ''; const b = await shrink(f, 800, 0.85); if (b) save(b); };
+  $('giPaste').onclick = async () => { const fs = await clipFiles(); if (!fs.length) return; ov.innerHTML = ''; const b = await shrink(fs[0], 800, 0.85); if (b) save(b); };
+  $('giCrop').onchange = (e) => { const f = e.target.files[0]; if (!f) return; openScanner({ docs: [] }, { filter: 'color', names: [it.name || '品項'], onDone: async (pages) => { if (pages[0]) save(pages[0].blob); else App.render(); }, onCancel: () => App.render() }); onFiles([f]); };
+  if ($('giDel')) $('giDel').onclick = () => { Files.remove(it.img); delete it.img; Vault.put('gevents', ev); ov.innerHTML = ''; App.render(); };
+}
 const giftItemsSorted = (items) => items.map((it, i) => [it, i]).sort((a, b) => (a[0].cat || '￿').localeCompare(b[0].cat || '￿', 'zh-Hant') || a[1] - b[1]).map(([it]) => it);
 function giftCatRow(cat, arr, cnt) { const its = arr.filter((x) => (x.cat || '') === cat), sum = (f) => its.reduce((a, it) => a + f(it), 0); const q = sum((it) => it.qty || 0), pl = sum((it) => cnt[it.id]?.plan || 0), dn = sum((it) => cnt[it.id]?.done || 0);
-  return `<tr class="gcat"><td colspan="2">${esc(cat || '未分類')}</td><td>${q}</td><td>${pl}</td><td>${dn}</td><td class="${q - pl - dn < 0 ? 'gneg' : ''}">${q - pl - dn}</td></tr>`; }
+  return `<tr class="gcat"><td colspan="3">${esc(cat || '未分類')}</td><td>${q}</td><td>${pl}</td><td>${dn}</td><td class="${q - pl - dn < 0 ? 'gneg' : ''}">${q - pl - dn}</td></tr>`; }
 const giftItemsText = (g, ev) => Object.entries(g.items || {}).filter(([, n]) => n > 0).map(([id, n]) => { const it = ev?.items.find((x) => x.id === id); return `${it ? it.name || it.code || '品項' : '已刪品項'}×${n}`; }).join('、');
 function giftCounts(ev) {
   const out = {}; (ev.items || []).forEach((it) => (out[it.id] = { plan: 0, done: 0 }));
@@ -807,10 +825,10 @@ function giftsHTML() {
   const items = ev.items || [];
   return head + `<div class="sec"><h2>${S.gedit ? `<input class="nctxt" data-gevf="name" value="${esc(ev.name)}" style="max-width:260px">` : esc(ev.name || '未命名')} <span style="display:flex;gap:6px"><button class="btn sm${S.gedit ? ' pri' : ''}" data-act="geditems">${S.gedit ? '✓ 改好了' : '✎ 編修品項'}</button></span></h2>
    ${S.gedit ? `<div class="note">改品項名稱、代號、數量。刪除要按兩次。</div>` : ''}
-   ${items.length ? `<table class="gtable"><thead><tr>${S.gedit ? '<th>分類</th>' : ''}<th>品項</th><th>代號</th><th>數量</th><th>預備</th><th>已送</th><th>剩下</th>${S.gedit ? '<th></th>' : ''}</tr></thead><tbody>
+   ${items.length ? `<table class="gtable"><thead><tr><th></th>${S.gedit ? '<th>分類</th>' : ''}<th>品項</th><th>代號</th><th>數量</th><th>預備</th><th>已送</th><th>剩下</th>${S.gedit ? '<th></th>' : ''}</tr></thead><tbody>
     ${giftItemsSorted(items).map((it, ix, arr) => { const c = cnt[it.id] || { plan: 0, done: 0 }, left = (it.qty || 0) - c.plan - c.done; const catRow = !S.gedit && (ix === 0 || (arr[ix - 1].cat || '') !== (it.cat || '')) ? giftCatRow(it.cat || '', arr, cnt) : ''; return S.gedit
-      ? `<tr><td><input class="nctxt" data-gitem="${it.id}" data-gf="cat" value="${esc(it.cat)}" placeholder="例如：彩豐月曆" style="width:120px"></td><td><input class="nctxt" data-gitem="${it.id}" data-gf="name" value="${esc(it.name)}" placeholder="例如：小熊維尼"></td><td><input class="nctxt" data-gitem="${it.id}" data-gf="code" value="${esc(it.code)}" style="width:110px"></td><td><input class="nctxt" data-gitem="${it.id}" data-gf="qty" inputmode="numeric" value="${it.qty || 0}" style="width:64px"></td><td>${c.plan}</td><td>${c.done}</td><td>${left}</td><td><button class="btn sm" data-gidel="${it.id}">✕</button></td></tr>`
-      : catRow + `<tr><td>${esc(it.name || it.code || '（未命名）')}</td><td class="sub">${esc(it.code)}</td><td>${it.qty || 0}</td><td>${c.plan}</td><td>${c.done}</td><td class="${left < 0 ? 'gneg' : ''}">${left}</td></tr>`; }).join('')}</tbody></table>` : '<div class="sub">還沒有品項。按「編修品項」新增。</div>'}
+      ? `<tr><td>${giftThumb(it, true)}</td><td><input class="nctxt" data-gitem="${it.id}" data-gf="cat" value="${esc(it.cat)}" placeholder="例如：彩豐月曆" style="width:120px"></td><td><input class="nctxt" data-gitem="${it.id}" data-gf="name" value="${esc(it.name)}" placeholder="例如：小熊維尼"></td><td><input class="nctxt" data-gitem="${it.id}" data-gf="code" value="${esc(it.code)}" style="width:110px"></td><td><input class="nctxt" data-gitem="${it.id}" data-gf="qty" inputmode="numeric" value="${it.qty || 0}" style="width:64px"></td><td>${c.plan}</td><td>${c.done}</td><td>${left}</td><td><button class="btn sm" data-gidel="${it.id}">✕</button></td></tr>`
+      : catRow + `<tr><td>${giftThumb(it)}</td><td>${esc(it.name || it.code || '（未命名）')}</td><td class="sub">${esc(it.code)}</td><td>${it.qty || 0}</td><td>${c.plan}</td><td>${c.done}</td><td class="${left < 0 ? 'gneg' : ''}">${left}</td></tr>`; }).join('')}</tbody></table>` : '<div class="sub">還沒有品項。按「編修品項」新增。</div>'}
    ${S.gedit ? `<div class="actions" style="margin:0"><button class="btn sm" data-act="gaddi">＋ 新增品項</button><button class="btn sm" data-act="gbulki">貼上一批品項</button><button class="btn sm danger" data-act="gevdel">刪除這個活動</button></div>` : ''}
    ${ev.note || S.gedit ? `<label class="f">備註${S.gedit ? `<input class="nctxt" data-gevf="note" value="${esc(ev.note)}">` : `<span>${esc(ev.note)}</span>`}</label>` : ''}</div>
   <div class="sec"><h2>送禮名單 <span class="sub">${all.length} 位・已送 ${all.filter((g) => g.status === '已送').length}</span><span style="display:flex;gap:6px;flex-wrap:wrap"><span class="seg2"><button class="btn sm${S.gview === 'table' ? ' pri' : ''}" data-gview="table">表格</button><button class="btn sm${S.gview === 'list' ? ' pri' : ''}" data-gview="list">清單</button></span><button class="btn sm" data-act="gbulkw">貼上一批名單</button><button class="btn sm" data-act="gpickw">從客戶、服務件勾選</button><button class="btn sm pri" data-act="gaddwho">＋ 加一位</button></span></h2>
@@ -841,10 +859,11 @@ function openGiftEditor(g, preset) { // 新增或修改一筆送禮
       : `<label class="f">搜尋${t === 'client' ? '客戶' : '服務件'}<input id="gwQ" value="${esc(q)}" placeholder="打名字" autocomplete="off"></label>
       ${rec.who.id ? `<div class="sub">已選：<b>${esc(giftWho(rec))}</b></div>` : ''}<div class="list" style="padding:0">${found.map((x) => `<button class="item" data-gwp="${x.id}"><span class="t">${esc(x.name || '未填姓名')}</span></button>`).join('')}</div>`}`}
      <label class="f">分類（可不填）<input id="gwGroup" value="${esc(rec.group)}" placeholder="例如：朋友、張家、石家"></label>
-     <div class="f">品項和數量<div class="gqty">${giftItemsSorted(ev?.items || []).map((it, ix, arr) => (ix === 0 || (arr[ix - 1].cat || '') !== (it.cat || '') ? `<div class="gqcat">${esc(it.cat || '未分類')}</div>` : '') + (() => { const c = cnt[it.id] || { plan: 0, done: 0 }; const left = (it.qty || 0) - c.plan - c.done + ((g && g.eventId === ev.id && g.items?.[it.id]) || 0); return `<div class="gqrow"><span>${esc(it.name || it.code || '品項')} <span class="sub">剩 ${left}</span></span><span class="gstep"><button class="btn sm" data-gq="${it.id}:-1">－</button><b>${rec.items[it.id] || 0}</b><button class="btn sm" data-gq="${it.id}:1">＋</button></span></div>`; })()).join('') || '<span class="sub">這個活動還沒有品項，先到送禮專區按「編修品項」。</span>'}</div></div>
+     <div class="f">品項和數量<div class="gqty">${giftItemsSorted(ev?.items || []).map((it, ix, arr) => (ix === 0 || (arr[ix - 1].cat || '') !== (it.cat || '') ? `<div class="gqcat">${esc(it.cat || '未分類')}</div>` : '') + (() => { const c = cnt[it.id] || { plan: 0, done: 0 }; const left = (it.qty || 0) - c.plan - c.done + ((g && g.eventId === ev.id && g.items?.[it.id]) || 0); return `<div class="gqrow"><span class="gqname">${giftThumb(it)}<span>${esc(it.name || it.code || '品項')} <span class="sub">剩 ${left}</span></span></span><span class="gstep"><button class="btn sm" data-gq="${it.id}:-1">－</button><b>${rec.items[it.id] || 0}</b><button class="btn sm" data-gq="${it.id}:1">＋</button></span></div>`; })()).join('') || '<span class="sub">這個活動還沒有品項，先到送禮專區按「編修品項」。</span>'}</div></div>
      <div class="f">怎麼送<div class="tags">${['當面', '寄送', '放管理室'].map((m) => `<button class="tag${rec.method === m ? ' on' : ''}" data-gwm="${m}">${m}</button>`).join('')}</div></div>
      <div class="f">狀態<div class="tags">${['預備', '已送'].map((m) => `<button class="tag${(rec.status || '預備') === m ? ' on' : ''}" data-gws="${m}">${m}</button>`).join('')}</div></div>
      <label class="f">備註<input id="gwNote" value="${esc(rec.note)}"></label></div></div>`;
+    ov.querySelectorAll('img[data-fid]').forEach(async (im) => { const u = await Files.url(im.dataset.fid).catch(() => null); if (u && im.isConnected) im.src = u; });
     const keep = () => { rec.group = $('gwGroup').value.trim(); rec.note = $('gwNote').value.trim(); if ($('gwName')) rec.who.name = $('gwName').value.trim(); };
     $('gwX').onclick = () => { ov.innerHTML = ''; };
     $('gwEv').onchange = (e) => { keep(); if (e.target.value !== rec.eventId) { rec.eventId = e.target.value; rec.items = {}; } draw(); };
@@ -1761,7 +1780,9 @@ app.addEventListener('click', async (e) => {
   if (d.kchk) { const k = curCall(); if (!k) return; k[d.kchk] = !k[d.kchk]; Vault.put('calls', k); App.render(); return; }
   if (d.gev) { S.gev = d.gev; S.gedit = false; App.render(); return; }
   if (d.gtype) { S.gtype = d.gtype; App.render(); return; }
+  if (d.gpic) { openViewer({ fileId: d.gpic, name: '品項' }, true); return; }
   if (d.gview) { S.gview = d.gview; App.render(); return; }
+  if (d.gimg) { giftItemImage(d.gimg); return; }
   if (d.gst) { S.gst = d.gst; App.render(); return; }
   if (d.gtog) { const g = Vault.get('gifts', d.gtog); if (!g) return; g.status = g.status === '已送' ? '預備' : '已送'; g.doneDate = g.status === '已送' ? localDay() : ''; Vault.put('gifts', g); App.render(); toast(g.status === '已送' ? '已標成已送' : '改回預備'); return; }
   if (d.gopen) { openGiftEditor(Vault.get('gifts', d.gopen)); return; }
