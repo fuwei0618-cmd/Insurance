@@ -1106,7 +1106,7 @@ function discSummary(r) {
   const f = r.fin || {}, h = r.health || {};
   const fin = FIN.filter(([k]) => f[k] !== undefined && f[k] !== '').map(([k, l, u]) => `<div class="kv"><span>${l}</span><b>${esc(f[k])} ${u}</b></div>`).join('');
   const b = bmi(h.height, h.weight);
-  return `${fin || f.mainEarner ? `<div class="sub">財務</div><div class="kvs">${fin}${f.mainEarner ? `<div class="kv"><span>主要經濟來源</span><b>${esc(f.mainEarner)}${f.mainEarner === '否' && f.relation ? '（主要經濟者是' + esc(f.relation) + '）' : ''}</b></div>` : ''}</div>${f.reason ? `<div class="sub">收入不一致原因：${esc(f.reason)}</div>` : ''}` : ''}
+  return `${fin || f.mainEarner || f.incomeSrc ? `<div class="sub">財務</div><div class="kvs">${fin}${f.incomeSrc ? `<div class="kv"><span>收入來源</span><b>${esc(f.incomeSrc)}</b></div>` : ''}${f.mainEarner ? `<div class="kv"><span>主要經濟來源</span><b>${esc(f.mainEarner)}${f.mainEarner === '否' && f.relation ? '（主要經濟者是' + esc(f.relation) + '）' : ''}</b></div>` : ''}</div>${f.reason ? `<div class="sub">收入不一致原因：${esc(f.reason)}</div>` : ''}` : ''}
    ${h.height || h.weight || h.smoke || h.drink || h.items ? `<div class="sub">體況</div><div class="kvs">${h.height ? `<div class="kv"><span>身高</span><b>${esc(h.height)} cm</b></div>` : ''}${h.weight ? `<div class="kv"><span>體重</span><b>${esc(h.weight)} kg${b ? '（BMI ' + b + '）' : ''}</b></div>` : ''}${h.smoke ? `<div class="kv"><span>吸菸</span><b>${esc(h.smoke)}</b></div>` : ''}${h.drink ? `<div class="kv"><span>飲酒</span><b>${esc(h.drink)}</b></div>` : ''}</div>${h.items ? `<pre class="discpre">${esc(h.items)}</pre>` : ''}` : ''}
    ${(() => { const a = r.assets || {}; const kv = ASSETS.filter(([k]) => a[k]).map(([k, l, u]) => `<div class="kv"><span>${l}</span><b>${esc(a[k])}${u ? ' ' + u : ''}</b></div>`).join(''); return kv || a.explain ? `<div class="sub">財產明細</div><div class="kvs">${kv}</div>${a.explain ? `<div class="sub">說明：${esc(a.explain)}</div>` : ''}` : ''; })()}
    ${r.note ? `<pre class="discpre">${esc(r.note)}</pre>` : ''}
@@ -1139,7 +1139,9 @@ function openDisclosure(cl, id, caseId) {
     <div class="dgrid">${inp('height', h.height, '身高', 'cm', 'inputmode="decimal"')}${inp('weight', h.weight, '體重', 'kg', 'inputmode="decimal"')}
      ${FIN.map(([k, l, u]) => inp(k, f[k], l, u, 'inputmode="decimal"')).join('')}
      <label class="f">主要經濟來源<select id="d_mainEarner">${['', '是', '否'].map((o) => `<option${o === (f.mainEarner || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></label>
-     ${inp('relation', f.relation, '主要經濟者是', '', 'placeholder="例：配偶"')}</div></div>
+     ${inp('relation', f.relation, '主要經濟者是', '', 'placeholder="例：配偶"')}
+     <label class="f">收入來源<select id="d_incomeSrc">${['', '無', '薪津', '營業收入', '投資', '其他'].map((o) => `<option${o === (f.incomeSrc || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></label></div>
+    ${inp('reason', f.reason, '收入不一致原因', '')}</div>
    <details class="sec fold"${hasAssets ? ' open' : ''}><summary><h2>財產明細 <span class="sub">需要交代財產時（財務狀況告知書）</span></h2></summary>
     <div class="dgrid">${ASSETS.map(([k, l, u]) => inp('a_' + k, a[k], l, u, u ? 'inputmode="decimal"' : '')).join('')}</div>
     ${inp('a_explain', a.explain, '資金來源／說明', '')}</details>
@@ -1147,7 +1149,6 @@ function openDisclosure(cl, id, caseId) {
     <div class="dgrid"><label class="f">吸菸<select id="d_smoke">${['', '無', '有', '已戒'].map((o) => `<option${o === (h.smoke || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></label>
      <label class="f">飲酒<select id="d_drink">${['', '無', '偶爾', '經常'].map((o) => `<option${o === (h.drink || '') ? ' selected' : ''}>${o}</option>`).join('')}</select></label></div>
     <label class="f">告知事項（病史、住院、手術、用藥、體檢異常…）<textarea id="d_items" class="grow" rows="3">${esc(h.items)}</textarea></label>
-    ${inp('reason', f.reason, '收入不一致原因', '')}
     <label class="f">其他備註<textarea id="d_note" class="grow" rows="2">${esc(base.note)}</textarea></label></details>
    <div class="sec"><h2>附件 <span class="sub">要保書、告知書、財務狀況告知書的照片或 PDF</span></h2>
     <div class="nimgs edit" id="dFiles"></div>
@@ -1158,7 +1159,7 @@ function openDisclosure(cl, id, caseId) {
   $('dSave').onclick = () => {
     const r = DSC.r, g = (k) => $('d_' + k)?.value.trim() ?? '';
     r.date = g('date') || localDay(); r.caseId = $('d_case').value; r.note = g('note');
-    r.fin = Object.fromEntries([...FIN.map(([k]) => [k, g(k)]), ['mainEarner', g('mainEarner')], ['relation', g('relation')], ['reason', g('reason')]].filter(([, v]) => v !== ''));
+    r.fin = Object.fromEntries([...FIN.map(([k]) => [k, g(k)]), ['mainEarner', g('mainEarner')], ['relation', g('relation')], ['incomeSrc', g('incomeSrc')], ['reason', g('reason')]].filter(([, v]) => v !== ''));
     r.health = Object.fromEntries([['height', g('height')], ['weight', g('weight')], ['smoke', g('smoke')], ['drink', g('drink')], ['items', $('d_items').value.trim()]].filter(([, v]) => v !== ''));
     r.assets = Object.fromEntries([...ASSETS.map(([k]) => [k, g('a_' + k)]), ['explain', g('a_explain')]].filter(([, v]) => v !== ''));
     const c2 = DSC.cl; c2.disclosures = [...(c2.disclosures || []).filter((x) => x.id !== r.id), r]; Vault.put('clients', c2);
