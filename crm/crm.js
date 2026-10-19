@@ -770,9 +770,10 @@ const GIFT_TYPES = [['client', '現有客戶'], ['call', '服務件'], ['other',
 const gevents = () => Vault.all('gevents').sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 const giftsOf = (evId) => Vault.all('gifts').filter((g) => g.eventId === evId);
 const giftWho = (g) => (g.who?.type === 'client' ? Vault.get('clients', g.who.id)?.name : g.who?.type === 'call' ? Vault.get('calls', g.who.id)?.name : '') || g.who?.name || '未填';
-function giftTableHTML(list, ev) { // 像試算表：一列一個人，一欄一個品項，直接改數量
+function giftTableHTML(all, ev) { // 像試算表：一列一個人，一欄一個品項，直接改數量；服務件合成一列只看總數
+  const fold = S.gtype === '全部', svc = fold ? all.filter((g) => g.who?.type === 'call') : [], list = fold ? all.filter((g) => g.who?.type !== 'call') : all;
   const items = giftItemsSorted(ev.items || []); const cats = []; items.forEach((it) => { const c = it.cat || '未分類'; const last = cats[cats.length - 1]; last && last.c === c ? last.n++ : cats.push({ c, n: 1 }); });
-  const tot = (id) => list.reduce((a, g) => a + (g.items?.[id] || 0), 0);
+  const tot = (id) => all.reduce((a, g) => a + (g.items?.[id] || 0), 0), stot = (id) => svc.reduce((a, g) => a + (g.items?.[id] || 0), 0);
   return `<div class="ktablewrap"><table class="ktable gsheet"><thead>
    <tr><th rowspan="2" class="gstick">名字</th><th rowspan="2">類型</th><th rowspan="2">分類</th>${cats.map((c) => `<th colspan="${c.n}" class="gcath">${esc(c.c)}</th>`).join('')}<th rowspan="2">送法</th><th rowspan="2">已送</th><th rowspan="2">備註</th></tr>
    <tr>${items.map((it) => `<th class="gith">${esc(it.name || it.code || '品項')}</th>`).join('')}</tr></thead><tbody>
@@ -782,7 +783,8 @@ function giftTableHTML(list, ev) { // 像試算表：一列一個人，一欄一
      <td><select class="gcell" data-gg="${g.id}:method">${['', '當面', '寄送', '放管理室'].map((m) => `<option${(g.method || '') === m ? ' selected' : ''}>${m}</option>`).join('')}</select></td>
      <td style="text-align:center"><input type="checkbox" class="gchk" data-gdone="${g.id}"${g.status === '已送' ? ' checked' : ''}></td>
      <td><input class="gcell gw2" data-gg="${g.id}:note" value="${esc(g.note)}"></td></tr>`).join('')}
-   <tr class="gtot"><td class="gstick">合計</td><td></td><td></td>${items.map((it) => `<td>${tot(it.id) || ''}</td>`).join('')}<td></td><td>${list.filter((g) => g.status === '已送').length}/${list.length}</td><td></td></tr>
+   ${svc.length ? `<tr class="gsvc"><td class="gstick"><button class="linkbtn" data-gtype="call">服務件（${svc.length} 位）›</button></td><td class="sub">服務件</td><td></td>${items.map((it) => `<td style="text-align:center">${stot(it.id) || ''}</td>`).join('')}<td></td><td style="text-align:center">${svc.filter((g) => g.status === '已送').length}/${svc.length}</td><td class="sub">在服務件專區記錄，點左邊看每一位</td></tr>` : ''}
+   <tr class="gtot"><td class="gstick">合計</td><td></td><td></td>${items.map((it) => `<td>${tot(it.id) || ''}</td>`).join('')}<td></td><td>${all.filter((g) => g.status === '已送').length}/${all.length}</td><td></td></tr>
   </tbody></table></div><div class="sub" style="margin-top:6px">格子可以直接改，改完點別的地方就會存。點名字可以打開完整資料。</div>`;
 }
 const giftItemsSorted = (items) => items.map((it, i) => [it, i]).sort((a, b) => (a[0].cat || '￿').localeCompare(b[0].cat || '￿', 'zh-Hant') || a[1] - b[1]).map(([it]) => it);
