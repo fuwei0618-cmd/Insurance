@@ -792,6 +792,26 @@ function giftThumb(it, edit) { // 品項小圖；編修時點一下可以換圖
   if (edit) return `<button type="button" class="gthumb${it.img ? '' : ' empty'}" data-gimg="${it.id}" title="放圖片">${img || '＋圖'}</button>`;
   return it.img ? `<button type="button" class="gthumb" data-gpic="${it.img}" title="看大圖">${img}</button>` : '<span class="gthumb none"></span>';
 }
+let jszipReady = null;
+const loadJSZip = () => window.JSZip ? Promise.resolve(window.JSZip) : (jszipReady ||= new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'vendor/jszip.min.js'; sc.onload = () => ok(window.JSZip); sc.onerror = () => { jszipReady = null; no(new Error('load')); }; document.head.appendChild(sc); }));
+async function giftBulkImages(files) { // 一次放很多張：照檔名裡的代號（或品名）對到品項；可以選壓縮檔
+  const ev = Vault.get('gevents', S.gev); if (!ev || !(ev.items || []).length) { toast('先加品項'); return; }
+  toast('讀取中…'); const pics = [];
+  for (const f of files) {
+    if (/\.zip$/i.test(f.name || '') || /zip/.test(f.type)) { try { const Z = await loadJSZip(); const z = await Z.loadAsync(f); for (const e of Object.values(z.files)) { if (!e.dir && /\.(jpe?g|png|webp|gif)$/i.test(e.name) && !/__MACOSX/.test(e.name)) pics.push({ name: e.name.split('/').pop(), blob: await e.async('blob') }); } } catch (err) { toast('壓縮檔打不開'); } }
+    else if (/^image\//.test(f.type)) pics.push({ name: f.name || '', blob: f });
+  }
+  const norm = (t) => String(t || '').toUpperCase().replace(/[\s_\-－]/g, '');
+  const items = [...ev.items].sort((a, b) => norm(b.code).length - norm(a.code).length); let n = 0; const used = new Set();
+  for (const p of pics) {
+    const nm = norm(p.name); const it = items.find((x) => !used.has(x.id) && ((x.code && nm.includes(norm(x.code))) || (!x.code && x.name && nm.includes(norm(x.name)))));
+    if (!it) continue; used.add(it.id);
+    const b = await shrink(p.blob, 800, 0.85); if (!b) continue; const old = it.img; it.img = await Files.add(b, it.name || it.code || '品項'); if (old) Files.remove(old); n++;
+  }
+  if (n) { Vault.put('gevents', ev); App.render(); }
+  const miss = ev.items.filter((x) => !x.img).map((x) => x.name || x.code);
+  toast(n ? `已放上 ${n} 張圖${miss.length ? '，還沒有圖：' + miss.slice(0, 4).join('、') + (miss.length > 4 ? '…' : '') : ''}` : '沒有對到任何品項：檔名要有品項代號，例如 A03、CAWP-014');
+}
 function giftItemImage(itemId) { // 選照片：可以直接用，或拉四個角裁出一個品項
   const ev = Vault.get('gevents', S.gev); const it = ev?.items.find((x) => x.id === itemId); if (!it) return;
   const save = async (blob) => { const old = it.img; it.img = await Files.add(blob, it.name || it.code || '品項'); if (old) Files.remove(old); Vault.put('gevents', ev); App.render(); toast('已放上圖片'); };
@@ -823,7 +843,7 @@ function giftsHTML() {
   const list = all.filter((g) => (S.gtype === '全部' || g.who?.type === S.gtype) && (S.gst === '全部' || (g.status || '預備') === S.gst))
     .sort((a, b) => ((a.status === '已送') - (b.status === '已送')) || GIFT_TYPES.findIndex(([t]) => t === a.who?.type) - GIFT_TYPES.findIndex(([t]) => t === b.who?.type) || (a.group || '').localeCompare(b.group || '', 'zh-Hant') || giftWho(a).localeCompare(giftWho(b), 'zh-Hant'));
   const items = ev.items || [];
-  return head + `<div class="sec"><h2>${S.gedit ? `<input class="nctxt" data-gevf="name" value="${esc(ev.name)}" style="max-width:260px">` : esc(ev.name || '未命名')} <span style="display:flex;gap:6px"><button class="btn sm${S.gedit ? ' pri' : ''}" data-act="geditems">${S.gedit ? '✓ 改好了' : '✎ 編修品項'}</button></span></h2>
+  return head + `<div class="sec"><h2>${S.gedit ? `<input class="nctxt" data-gevf="name" value="${esc(ev.name)}" style="max-width:260px">` : esc(ev.name || '未命名')} <span style="display:flex;gap:6px"><label class="btn sm">一次放圖片<input type="file" id="gImgs" accept="image/*,.zip,application/zip" multiple hidden></label><button class="btn sm${S.gedit ? ' pri' : ''}" data-act="geditems">${S.gedit ? '✓ 改好了' : '✎ 編修品項'}</button></span></h2>
    ${S.gedit ? `<div class="note">改品項名稱、代號、數量。刪除要按兩次。</div>` : ''}
    ${items.length ? `<table class="gtable"><thead><tr><th></th>${S.gedit ? '<th>分類</th>' : ''}<th>品項</th><th>代號</th><th>數量</th><th>預備</th><th>已送</th><th>剩下</th>${S.gedit ? '<th></th>' : ''}</tr></thead><tbody>
     ${giftItemsSorted(items).map((it, ix, arr) => { const c = cnt[it.id] || { plan: 0, done: 0 }, left = (it.qty || 0) - c.plan - c.done; const catRow = !S.gedit && (ix === 0 || (arr[ix - 1].cat || '') !== (it.cat || '')) ? giftCatRow(it.cat || '', arr, cnt) : ''; return S.gedit
@@ -1986,6 +2006,7 @@ app.addEventListener('change', (e) => { // 新契約清單：打勾、過程紀�
   else { c.nc.val = { ...(c.nc.val || {}), [ds.ncv]: e.target.value }; saveCase(c); }
 });
 app.addEventListener('change', (e) => { // 送禮表格：直接改數量、分類、送法、已送、備註
+  if (e.target.id === 'gImgs') { const fs = [...e.target.files]; e.target.value = ''; if (fs.length) giftBulkImages(fs); return; }
   const ds = e.target.dataset || {};
   if (ds.gq2) { const [gid, iid] = ds.gq2.split(':'); const g = Vault.get('gifts', gid); if (!g) return; const n = Math.max(0, parseInt(e.target.value, 10) || 0); g.items = { ...(g.items || {}) }; if (n) g.items[iid] = n; else delete g.items[iid]; Vault.put('gifts', g); App.render(); return; }
   if (ds.gg) { const [gid, f] = ds.gg.split(':'); const g = Vault.get('gifts', gid); if (!g) return; g[f] = e.target.value.trim(); Vault.put('gifts', g); if (f === 'group') App.render(); return; }
