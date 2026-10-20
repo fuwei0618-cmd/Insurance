@@ -1,0 +1,368 @@
+{
+ "built": "2026 年 10 月 16 日",
+ "catalog": "https://claude.ai/artifact/WYAUYKNa4wA5EjBF9QNpYs",
+ "pages": [
+  {
+   "id": "c1-vision",
+   "name": "人生城堡與生老病死",
+   "group": "第一章　人生願景與風險觀念",
+   "asof": "2026 年 10 月 16 日",
+   "products": [],
+   "sources": []
+  },
+  {
+   "id": "c1-why",
+   "name": "為什麼要買",
+   "group": "第一章　人生願景與風險觀念",
+   "asof": "2026 年 10 月 16 日",
+   "products": [],
+   "sources": []
+  },
+  {
+   "id": "c1-what",
+   "name": "保險是什麼",
+   "group": "第一章　人生願景與風險觀念",
+   "asof": "2026 年 10 月 16 日",
+   "products": [],
+   "sources": []
+  },
+  {
+   "id": "c1-how",
+   "name": "四大投保金律",
+   "group": "第一章　人生願景與風險觀念",
+   "asof": "2026 年 10 月 16 日",
+   "products": [],
+   "sources": []
+  },
+  {
+   "id": "c1-howmuch",
+   "name": "需要買多少",
+   "group": "第一章　人生願景與風險觀念",
+   "asof": "2026 年 10 月 16 日",
+   "products": [],
+   "sources": []
+  },
+  {
+   "id": "accident",
+   "name": "意外險",
+   "group": "第二章　保障與工具",
+   "asof": "2026 年 10 月 16 日",
+   "products": [
+    "XB7",
+    "XJ2"
+   ],
+   "sources": []
+  },
+  {
+   "id": "hosp",
+   "name": "疾病住院",
+   "group": "第二章　保障與工具",
+   "asof": "2026 年 10 月 16 日",
+   "products": [
+    "B94",
+    "CV4",
+    "FG3",
+    "FG4"
+   ],
+   "sources": []
+  },
+  {
+   "id": "surgery",
+   "name": "手術與特定處置",
+   "group": "第二章　保障與工具",
+   "asof": "2026 年 10 月 16 日",
+   "products": [
+    "B94",
+    "CV4"
+   ],
+   "sources": []
+  },
+  {
+   "id": "medexp",
+   "name": "實支實付",
+   "group": "第二章　保障與工具",
+   "asof": "2026 年 10 月 16 日",
+   "products": [
+    "CV4",
+    "WV4",
+    "FG3",
+    "FG4"
+   ],
+   "sources": []
+  },
+  {
+   "id": "cancer",
+   "name": "癌症險",
+   "group": "第二章　保障與工具",
+   "asof": "2026 年 10 月 16 日",
+   "products": [
+    "DQ1",
+    "DQB",
+    "FMC",
+    "MFB",
+    "DPC"
+   ],
+   "sources": []
+  },
+  {
+   "id": "ci",
+   "name": "重大傷病與特定疾病",
+   "group": "第二章　保障與工具",
+   "asof": "2026 年 10 月 16 日",
+   "products": [
+    "ZCO"
+   ],
+   "sources": []
+  },
+  {
+   "id": "ci-compare",
+   "name": "重疾四種比一比",
+   "group": "第二章　保障與工具",
+   "asof": "2026 年 10 月 16 日",
+   "products": [],
+   "sources": []
+  },
+  {
+   "id": "ltc",
+   "name": "長照與失能",
+   "group": "第二章　保障與工具",
+   "asof": "2026 年 10 月 16 日",
+   "products": [
+    "LCC",
+    "VSC",
+    "VSD",
+    "LDALDB"
+   ],
+   "sources": [
+    "https://health.tvbs.com.tw/nutrition/359562",
+    "https://news.pts.org.tw/article/755873",
+    "https://udn.com/news/story/7239/9654406",
+    "https://udn.com/news/story/7269/9261080",
+    "https://www.businesstoday.com.tw/article/category/183030/post/202509180004/"
+   ]
+  },
+  {
+   "id": "life",
+   "name": "壽險",
+   "group": "第二章　保障與工具",
+   "asof": "2026 年 10 月 16 日",
+   "products": [
+    "DX4",
+    "CCA",
+    "WZC"
+   ],
+   "sources": []
+  },
+  {
+   "id": "inv",
+   "name": "投資型保單",
+   "group": "理財工具",
+   "asof": "2026 年 10 月 16 日",
+   "products": [],
+   "sources": [
+    "https://law.lia-roc.org.tw/Law/GetFile/0000416548",
+    "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/investment-va/gu6.html",
+    "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/investment-va/ica.html",
+    "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/investment-va/mgk.html",
+    "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/investment-va/mgl.html",
+    "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/investment-va/noc.html",
+    "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/investment-va/nod.html",
+    "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/investment-va/saa.html",
+    "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/investment-va/wc2.html",
+    "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/investment-vl/id6.html",
+    "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/investment-vl/lx4.html",
+    "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/investment-vl/mgi.html",
+    "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/investment-vl/mgj.html",
+    "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/investment-vl/tdm.html",
+    "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/investment-vl/tdn.html",
+    "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/investment-vl/wc1.html",
+    "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/investment-vul/fbc.html",
+    "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/investment-vul/noa.html",
+    "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/investment-vul/nob.html",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-va/GU6_DM.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-va/GU6_instruction.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-va/ICA_DM.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-va/ICA_instruction.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-va/MGK_instruction.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-va/MGL_instruction.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-va/NOC_instruction.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-va/NOD_instruction.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-va/SAA_instruction.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-va/WC2_instruction.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-vl/ID6_DM.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-vl/ID6_instruction.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-vl/LX4_DM.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-vl/LX4_instruction.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-vl/MGI_instruction.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-vl/MGJ_instruction.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-vl/TDM_instruction.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-vl/TDN_instruction.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-vl/WC1_instruction.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-vul/FBC_DM.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-vul/FBC_instruction.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-vul/NOA_instruction.pdf",
+    "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/investment-vul/NOB_instruction.pdf"
+   ]
+  },
+  {
+   "id": "c3-stages",
+   "name": "人生階段怎麼配",
+   "group": "第三章　保險規劃三步驟",
+   "asof": "2026 年 10 月 16 日",
+   "products": [],
+   "sources": []
+  },
+  {
+   "id": "c3-check",
+   "name": "第一步　保單健檢",
+   "group": "第三章　保險規劃三步驟",
+   "asof": "2026 年 10 月 16 日",
+   "products": [],
+   "sources": []
+  },
+  {
+   "id": "c3-priority",
+   "name": "第二步　排優先順序",
+   "group": "第三章　保險規劃三步驟",
+   "asof": "2026 年 10 月 16 日",
+   "products": [],
+   "sources": []
+  },
+  {
+   "id": "c3-budget",
+   "name": "第三步　預算與商品型態",
+   "group": "第三章　保險規劃三步驟",
+   "asof": "2026 年 10 月 16 日",
+   "products": [],
+   "sources": []
+  },
+  {
+   "id": "c3-sign",
+   "name": "簽約到理賠",
+   "group": "第三章　保險規劃三步驟",
+   "asof": "2026 年 10 月 16 日",
+   "products": [],
+   "sources": []
+  },
+  {
+   "id": "data-cost",
+   "name": "疾病排名與花費",
+   "group": "資料庫",
+   "asof": "2026 年 10 月 16 日",
+   "products": [],
+   "sources": [
+    "https://health.tvbs.com.tw/nutrition/362716",
+    "https://health.tvbs.com.tw/review/360741",
+    "https://health.udn.com/health/story/5999/9580267",
+    "https://news.cnyes.com/news/id/4749594",
+    "https://news.pts.org.tw/article/768890",
+    "https://udn.com/news/story/7266/9233973",
+    "https://www.businesstoday.com.tw/article/category/183030/post/202509180004/",
+    "https://www.cna.com.tw/news/ahel/202209170095.aspx",
+    "https://www.cna.com.tw/news/ahel/202305150355.aspx",
+    "https://www.commonhealth.com.tw/article/74134",
+    "https://www.hosp.nycu.edu.tw/en/information/live-discharge.html?start=5",
+    "https://www.nownews.com/news/6353144"
+   ]
+  },
+  {
+   "id": "p-LDALDB",
+   "name": "睛智守護",
+   "group": "商品專精",
+   "asof": "2026 年 10 月 16 日",
+   "products": [
+    "LDALDB"
+   ],
+   "sources": []
+  },
+  {
+   "id": "pc-compulsory",
+   "name": "汽機車強制險",
+   "group": "國泰產險",
+   "asof": "2026 年 10 月 16 日",
+   "products": [],
+   "sources": [
+    "https://finance.ettoday.net/news/3173843",
+    "https://udn.com/news/story/7239/9532146",
+    "https://www.cathay-ins.com.tw/cathayins/personal/car/compulsory",
+    "https://www.cathay-ins.com.tw/cathayins/personal/car/driver",
+    "https://www.cathay-ins.com.tw/cathayins/personal/motorcycle/compulsory",
+    "https://www.cathay-ins.com.tw/insurance/assets/pdf/carForceDescription.pdf",
+    "https://www.legis-pedia.com/article/other/986"
+   ]
+  },
+  {
+   "id": "pc-liab",
+   "name": "第三人責任險與超額責任",
+   "group": "國泰產險",
+   "asof": "2026 年 10 月 16 日",
+   "products": [],
+   "sources": [
+    "https://finance.ettoday.net/news/3173843",
+    "https://www.cathay-ins.com.tw/cathayins/personal/car",
+    "https://www.cathay-ins.com.tw/cathayins/personal/car/driver",
+    "https://www.cathay-ins.com.tw/cathayins/personal/car/liability",
+    "https://www.cathay-ins.com.tw/cathayins/personal/car/over"
+   ]
+  },
+  {
+   "id": "pc-pd",
+   "name": "車體險與竊盜險",
+   "group": "國泰產險",
+   "asof": "2026 年 10 月 16 日",
+   "products": [],
+   "sources": [
+    "https://www.cathay-ins.com.tw/cathayins/personal/car",
+    "https://www.cathay-ins.com.tw/cathayins/personal/car/freeway",
+    "https://www.cathay-ins.com.tw/cathayins/personal/car/pd",
+    "https://www.cathay-ins.com.tw/cathayins/personal/car/thief",
+    "https://www.cathay-ins.com.tw/cathayins/personal/motorcycle",
+    "https://www.cathay-ins.com.tw/cathayins/personal/motorcycle/thief"
+   ]
+  },
+  {
+   "id": "pc-travel",
+   "name": "旅綜險",
+   "group": "國泰產險",
+   "asof": "2026 年 10 月 16 日",
+   "products": [],
+   "sources": [
+    "https://www.cathay-ins.com.tw/cathayins/personal/travel",
+    "https://www.cathay-ins.com.tw/cathayins/personal/travel/climb",
+    "https://www.cathay-ins.com.tw/cathayins/personal/travel/domain",
+    "https://www.cathay-ins.com.tw/cathayins/personal/travel/oversea",
+    "https://www.cathay-ins.com.tw/cathayins/personal/travel/sea",
+    "https://www.cathay-ins.com.tw/cathayins/personal/travel/studywork/"
+   ]
+  },
+  {
+   "id": "pc-house",
+   "name": "住宅險",
+   "group": "國泰產險",
+   "asof": "2026 年 10 月 16 日",
+   "products": [],
+   "sources": [
+    "https://www.cathay-ins.com.tw/cathayins/personal/house",
+    "https://www.cathay-ins.com.tw/cathayins/personal/house/fire",
+    "https://www.cathay-ins.com.tw/cathayins/personal/house/package",
+    "https://www.cathay-ins.com.tw/cathayins/personal/house/property",
+    "https://www.cathay-ins.com.tw/cathayins/personal/house/tenant",
+    "https://www.treif.org.tw/xcfaq?xsmsid=0L312588558124000728"
+   ]
+  },
+  {
+   "id": "pc-biz",
+   "name": "頭家壓箱保",
+   "group": "國泰產險",
+   "asof": "2026 年 10 月 16 日",
+   "products": [],
+   "sources": [
+    "https://udn.com/news/story/7239/9810060",
+    "https://wantrich.chinatimes.com/news/20220420900295-420501",
+    "https://www.cathay-ins.com.tw/cathayins/-/media/15B599FCCD074FDEACF3F96F7BA310D5.pdf",
+    "https://www.cathay-ins.com.tw/insurance/assets/pdf/%E5%9C%8B%E6%B3%B0%E7%94%A2%E7%89%A9_%E5%A3%93%E7%AE%B1%E4%BF%9D%E4%BF%9D%E9%9A%AA%E6%A2%9D%E6%AC%BE.pdf",
+    "https://www.storm.mg/article/196906"
+   ]
+  }
+ ]
+}
