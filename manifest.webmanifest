@@ -1,12 +1,12 @@
 {
-  "name": "保險手冊｜守護您的人生城堡",
+  "name": "保險手冊",
   "short_name": "保險手冊",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "landscape",
-  "background_color": "#FFFFFF",
-  "theme_color": "#0E3930",
+  "orientation": "any",
+  "background_color": "#F5F2EA",
+  "theme_color": "#0F3B34",
   "lang": "zh-Hant",
   "icons": [
     {
