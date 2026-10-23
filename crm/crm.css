@@ -565,3 +565,11 @@ select.linktpl{border:1px solid var(--line);background:var(--surface);border-rad
 .khrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
 .khrow>span:first-child{flex:1;min-width:0}
 .khrow .pill{font-size:11px}
+.railtog{margin-left:auto;background:none;border:1px solid var(--line);border-radius:6px;color:var(--muted);font-size:14px;line-height:1;padding:3px 7px;cursor:pointer}
+.app.railmini{grid-template-columns:58px 300px minmax(0,1fr)}
+.app.railmini.single{grid-template-columns:58px minmax(0,1fr)}
+.railmini .rail{padding:14px 6px}
+.railmini .rail .nl,.railmini .brand .bt,.railmini .brand i,.railmini .rail .foot{display:none}
+.railmini .brand{padding:2px 0 12px;justify-content:center}.railmini .railtog{margin:0}
+.railmini .nav,.railmini .scanbtn{justify-content:center;padding:10px 0}
+.railmini .rail>.nav[data-act="lock"]{font-size:11px}

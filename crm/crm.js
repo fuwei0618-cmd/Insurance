@@ -432,7 +432,7 @@ const TPLGROUPS = ['LINE', '簡訊', '信件', '通話', '其他'];
 const linkify = (html) => html.replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.length > 60 ? u.slice(0, 57) + '…' : u}</a>`);
 
 /* ================= 狀態與畫面 ================= */
-const S = { ginvOpen: false, gview: 'table', ktable: false, kprog: '全部', kmark: '全部', ksort: 'no', kedit: false, kfromTable: false, kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
+const S = { railMini: (() => { try { return localStorage.getItem('crm-railmini') === '1'; } catch (e) { return false; } })(), ginvOpen: false, gview: 'table', ktable: false, kprog: '全部', kmark: '全部', ksort: 'no', kedit: false, kfromTable: false, kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
 const cases = () => Vault.all('cases');
 const localDay = (d = new Date()) => { const t = new Date(d); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
 const caseDate = (c) => c.date || (c.createdAt ? localDay(c.createdAt) : '');
@@ -453,7 +453,7 @@ const App = {
     if (!Vault.db) return;
     syncCats(); syncRefLists(); if (S.cat !== '全部' && !CATS.includes(S.cat)) S.cat = '全部'; if (S.cg !== '全部' && !GROUPS.some((g) => g.name === S.cg)) S.cg = '全部';
     const v = S.view;
-    app.className = 'app' + ((v === 'cases' || v === 'refs' || v === 'clients' || (v === 'calls' && !S.ktable)) ? '' : ' single') + (S.showDetail ? ' showdetail' : '') + (MOCK ? ' test' : '');
+    app.className = 'app' + ((v === 'cases' || v === 'refs' || v === 'clients' || (v === 'calls' && !S.ktable)) ? '' : ' single') + (S.showDetail ? ' showdetail' : '') + (MOCK ? ' test' : '') + (S.railMini ? ' railmini' : '');
     let h = MOCK ? '<div class="testbar">測試模式：資料只存在這台裝置，不會上傳 OneDrive</div>' : '';
     h += railHTML();
     if (v === 'clients') h += clientListHTML() + '<section class="detail split">' + clientDetailHTML() + '</section>';
@@ -478,9 +478,9 @@ const App = {
   },
 };
 function railHTML() {
-  return `<nav class="rail" aria-label="主選單"><div class="brand"><i></i>工作手冊</div>
-  <button class="scanbtn" data-act="scan">${ICON.scan}掃描</button>
-  ${NAV.map(([k, l, i]) => `<button class="nav${S.view === k ? ' on' : ''}" data-nav="${k}">${ICON[i]}${l}</button>`).join('')}
+  return `<nav class="rail" aria-label="主選單"><div class="brand"><i></i><span class="bt">工作手冊</span><button class="railtog" data-act="railtog" title="${S.railMini ? '展開選單' : '收合選單'}" aria-label="${S.railMini ? '展開選單' : '收合選單'}">${S.railMini ? '»' : '«'}</button></div>
+  <button class="scanbtn" data-act="scan" title="掃描">${ICON.scan}<span class="nl">掃描</span></button>
+  ${NAV.map(([k, l, i]) => `<button class="nav${S.view === k ? ' on' : ''}" data-nav="${k}" title="${l}">${ICON[i]}<span class="nl">${l}</span></button>`).join('')}
   <div class="foot">${syncHTML()}<div style="margin-top:8px">${esc(Drive.account?.username || '')}</div></div>
   <button class="nav" data-act="lock">鎖定</button></nav>`;
 }
@@ -635,6 +635,7 @@ function callTableHTML() {
   const markOk = (k) => ({ 全部: true, '已加 LINE': !!k.line, '未加 LINE': !k.line, 退件: !!k.mailBack, 同事的件: !!k.other, 家戶待確認: hhPending(grpOf(k)) })[S.kmark];
   let list = all.filter((k) => (S.kprog === '全部' || callProg(k) === S.kprog) && (S.kar === '全部' || k.area === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && markOk(k) && (!q || [k.no, k.name, k.phone, k.home, k.addr, k.area, k.note, k.hh, k.otherWho].join(' ').includes(q))).sort(noCmp);
   if (S.ksort === 'addr') list.sort(addrCmp);
+  if (S.ksort === 'co') list.sort((a, b) => (a.ord2 ?? 1e9) - (b.ord2 ?? 1e9) || noCmp(a, b));
   if (S.ksort === 'hh') { const first = new Map(); list.forEach((k, i) => { const key = hhKey(k); if (!first.has(key)) first.set(key, i); }); list = list.map((k, i) => [k, i]).sort((x, y) => first.get(hhKey(x[0])) - first.get(hhKey(y[0])) || x[1] - y[1]).map(([k]) => k); }
   const mine = all.filter((k) => !k.other), n = (f) => mine.filter(f).length, na = (f) => all.filter(f).length, prog = (k) => callProg(k);
   const funnel = [['名單', mine.length], ['打過', n((k) => (k.logs || []).length)], ['接通', n((k) => ['已接通', '已排訪', '已見面'].includes(prog(k)))], ['要年曆', n((k) => ['預備', '已送'].includes(callGift(k)))], ['加 LINE', n((k) => k.line)], ['排訪', n((k) => ['已排訪', '已見面'].includes(prog(k)))], ['見面', n((k) => k.met)], ['年曆已送', n((k) => callGift(k) === '已送')]];
@@ -644,7 +645,7 @@ function callTableHTML() {
   const cols = E ? ['序號', '姓名', '地區', '分級', '家戶', 'LINE', '退件', '同事的件', '排訪日期', '見面', '重要事項', '']
     : ['序號', '姓名', '地區', '分級', '家戶', '三時段', '進度', '最近結果', '年曆', 'LINE', '排訪', '見面', '重要事項'];
   let prevKey = null, maxNo = -1, jumps = 0;
-  const rows = list.map((k, ri) => { const nn = parseInt(k.no, 10), jump = S.ksort === 'addr' && !isNaN(nn) && nn < maxNo; if (jump) jumps++; if (!isNaN(nn)) maxNo = Math.max(maxNo, nn);
+  const rows = list.map((k, ri) => { const nn = parseInt(k.no, 10), jump = (S.ksort === 'addr' || S.ksort === 'co') && !isNaN(nn) && nn < maxNo; if (jump) jumps++; if (!isNaN(nn)) maxNo = Math.max(maxNo, nn);
     const prevK = list[ri - 1], linked = prevK && k.hh && prevK.hh === k.hh, lk = S.ksort !== 'no' && prevK ? `<button class="klink${linked ? ' on' : ''}" data-klink="${k.id}" data-kprev="${prevK.id}" title="${linked ? '已跟上一位同一戶，再按一下拆開' : '跟上一位同一戶'}">${linked ? '🔗' : '＋🔗'}</button>` : ''; const sl = callSlots(k), l = logsOf(k)[0], gf = callGift(k), pg = prog(k), g = grpOf(k), key = hhKey(k);
     let head = '';
     if (S.ksort === 'hh' && key !== prevKey && g.length > 1) { const pend = hhPending(g); head = `<tr class="khh"><td colspan="${cols.length}"><b>家戶・${esc(g.find((x) => x.hh)?.hh || '同地址')}</b> <span class="sub">${g.length} 人・${esc(g[0].addr || '')}</span> ${pend ? `<span class="pill p-wait">待電話確認</span> <button class="btn sm" data-khhok="${esc(key)}">✓ 確認同一戶</button>` : '<span class="pill p-done">已確認</span>'}</td></tr>`; }
@@ -660,13 +661,14 @@ function callTableHTML() {
      <td><span class="kdots">${dot(sl['上午'], '上午')}${dot(sl['下午'], '下午')}${dot(sl['晚上'], '晚上')}</span></td><td><span class="kprog">${pg}</span></td>
      <td>${l ? `${esc(l.result)}<span class="sub"> ${fmtDay(l.date).slice(5)}</span>` : ''}</td><td>${gf ? `<span class="kg kg-${gf}">${gf}</span>` : ''}</td><td>${k.line ? '✓' : ''}</td>
      <td>${k.visitDate ? fmtDay(k.visitDate).slice(5) : pg === '已排訪' ? '✓' : ''}</td><td>${k.met ? '✓' : ''}</td><td class="knote">${esc((k.note || l?.note || '').slice(0, 40))}</td></tr>`; }).join('');
-  return `<div class="colhead"><h1>服務件總表 <span style="display:flex;gap:6px;flex-wrap:wrap"><span class="seg2">${[['no', '序號'], ['addr', '地址'], ['hh', '家戶']].map(([v, l]) => `<button class="btn sm${S.ksort === v ? ' pri' : ''}" data-ksort="${v}">${l}</button>`).join('')}</span><button class="btn${E ? ' pri' : ''}" data-act="kedit">${E ? '✓ 改好了' : '✎ 直接修改'}</button><button class="btn" data-act="cflow">流程</button><button class="btn" data-act="klist">‹ 回到名單</button><button class="btn" data-act="importcalls">匯入名單</button></span></h1>
+  return `<div class="colhead"><h1>服務件總表 <span style="display:flex;gap:6px;flex-wrap:wrap"><span class="seg2">${[['no', '序號'], ['addr', '地址'], ...(all.some((k) => k.ord2 != null) ? [['co', '公司順序']] : []), ['hh', '家戶']].map(([v, l]) => `<button class="btn sm${S.ksort === v ? ' pri' : ''}" data-ksort="${v}">${l}</button>`).join('')}</span><button class="btn${E ? ' pri' : ''}" data-act="kedit">${E ? '✓ 改好了' : '✎ 直接修改'}</button><button class="btn" data-act="cflow">流程</button><button class="btn" data-act="klist">‹ 回到名單</button><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="korder">匯入另一種排序</button></span></h1>
    <div class="kfunnel">${funnel.map(([l, v]) => `<div><span>${l}</span><b>${v}</b></div>`).join('<i>›</i>')}</div>
    <input class="search" id="q" placeholder="搜尋序號、姓名、電話、地址、家戶" value="${esc(S.q)}" autocomplete="off">
    <div class="chips"><span class="sub" style="align-self:center">進度</span>${['全部', ...PROGS].map((x) => chip('kprog', x, x === '全部' ? all.length : na((k) => prog(k) === x))).join('')}</div>
    <div class="chips"><span class="sub" style="align-self:center">分級</span>${['全部', ...LEVELS, '未分級'].map((x) => chip('klv', x, x === '全部' ? all.length : x === '未分級' ? na((k) => !k.level) : na((k) => k.level === x))).join('')}</div>
    <div class="chips"><span class="sub" style="align-self:center">標記</span>${KMARKS.map((x) => chip('kmark', x, all.filter((k) => { const o = S.kmark; S.kmark = x; const r = markOk(k); S.kmark = o; return r; }).length)).join('')}</div>
    ${areas.length ? `<div class="chips"><span class="sub" style="align-self:center">地區</span>${['全部', ...areas].map((x) => chip('kar', x, x === '全部' ? all.length : na((k) => k.area === x))).join('')}</div>` : ''}</div>
+  ${S.ksort === 'co' ? `<div class="note">照你匯入的公司排序。${jumps ? `有 <b>${jumps}</b> 位的序號比上一位小（標 ↰），就是公司排得跟序號不一樣的地方。` : '跟序號順序完全一樣。'}${all.some((k) => k.ord2 == null) ? `另外有 ${all.filter((k) => k.ord2 == null).length} 位不在那份排序裡，放在最後。` : ''} <button class="linkbtn" data-act="korder">重新匯入排序</button></div>` : ''}
   ${S.ksort === 'addr' ? `<div class="note">照郵遞區號、地址排。${jumps ? `有 <b>${jumps}</b> 位的序號比上一位小（標 ↰），那些就是跟你原本順序不一樣的地方。` : '跟你原本的序號順序完全一樣。'}地址相鄰、看起來同一戶的，按序號前面的「＋🔗」就跟上一位拉成同一戶，再按一下拆開。</div>` : S.ksort === 'hh' ? '<div class="note">同一戶的排在一起。沒拉過的，地址一樣也會先放一起，標「待電話確認」。</div>' : ''}
   ${E ? '<div class="note">直接修改模式：改完一格點別的地方就存好。序號不能改，維持名單原本的編號。家戶那格打一樣的名字（例如「王家」），地址不同也會排在一起。</div>' : ''}
   <div class="ktablewrap"><table class="ktable${E ? ' editing' : ''}"><thead><tr>${cols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>${list.length ? '' : '<div class="empty">沒有符合的對象。</div>'}</div>
@@ -811,6 +813,21 @@ function openCallImport() {
   $('ciCancel').onclick = () => (ov.innerHTML = '');
   $('ciGo').onclick = () => { const rows = parse().filter((r) => !dup(r)); if (!rows.length) { toast('沒有新的人可以匯入'); return; } const src = $('ciSrc').value.trim(); rows.forEach((r) => Vault.put('calls', { ...r, source: src, status: '待撥', nextDate: '', logs: [] })); ov.innerHTML = ''; S.kst = '全部'; S.ktable = true; App.render(); toast(`已匯入 ${rows.length} 位`); };
   setTimeout(() => $('ciText')?.focus(), 50);
+}
+function openCallOrderImport() { // 同一份名單、不同排列：只照序號對回去，記下順序，不新增人、不改資料
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>匯入另一種排序</h2><button class="btn" id="coX">取消</button><button class="btn pri" id="coGo">套用排序</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:760px;margin:0 auto;width:100%">
+   <div class="note">選公司排好的那份 PDF（序號一樣、排列不一樣的）。這裡只會照<b>序號</b>把人對回去、記下順序，不會新增人，也不會改任何資料或序號。套用後總表排序多一個「公司順序」。</div>
+   <div class="actions" style="margin:0"><label class="btn">選 PDF<input type="file" id="coPdf" accept="application/pdf,.pdf" hidden></label><span class="sub" id="coMsg"></span></div>
+   <label class="f">或貼上（一行一個人，第一欄是序號）<textarea id="coText" rows="8"></textarea></label><div class="sub" id="coRes"></div></div></div>`;
+  const match = () => { const rows = $('coText').value.split('\n').filter((l) => l.trim()).map(parseCallRow).filter((r) => r.no), all = calls(), byNo = new Map(all.map((k) => [String(parseInt(k.no, 10)), k]));
+    const hit = [], miss = [], diff = []; rows.forEach((r, i) => { const k = byNo.get(String(parseInt(r.no, 10))); if (!k) { miss.push(r.no); return; } if (r.name && k.name && r.name !== k.name) { diff.push(r.no); return; } if (!hit.some(([x]) => x === k)) hit.push([k, i]); });
+    return { rows, hit, miss, diff, rest: all.length - hit.length }; };
+  const show = () => { const m = match(); $('coRes').innerHTML = m.rows.length ? `讀到 ${m.rows.length} 列：對到 <b>${m.hit.length}</b> 位${m.miss.length ? `・序號找不到 ${m.miss.length} 位（${esc(m.miss.slice(0, 10).join('、'))}${m.miss.length > 10 ? '…' : ''}）` : ''}${m.diff.length ? `・序號一樣但名字不同 ${m.diff.length} 位（${esc(m.diff.slice(0, 10).join('、'))}），先不套用` : ''}${m.rest ? `・你名單裡有 ${m.rest} 位不在這份，會排在最後` : ''}` : ''; };
+  $('coText').oninput = show;
+  $('coPdf').onchange = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; $('coMsg').textContent = '讀取中…'; try { const ls = await pdfToRows(f); $('coText').value = ls.join('\n'); $('coMsg').textContent = `讀到 ${ls.length} 列`; show(); } catch (err) { console.warn(err); $('coMsg').textContent = '讀不了這個 PDF'; } };
+  $('coX').onclick = () => (ov.innerHTML = '');
+  $('coGo').onclick = () => { const m = match(); if (!m.hit.length) { toast('沒有對到任何人'); return; } calls().forEach((k) => { if (k.ord2 != null) { delete k.ord2; Vault.put('calls', k); } }); m.hit.forEach(([k, i]) => { k.ord2 = i; Vault.put('calls', k); }); ov.innerHTML = ''; S.ksort = 'co'; S.ktable = true; App.render(); toast(`已套用 ${m.hit.length} 位的排序`); };
 }
 /* ================= 送禮專區：每個活動（年曆、中秋、出國伴手禮…）各有品項庫存和送禮名單 ================= */
 const GIFT_TYPES = [['client', '現有客戶'], ['call', '服務件'], ['other', '親友']];
@@ -1960,6 +1977,8 @@ app.addEventListener('click', async (e) => {
     case 'newgevent': openNewGiftEvent(); break;
     case 'nctpl': openNcTplEditor(); break;
     case 'kedit': S.kedit = !S.kedit; App.render(); break;
+    case 'railtog': S.railMini = !S.railMini; try { localStorage.setItem('crm-railmini', S.railMini ? '1' : '0'); } catch (e) { } App.render(); break;
+    case 'korder': openCallOrderImport(); break;
     case 'ktable': S.ktable = true; S.kfromTable = false; S.showDetail = false; App.render(); break;
     case 'klist': S.ktable = false; App.render(); break;
     case 'cflow': openCallFlow(); break;
