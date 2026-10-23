@@ -6821,6 +6821,9 @@ var TL={
  car:["car","🚗 汽車"], bike:["bike","🛵 機車"]};
 /* 每個表頭點下去：標題、哪幾格（ok 賠／ng 不賠／hi 主角／dim 淡掉）、下面那條、亮哪顆泡泡 */
 var D={
+ cq:{m:"1c:y,5c:y",t:"強制險：只保「人」，不保車、不保駕駛自己",g:[["pax","ok","👩 雙方乘客"],["them","ok","🧍 對方的人、路人（不含車）"]],b:"1,5",info:'<b>✓ 對方的人、路人、雙方乘客</b>　醫療每人 20 萬；身故、失能最高 300 萬<br><b class="no">✕ 對方的車、自己的車、駕駛自己</b>　要靠第三人財損、車體險、駕駛人傷害'},
+ tp:{m:"1t:y,2t:y",t:"第三人責任：賠對方，超過強制險的部分",g:[["pax","ng"],["them","ok"]],b:"1,2",info:'<b>✓ 對方的人（體傷）、對方的車和財物（財損）</b>　依法要賠時才啟動；體傷是超過強制險的部分<br><b class="no">✕ 自己車上的乘客、自己的車</b>　乘客要靠乘客責任險'},
+ pp:{m:"5p:y",t:"乘客責任險：賠自己車上的乘客",g:[["pax","ok"],["them","dim"]],b:"5",info:'<b>✓ 自己車上的家人朋友受傷、身故</b>　補強制險不夠的部分；要另外加<br><small>想讓超額責任也接住乘客，要選超額乙式</small>'},
  vc:{m:"5x:y,5p:y,5c:y,4t:y,4q:n,3a:y,3b:y,3c:y,1x:y,1t:y,1c:y,2x:y,2t:y",t:"車碰車：五塊都可能要賠",g:[["crash","hi"],["solo","dim"]],b:"1,2,3,4,5",info:'<b>🚙 自己的車</b> 甲、乙、丙式都賠　<b>🤕 自己受傷</b> 第三人附加駕傷賠，<b class="no">強制險附加不賠</b><br><b>👩 車上乘客</b> 強制險＋乘客責任險　<b>🧍 對方</b> 強制險 → 第三人責任 → 超額責任'},
  vs:{m:"5x:y,5p:y,5c:y,4t:y,4q:y,3a:y,3b:y,3c:n,1x:z,1t:z,1c:z,2x:z,2t:z",t:"自撞：沒有對方，只剩自己和乘客",g:[["crash","dim"],["solo","hi"]],b:"3,4,5",info:'<b>🚙 自己的車</b> 甲、乙式賠，<b class="no">丙式不賠</b>　<b>🤕 自己受傷</b> 兩種駕傷都賠<br><b>👩 車上乘客</b> 強制險＋乘客責任險　<b>🧍 對方</b> 沒撞到人、車就不會用到'},
  xa:{m:"1x:y,2x:y,5x:n",t:"超額責任・甲式：只保對方",g:[["pax","ng"],["them","ok"]],b:"1,2",info:'<b>✓ 對方的人、車、財物、路人</b>　超過強制險＋第三人責任的部分<br><b class="no">✕ 我方乘客</b>　要選乙式<br><small>📋 要先有第三人責任險・適合常一個人開車</small>'},
@@ -6838,8 +6841,8 @@ var cur=null;function close(){mark("");col("");cur=null;O.hidden=true;I.hidden=t
 function show(k){if(cur==k){close();return}cur=k;var d=D[k];var tb=P.querySelector('.cvtab button[data-v="b"]');if(tb&&!tb.classList.contains("on"))tb.click();
  O.hidden=false;O.querySelector(".sc-title").textContent=d.t;G.style.setProperty("--n",d.g.length);G.classList.toggle("n5",d.g.length>3);G.innerHTML="";
  d.g.forEach(function(x){var t=TL[x[0]],st=x[1];var f=document.createElement("figure");f.className="sc-t "+st;
-  var w=document.createElement("div");w.className="im";var im=document.createElement("img");im.alt=t[1];im.src=SRC[t[0]]||"";w.appendChild(im);f.appendChild(w);
-  var c=document.createElement("figcaption");c.textContent=t[1];f.appendChild(c);
+  var w=document.createElement("div");w.className="im";var im=document.createElement("img");im.alt=x[2]||t[1];im.src=SRC[t[0]]||"";w.appendChild(im);f.appendChild(w);
+  var c=document.createElement("figcaption");c.textContent=x[2]||t[1];f.appendChild(c);
   if(st=="ok"||st=="ng"){var sp=document.createElement("span");sp.className="stamp";sp.textContent=st=="ok"?"✓ 賠":"✕ 不賠";f.appendChild(sp);}G.appendChild(f);});
  mark(d.m||"");col(k);P.querySelectorAll(".vsx .vc.off").forEach(function(c){c.classList.remove("off")});I.innerHTML=d.info;I.hidden=false;tip.hidden=true;P.querySelectorAll(".scb").forEach(function(x){x.classList.toggle("on",x.dataset.sc==k)});
  F.classList.toggle("sel",!!d.b);var bl=(d.b||"").split(",");F.querySelectorAll(".fbb,.fbp,.fbh button").forEach(function(x){x.classList.toggle("on",!!d.b&&bl.indexOf(x.dataset.t)>=0)});
@@ -6847,7 +6850,7 @@ function show(k){if(cur==k){close();return}cur=k;var d=D[k];var tb=P.querySelect
 window.pcShow=show;window.pcClose=function(){if(cur)close()};P.querySelectorAll(".scb").forEach(function(x){x.addEventListener("click",function(e){e.stopPropagation();show(x.dataset.sc)});x.addEventListener("keydown",function(e){if(e.key=="Enter")show(x.dataset.sc)})});
 O.querySelector(".sc-x").addEventListener("click",close);})();
 </script>
-<script>(function(){var P=document.querySelector(".pg-pc-car");if(!P)return;var MAP={"3a":"ba","3b":"bb","3c":"bc","4q":"dq","4t":"dt","5x":"xb","1x":"xa","2x":"xa","1t":"vc","2t":"vc","1c":"vc","5c":"vc","5p":"vc"};
+<script>(function(){var P=document.querySelector(".pg-pc-car");if(!P)return;var MAP={"3a":"ba","3b":"bb","3c":"bc","4q":"dq","4t":"dt","5x":"xb","1x":"xa","2x":"xa","1t":"tp","2t":"tp","1c":"cq","5c":"cq","5p":"pp"};
 P.querySelectorAll(".fbl [data-c]").forEach(function(x){x.style.cursor="pointer";x.title="點我看圖和表格";x.addEventListener("click",function(e){e.stopPropagation();var k=MAP[x.dataset.c];if(k&&window.pcShow){if(window.pcRows)window.pcRows("");window.pcShow(k);}})});})();</script>
 <h3 class="sec">先問客戶三句話，就知道要補哪一塊</h3>
 <div class="cmask">
