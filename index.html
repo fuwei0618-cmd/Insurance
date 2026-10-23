@@ -6681,12 +6681,7 @@ var F=P.querySelector(".fb");function op(t,from){F.classList.add("sel");F.queryS
 F.querySelectorAll(".fbb").forEach(function(b){b.addEventListener("click",function(e){if(e.target.closest(".golink"))return;op(b.dataset.t,"txt")});b.addEventListener("keydown",function(e){if(e.key=="Enter"||e.key==" "){e.preventDefault();op(b.dataset.t,"txt")}})});
 F.querySelectorAll(".fbp,.fbh button").forEach(function(b){b.addEventListener("click",function(){op(b.dataset.t,b.classList.contains("fbp")?"img":"txt")})});})();</script>
 
-<h3 class="sec">險種對比卡：一頁看懂差在哪</h3>
-<p class="cmnote">點任何一行，那一行會亮起來；再點一次取消。</p>
 <div class="vsx">
-<div class="vc vc-wide" data-k="0"><div class="vc-h"><span class="vc-q">總綱</span><b>理賠順序：一層賠到頂，才輪到上一層</b><button type="button" class="golink" data-goto="pc-liab">細節 →</button></div>
- <div class="stair"><span class="st s1" data-r="s1">① 強制險<small>只保人・醫療 20 萬、身故失能 300 萬</small></span><i>➜</i><span class="st s2" data-r="s2">② 第三人責任<small>強制險不夠的體傷＋對方車損</small></span><i>➜</i><span class="st s3" data-r="s3">③ 超額責任<small>大事故最上層・要先有②</small></span><span class="st-x">三層都<mark>不賠自己</mark>，要另外補：<br>🚙 自己的車 → <b>車體險</b>　🤕 自己的身體 → <b>駕駛人傷害</b>，或人身的意外險、實支、日額</span></div>
-</div>
 
 <div class="vc"><div class="vc-h"><span class="vc-q">一</span><b>車碰車 vs 自撞</b><button type="button" class="golink" data-goto="pc-compulsory">細節 →</button></div>
 <table class="vt"><thead><tr><th></th><th>🚗💥🚗 車碰車</th><th>🛵💥 自撞</th></tr></thead><tbody>
@@ -6710,7 +6705,9 @@ F.querySelectorAll(".fbp,.fbh button").forEach(function(b){b.addEventListener("c
 <tr data-r="d2"><td>🚗 跟車對撞</td><td><em class="n">✕</em></td><td><em class="y">✓</em></td></tr>
 <tr data-r="d3"><td>💰 給多少</td><td>醫療 20 萬<br>失能身故 300 或 350 萬</td><td>住院日額 2,000<br>失能身故 50～600 萬</td></tr>
 <tr data-r="d4"><td>➕ 可以一起加</td><td colspan="2">保障不重複；機車族先加強制險附加</td></tr>
-<tr data-r="d5"><td>🧡 已有人身險</td><td colspan="2">已經有意外險、實支、日額的人，自己受傷這塊大多接得住；駕傷跟著<mark>車</mark>走，常借車給別人開時更有用</td></tr>
+<tr data-r="d6"><td>📋 名冊</td><td>不用名冊</td><td>要附名冊（列冊的駕駛才保）</td></tr>
+<tr data-r="d5"><td>🧡 人身險對照</td><td>實支＋身故、失能</td><td>住院日額＋身故、失能</td></tr>
+<tr data-r="d7"><td></td><td colspan="2">已有意外險、實支、日額的人，自己受傷這塊大多接得住；駕傷跟著<mark>車</mark>走，常借車給別人開時更有用</td></tr>
 </tbody></table></div>
 
 <div class="vc"><div class="vc-h"><span class="vc-q">四</span><b>車體險：甲 vs 乙 vs 丙</b><button type="button" class="golink" data-goto="pc-pd">細節 →</button></div>
@@ -6729,6 +6726,9 @@ F.querySelectorAll(".fbp,.fbh button").forEach(function(b){b.addEventListener("c
 <tr data-r="m3"><td>🚨 沒保罰</td><td>3,000～15,000</td><td>1,500～3,000</td></tr>
 <tr data-r="m4"><td>🔧 保自己車</td><td>車體險＋竊盜險</td><td>方案限額 2～5 萬</td></tr>
 </tbody></table></div>
+<div class="vc vc-wide" data-k="0"><div class="vc-h"><span class="vc-q">整理</span><b>理賠順序：一層賠到頂，才輪到上一層</b><button type="button" class="golink" data-goto="pc-liab">細節 →</button></div>
+ <div class="stair"><span class="st s1" data-r="s1">① 強制險<small>只保人・醫療 20 萬、身故失能 300 萬</small></span><i>➜</i><span class="st s2" data-r="s2">② 第三人責任<small>強制險不夠的體傷＋對方車損</small></span><i>➜</i><span class="st s3" data-r="s3">③ 超額責任<small>大事故最上層・要先有②</small></span><span class="st-x">三層都<mark>不賠自己</mark>，要另外補：<br>🚙 自己的車 → <b>車體險</b>　🤕 自己的身體 → <b>駕駛人傷害</b>，或人身的意外險、實支、日額</span></div>
+</div>
 </div>
 <p class="cmnote">整理自本手冊「汽機車強制險」「第三人責任險與超額責任」「車體險與竊盜險」三節，保費是國泰網路投保價（汽車為 30～60 歲女性、3 年無肇事），出處列在各節最下面。實際以條款和審核結果為準。</p>
 <script>(function(){var R=document.querySelector(".pg-pc-car .vsx");if(!R)return;R.querySelectorAll(".vc").forEach(function(C){var cur=null;C.querySelectorAll("[data-r]").forEach(function(x){x.addEventListener("click",function(){cur=(cur==x.dataset.r)?null:x.dataset.r;C.classList.toggle("sel",!!cur);C.querySelectorAll("[data-r]").forEach(function(y){y.classList.toggle("on",y.dataset.r==cur)})})})});})();</script>
