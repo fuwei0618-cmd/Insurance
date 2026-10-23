@@ -6677,6 +6677,7 @@ r.addEventListener('change',e=>{if(e.target.matches('select'))run();});run();})(
 .pg-pc-car .fbl .trio b{flex:none;font-size:11px;color:#C0662B;align-self:center;margin-right:2px}
 .pg-pc-car .fbl .trio em{white-space:nowrap}
 .pg-pc-car .fbl span[data-m]{padding-right:62px!important}
+.pg-pc-car .stamp{top:72%}
 </style>
 <div class="pg-pc-car">
 <div class="orig"><div class="root"><small>原點</small><b>車險只問兩件事：撞到別人，我賠得起嗎？自己的人和車，誰來顧？</b><span>產險和壽險看的不一樣：壽險看<mark>病名、失能等級、住院天數</mark>；車險看<mark>誰的責任、車子折舊、修車估價</mark>，最後還要和解。</span></div><div class="oc"><div><small>法律規定</small><b>強制險：只保別人的身體</b></div><div><small>賠別人</small><b>第三人責任、超額責任</b></div><div><small>顧自己</small><b>車體險、駕駛人傷害</b></div></div></div>
@@ -6814,10 +6815,10 @@ var TL={
  car:["car","🚗 汽車"], bike:["bike","🛵 機車"]};
 /* 每個表頭點下去：標題、哪幾格（ok 賠／ng 不賠／hi 主角／dim 淡掉）、下面那條、亮哪顆泡泡 */
 var D={
- vc:{m:"5x:y,5p:y,5c:y,4t:y,4q:n,3a:y,3b:y,3c:y,1x:y,1t:y,1c:y,2x:y,2t:y",t:"車碰車：五塊都可能要賠",g:[["crash","hi"],["solo","dim"]],b:"",info:'<b>🚙 自己的車</b> 甲、乙、丙式都賠　<b>🤕 自己受傷</b> 第三人附加駕傷賠，<b class="no">強制險附加不賠</b><br><b>👩 車上乘客</b> 強制險＋乘客責任險　<b>🧍 對方</b> 強制險 → 第三人責任 → 超額責任'},
- vs:{m:"5x:y,5p:y,5c:y,4t:y,4q:y,3a:y,3b:y,3c:n,1x:z,1t:z,1c:z,2x:z,2t:z",t:"自撞：沒有對方，只剩自己和乘客",g:[["crash","dim"],["solo","hi"]],b:"",info:'<b>🚙 自己的車</b> 甲、乙式賠，<b class="no">丙式不賠</b>　<b>🤕 自己受傷</b> 兩種駕傷都賠<br><b>👩 車上乘客</b> 強制險＋乘客責任險　<b>🧍 對方</b> 沒撞到人、車就不會用到'},
- xa:{m:"1x:y,2x:y,5x:n",t:"超額責任・甲式：只保對方",g:[["pax","ng"],["them","ok"]],b:"1",info:'<b>✓ 對方的人、車、財物、路人</b>　超過強制險＋第三人責任的部分<br><b class="no">✕ 我方乘客</b>　要選乙式<br><small>📋 要先有第三人責任險・適合常一個人開車</small>'},
- xb:{m:"1x:y,2x:y,5x:y",t:"超額責任・乙式：對方＋雙方乘客",g:[["pax","ok"],["them","ok"]],b:"5",info:'<b>✓ 甲式全部＋雙方乘客受傷</b>　不含我方乘客的財物<br><small>📋 要先有第三人責任＋乘客責任險・適合常載家人朋友</small>'},
+ vc:{m:"5x:y,5p:y,5c:y,4t:y,4q:n,3a:y,3b:y,3c:y,1x:y,1t:y,1c:y,2x:y,2t:y",t:"車碰車：五塊都可能要賠",g:[["crash","hi"],["solo","dim"]],b:"1,2,3,4,5",info:'<b>🚙 自己的車</b> 甲、乙、丙式都賠　<b>🤕 自己受傷</b> 第三人附加駕傷賠，<b class="no">強制險附加不賠</b><br><b>👩 車上乘客</b> 強制險＋乘客責任險　<b>🧍 對方</b> 強制險 → 第三人責任 → 超額責任'},
+ vs:{m:"5x:y,5p:y,5c:y,4t:y,4q:y,3a:y,3b:y,3c:n,1x:z,1t:z,1c:z,2x:z,2t:z",t:"自撞：沒有對方，只剩自己和乘客",g:[["crash","dim"],["solo","hi"]],b:"3,4,5",info:'<b>🚙 自己的車</b> 甲、乙式賠，<b class="no">丙式不賠</b>　<b>🤕 自己受傷</b> 兩種駕傷都賠<br><b>👩 車上乘客</b> 強制險＋乘客責任險　<b>🧍 對方</b> 沒撞到人、車就不會用到'},
+ xa:{m:"1x:y,2x:y,5x:n",t:"超額責任・甲式：只保對方",g:[["pax","ng"],["them","ok"]],b:"1,2",info:'<b>✓ 對方的人、車、財物、路人</b>　超過強制險＋第三人責任的部分<br><b class="no">✕ 我方乘客</b>　要選乙式<br><small>📋 要先有第三人責任險・適合常一個人開車</small>'},
+ xb:{m:"1x:y,2x:y,5x:y",t:"超額責任・乙式：對方＋雙方乘客",g:[["pax","ok"],["them","ok"]],b:"1,2,5",info:'<b>✓ 甲式全部＋雙方乘客受傷</b>　不含我方乘客的財物<br><small>📋 要先有第三人責任＋乘客責任險・適合常載家人朋友</small>'},
  dq:{m:"4q:y,4t:z",t:"駕駛人傷害・強制險附加：只保單一事故",g:[["crash","ng"],["solo","ok"]],b:"4",info:'<b>✓ 自撞自摔有賠</b>　醫療最高 20 萬；失能或身故：限車主本人 300 萬、保障駕駛人 350 萬<br><b class="no">✕ 跟車對撞不賠</b>　有撞到別台車就不算單一事故<br><small>📋 不用名冊</small>'},
  dt:{m:"4t:y,4q:z",t:"駕駛人傷害・第三人附加：對撞、自撞都賠",g:[["crash","ok"],["solo","ok"]],b:"4",info:'<b>✓ 自撞自摔、跟車對撞都賠</b>　住院日額 2,000 元（事故後 180 天內，最多 90 天）；失能、身故每人 50～600 萬<br><small>📋 要附名冊，列冊的駕駛才保</small>'},
  ba:{m:"3a:y",t:"車體險・甲式：範圍最廣",g:[["crash","ok"],["solo","ok"],["drop","ok"],["scr","ok"],["flood","ng"]],b:"3",info:'<b>✓ 車碰車、自撞、火災、掉東西砸、惡意破壞、不明原因</b><br><b class="no">✕ 颱風淹水</b>　三式都要另外加颱風、地震、洪水附加條款'},
@@ -6834,7 +6835,7 @@ function show(k){if(cur==k){close();return}cur=k;var d=D[k];var tb=P.querySelect
   var c=document.createElement("figcaption");c.textContent=t[1];f.appendChild(c);
   if(st=="ok"||st=="ng"){var sp=document.createElement("span");sp.className="stamp";sp.textContent=st=="ok"?"✓ 賠":"✕ 不賠";f.appendChild(sp);}G.appendChild(f);});
  mark(d.m||"");I.innerHTML=d.info;I.hidden=false;tip.hidden=true;P.querySelectorAll(".scb").forEach(function(x){x.classList.toggle("on",x.dataset.sc==k)});
- F.classList.toggle("sel",!!d.b);F.querySelectorAll(".fbb,.fbp,.fbh button").forEach(function(x){x.classList.toggle("on",!!d.b&&x.dataset.t==d.b)});
+ F.classList.toggle("sel",!!d.b);var bl=(d.b||"").split(",");F.querySelectorAll(".fbb,.fbp,.fbh button").forEach(function(x){x.classList.toggle("on",!!d.b&&bl.indexOf(x.dataset.t)>=0)});
  if(innerWidth<900)F.querySelector(".fb-img").scrollIntoView({behavior:"smooth",block:"center"});else F.scrollIntoView({behavior:"smooth",block:"start"});}
 P.querySelectorAll(".scb").forEach(function(x){x.addEventListener("click",function(e){e.stopPropagation();show(x.dataset.sc)});x.addEventListener("keydown",function(e){if(e.key=="Enter")show(x.dataset.sc)})});
 O.querySelector(".sc-x").addEventListener("click",close);})();
