@@ -6578,53 +6578,34 @@ r.addEventListener('change',e=>{if(e.target.matches('select'))run();});run();})(
 .pg-pc-car .fb.sel .fbb{opacity:.55}
 .pg-pc-car .fb.sel .fbb.on{opacity:1}
 .pg-pc-car .fb-tip{margin:0;font-size:13px;font-weight:700;text-align:center;color:var(--inc)}
-.pg-pc-car .vsx{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.pg-pc-car .vc{background:#fff;border:1px solid #DCEBE4;border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 4px 14px rgba(60,120,100,.07)}
+.pg-pc-car .vsx{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px}
+.pg-pc-car .vc{background:#fff;border:1px solid #DCEBE4;border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;min-width:0}
 .pg-pc-car .vc-wide{grid-column:1/-1}
-.pg-pc-car .vc-h{display:flex;flex-direction:column;gap:2px}
-.pg-pc-car .vc-q{align-self:flex-start;font-size:11.5px;font-weight:800;color:#fff;background:#3FAF8A;border-radius:999px;padding:1px 10px}
-.pg-pc-car .vc-h b{font-family:var(--serif);font-size:18px;color:var(--ink)}
-.pg-pc-car .vc-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.pg-pc-car .vside{border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;align-items:flex-start;transition:all .25s}
-.pg-pc-car .vside.a{background:#E6F2FC}.pg-pc-car .vside.b{background:#FFF1DD}
-.pg-pc-car .vside[data-r]{cursor:pointer}
-.pg-pc-car .vside .art{font-size:30px;line-height:1.1;letter-spacing:2px}
-.pg-pc-car .vside b{font-size:16px}
-.pg-pc-car .vside.a b{color:#2F79BF}.pg-pc-car .vside.b b{color:#C7731F}
-.pg-pc-car .vside small{font-size:12px;color:var(--muted)}
-.pg-pc-car .vside ul{margin:4px 0 0;padding:0;list-style:none;font-size:13px;line-height:1.65}
-.pg-pc-car .vside .pre,.pg-pc-car .vside .fit{margin:2px 0 0;font-size:12px;font-weight:700;background:rgba(255,255,255,.8);border-radius:8px;padding:2px 8px}
-.pg-pc-car .vside .fit{color:#2A7A53}
-.pg-pc-car em.y{font-style:normal;color:#2E9E74;font-weight:900}
-.pg-pc-car em.n{font-style:normal;color:#E0584B;font-weight:900}
-.pg-pc-car .vrow-ic{display:flex;flex-wrap:wrap;gap:6px}
-.pg-pc-car .vrow-ic button{font:inherit;font-size:18px;border:2px solid #E3EEE9;background:#F7FBF9;border-radius:12px;padding:4px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .2s}
-.pg-pc-car .vrow-ic button i{font-style:normal;font-size:12px;font-weight:700;color:var(--ink)}
-.pg-pc-car .vt{width:100%;border-collapse:collapse;font-size:13px}
-.pg-pc-car .vt th,.pg-pc-car .vt td{padding:6px 8px;border-bottom:1px solid #EEF3F1;text-align:left;vertical-align:top;line-height:1.55;transition:background .25s}
-.pg-pc-car .vt thead th{font-size:12.5px;color:var(--muted)}
-.pg-pc-car .vt th small{display:block;font-size:11px;font-weight:600}
-.pg-pc-car .vt td small{display:block;font-size:11px;color:var(--muted)}
-.pg-pc-car .vt td:first-child{font-weight:700;white-space:nowrap}
+.pg-pc-car .vc-h{display:flex;align-items:center;gap:6px}
+.pg-pc-car .vc-q{flex:none;font-size:11px;font-weight:800;color:#fff;background:#3FAF8A;border-radius:999px;padding:0 7px;line-height:18px}
+.pg-pc-car .vc-h b{font-size:14px;flex:1;min-width:0}
+.pg-pc-car .vc-h .golink{font-size:11px;padding:0 8px}
+.pg-pc-car .vt{width:100%;border-collapse:collapse;font-size:12px;line-height:1.4}
+.pg-pc-car .vt th,.pg-pc-car .vt td{padding:3px 5px;border-bottom:1px solid #EEF3F1;text-align:left;vertical-align:top}
+.pg-pc-car .vt tr:last-child td{border-bottom:0}
+.pg-pc-car .vt thead th{font-size:11.5px;color:#2F79BF;font-weight:800;background:#F3F8FC}
+.pg-pc-car .vt thead th:nth-child(3){color:#C7731F;background:#FFF6EA}
+.pg-pc-car .vt td:first-child{font-weight:700;white-space:nowrap;color:var(--ink)}
 .pg-pc-car .vt.c3 td:not(:first-child),.pg-pc-car .vt.c3 th:not(:first-child){text-align:center}
+.pg-pc-car .vt.c3 thead th:nth-child(4){color:#7A6AB3;background:#F4F1FA}
 .pg-pc-car .vt tbody tr{cursor:pointer}
-.pg-pc-car .vc-l{margin:0;padding-left:18px;font-size:13.5px;line-height:1.75}
-.pg-pc-car .vc-l li{border-radius:8px;padding:1px 6px;transition:background .25s;cursor:pointer}
-.pg-pc-car .vc-k{margin:0;font-size:13px;font-weight:700;background:#FFF7E0;border-radius:10px;padding:6px 10px}
-.pg-pc-car .vc .golink{align-self:flex-start}
-.pg-pc-car .stair{display:grid;grid-template-columns:1fr 26px 1fr 26px 1fr;align-items:end;gap:6px}
-.pg-pc-car .st{border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:3px;color:#fff;cursor:pointer;transition:all .25s}
-.pg-pc-car .st i{font-style:normal;font-size:24px}
-.pg-pc-car .st b{font-size:15px}.pg-pc-car .st span{font-size:12.5px;line-height:1.6;opacity:.95}
-.pg-pc-car .st.s1{background:#5B9BD5;min-height:110px}.pg-pc-car .st.s2{background:#3BAFB8;min-height:140px}.pg-pc-car .st.s3{background:#8E7CC3;min-height:170px}
-.pg-pc-car .st-ar{align-self:center;text-align:center;font-size:20px;color:#9BB8AE}
-.pg-pc-car .vc.sel [data-r]:not(.on){opacity:.45}
-.pg-pc-car .vc [data-r].on{opacity:1}
-.pg-pc-car .vc tr.on td,.pg-pc-car .vc li.on{background:#FFF1C9}
-.pg-pc-car .vc .vside.on,.pg-pc-car .vc .st.on{box-shadow:0 0 0 3px #fff,0 0 0 6px #F2B25C;transform:translateY(-2px)}
-.pg-pc-car .vc .vrow-ic button.on{border-color:#F2B25C;background:#FFF1C9}
-@media (max-width:900px){.pg-pc-car .vsx{grid-template-columns:1fr}}
-@media (max-width:560px){.pg-pc-car .stair{grid-template-columns:1fr}.pg-pc-car .st-ar{transform:rotate(90deg)}.pg-pc-car .st{min-height:0!important}.pg-pc-car .vt td:first-child{white-space:normal}}
+.pg-pc-car em.y{font-style:normal;color:#2E9E74;font-weight:900;margin-right:2px}
+.pg-pc-car em.n{font-style:normal;color:#E0584B;font-weight:900;margin-right:2px}
+.pg-pc-car .stair{display:flex;flex-wrap:wrap;align-items:stretch;gap:4px}
+.pg-pc-car .stair>i{font-style:normal;align-self:center;color:#9BB8AE}
+.pg-pc-car .st{border-radius:8px;padding:3px 9px;color:#fff;font-size:12.5px;font-weight:800;cursor:pointer;display:flex;flex-direction:column}
+.pg-pc-car .st small{font-size:11px;font-weight:600;opacity:.95}
+.pg-pc-car .st.s1{background:#5B9BD5}.pg-pc-car .st.s2{background:#3BAFB8}.pg-pc-car .st.s3{background:#8E7CC3}
+.pg-pc-car .st-x{align-self:center;font-size:12px;font-weight:700;margin-left:6px}
+.pg-pc-car .vc.sel [data-r]:not(.on){opacity:.4}
+.pg-pc-car .vc tr.on td{background:#FFF1C9}
+.pg-pc-car .vc .st.on{box-shadow:0 0 0 2px #F2B25C}
+@media (max-width:560px){.pg-pc-car .vt td:first-child{white-space:normal}}
 </style>
 <div class="pg-pc-car">
 <div class="orig"><div class="root"><small>原點</small><b>車險只問兩件事：撞到別人，我賠得起嗎？自己的人和車，誰來顧？</b><span>產險和壽險看的不一樣：壽險看<mark>病名、失能等級、住院天數</mark>；車險看<mark>誰的責任、車子折舊、修車估價</mark>，最後還要和解。</span></div><div class="oc"><div><small>法律規定</small><b>強制險：只保別人的身體</b></div><div><small>賠別人</small><b>第三人責任、超額責任</b></div><div><small>顧自己</small><b>車體險、駕駛人傷害</b></div></div></div>
@@ -6701,98 +6682,55 @@ F.querySelectorAll(".fbb").forEach(function(b){b.addEventListener("click",functi
 F.querySelectorAll(".fbp,.fbh button").forEach(function(b){b.addEventListener("click",function(){op(b.dataset.t,b.classList.contains("fbp")?"img":"txt")})});})();</script>
 
 <h3 class="sec">險種對比卡：一頁看懂差在哪</h3>
-<p class="cmnote">每張卡只回答一個「這個還是那個」。<b>點卡片裡的小圖</b>，對應的那一行會亮起來；再點一次取消。</p>
+<p class="cmnote">點任何一行，那一行會亮起來；再點一次取消。</p>
 <div class="vsx">
-
-<div class="vc vc-wide">
- <div class="vc-h"><span class="vc-q">先看總綱</span><b>理賠啟動順序：一層賠到頂，才輪到上一層</b></div>
- <div class="stair">
-  <div class="st s1" data-r="s1"><i>🛡️</i><b>① 強制險</b><span>法律規定一定要有。只保人：醫療每人 20 萬；身故、失能最高 300 萬</span></div>
-  <div class="st-ar">➜</div>
-  <div class="st s2" data-r="s2"><i>🤝</i><b>② 第三人責任</b><span>強制險不夠的體傷、和強制險不保的對方車損</span></div>
-  <div class="st-ar">➜</div>
-  <div class="st s3" data-r="s3"><i>🏢</i><b>③ 超額責任</b><span>大事故最上面那層，撞到名車、對方重傷時接上來</span></div>
- </div>
- <ul class="vc-l">
-  <li data-r="s1">強制險沒有門檻，<mark>受害人不用先判斷誰對誰錯</mark>就能申請。</li>
-  <li data-r="s2">第三人責任是依法要賠時才啟動；您沒責任，它不會動。</li>
-  <li data-r="s3"><mark>超額不能單獨買</mark>，要先有第三人責任；三層都<mark>不賠自己的車、自己的身體</mark>。</li>
- </ul>
- <button type="button" class="golink" data-goto="pc-liab">看責任險怎麼疊 →</button>
+<div class="vc vc-wide" data-k="0"><div class="vc-h"><span class="vc-q">總綱</span><b>理賠順序：一層賠到頂，才輪到上一層</b><button type="button" class="golink" data-goto="pc-liab">細節 →</button></div>
+ <div class="stair"><span class="st s1" data-r="s1">① 強制險<small>只保人・醫療 20 萬、身故失能 300 萬</small></span><i>➜</i><span class="st s2" data-r="s2">② 第三人責任<small>強制險不夠的體傷＋對方車損</small></span><i>➜</i><span class="st s3" data-r="s3">③ 超額責任<small>大事故最上層・要先有②</small></span><span class="st-x">三層都<mark>不賠自己的車和身體</mark></span></div>
 </div>
 
-<div class="vc">
- <div class="vc-h"><span class="vc-q">對比一</span><b>車碰車 vs 自撞，保險怎麼賠？</b></div>
- <div class="vc-2">
-  <div class="vside a"><div class="art">🛵💥🛵</div><b>車碰車</b><small>撞到別台車、撞到人</small></div>
-  <div class="vside b"><div class="art">🛵💥🪧</div><b>自撞</b><small>打滑撞電線桿、翻車、自摔</small></div>
- </div>
- <div class="vrow-ic"><button type="button" data-r="v1">🚙<i>自己的車</i></button><button type="button" data-r="v2">🤕<i>自己受傷</i></button><button type="button" data-r="v3">👩<i>車上乘客</i></button><button type="button" data-r="v4">🧍<i>對方</i></button></div>
- <table class="vt"><thead><tr><th></th><th>車碰車</th><th>自撞</th></tr></thead><tbody>
-  <tr data-r="v1"><td>自己的車</td><td><em class="y">✓</em> 甲、乙、丙式都賠</td><td><em class="y">✓</em> 甲、乙式　<em class="n">✕</em> 丙式</td></tr>
-  <tr data-r="v2"><td>自己受傷</td><td><em class="y">✓</em> 第三人附加駕傷　<em class="n">✕</em> 強制險附加</td><td><em class="y">✓</em> 兩種駕傷都賠</td></tr>
-  <tr data-r="v3"><td>車上乘客</td><td><em class="y">✓</em> 強制險＋乘客責任險</td><td><em class="y">✓</em> 強制險＋乘客責任險</td></tr>
-  <tr data-r="v4"><td>對方</td><td><em class="y">✓</em> 強制險→第三人→超額</td><td>沒撞到人、車就不會用到</td></tr>
- </tbody></table>
- <p class="vc-k">被別人撞、您沒責任：您的損失由<mark>對方的責任險</mark>賠。</p>
- <button type="button" class="golink" data-goto="pc-compulsory">看強制險和駕傷 →</button>
-</div>
+<div class="vc"><div class="vc-h"><span class="vc-q">一</span><b>車碰車 vs 自撞</b><button type="button" class="golink" data-goto="pc-compulsory">細節 →</button></div>
+<table class="vt"><thead><tr><th></th><th>🚗💥🚗 車碰車</th><th>🛵💥 自撞</th></tr></thead><tbody>
+<tr data-r="v1"><td>🚙 自己的車</td><td><em class="y">✓</em>甲乙丙</td><td><em class="y">✓</em>甲乙 <em class="n">✕</em>丙</td></tr>
+<tr data-r="v2"><td>🤕 自己受傷</td><td><em class="y">✓</em>第三人附加駕傷<br><em class="n">✕</em>強制險附加</td><td><em class="y">✓</em>兩種駕傷都賠</td></tr>
+<tr data-r="v3"><td>👩 車上乘客</td><td colspan="2"><em class="y">✓</em>強制險＋乘客責任險</td></tr>
+<tr data-r="v4"><td>🧍 對方</td><td><em class="y">✓</em>①→②→③</td><td>沒撞到就不用</td></tr>
+</tbody></table></div>
 
-<div class="vc">
- <div class="vc-h"><span class="vc-q">對比二</span><b>超額責任：甲式 vs 乙式怎麼選？</b></div>
- <div class="vc-2">
-  <div class="vside a" data-r="x1"><div class="art">🧑‍✈️🚗</div><b>甲式</b><small>保對方</small><ul><li><em class="y">✓</em> 對方的人</li><li><em class="y">✓</em> 對方的車、財物</li><li><em class="y">✓</em> 路人</li><li><em class="n">✕</em> 我方乘客</li></ul><p class="pre">要先有：第三人責任</p><p class="fit">適合：常一個人開車</p></div>
-  <div class="vside b" data-r="x2"><div class="art">🧑‍✈️👨‍👩‍👧</div><b>乙式</b><small>對方＋雙方乘客</small><ul><li><em class="y">✓</em> 甲式全部</li><li><em class="y">✓</em> 雙方乘客受傷</li><li><em class="n">✕</em> 我方乘客的財物</li><li>&nbsp;</li></ul><p class="pre">要先有：第三人責任＋乘客責任險</p><p class="fit">適合：常載家人、朋友</p></div>
- </div>
- <p class="vc-k">⚠️ 超額責任<mark>不賠自己</mark>：駕駛本人受傷要靠駕駛人傷害。</p>
- <button type="button" class="golink" data-goto="pc-liab">看甲式、乙式 →</button>
-</div>
+<div class="vc"><div class="vc-h"><span class="vc-q">二</span><b>超額責任：甲式 vs 乙式</b><button type="button" class="golink" data-goto="pc-liab">細節 →</button></div>
+<table class="vt"><thead><tr><th></th><th>甲式</th><th>乙式</th></tr></thead><tbody>
+<tr data-r="x1"><td>🧍 對方人車、路人</td><td><em class="y">✓</em></td><td><em class="y">✓</em></td></tr>
+<tr data-r="x2"><td>👩 雙方乘客受傷</td><td><em class="n">✕</em></td><td><em class="y">✓</em></td></tr>
+<tr data-r="x3"><td>📋 要先有</td><td>第三人責任</td><td>第三人＋乘客責任</td></tr>
+<tr data-r="x4"><td>🙋 適合</td><td>常一個人開</td><td>常載家人朋友</td></tr>
+</tbody></table></div>
 
-<div class="vc">
- <div class="vc-h"><span class="vc-q">對比三</span><b>駕駛人傷害：強制險附加 vs 第三人附加</b></div>
- <div class="vc-2">
-  <div class="vside a" data-r="d1"><div class="art">🛵🪧</div><b>強制險附加</b><small>只保單一事故</small><ul><li><em class="y">✓</em> 自撞、自摔、翻車</li><li><em class="n">✕</em> 跟別台車對撞</li><li>限車主本人：醫療 20 萬、失能或死亡 300 萬</li><li>保障駕駛人：醫療 20 萬、失能或死亡 350 萬</li></ul></div>
-  <div class="vside b" data-r="d2"><div class="art">🚗💥🚗</div><b>第三人附加</b><small>不限單一事故</small><ul><li><em class="y">✓</em> 自撞</li><li><em class="y">✓</em> 跟別台車對撞</li><li>住院日額 2,000 元；死亡失能每人 50～600 萬</li><li>住院算事故後 180 天內，最多 90 天</li></ul></div>
- </div>
- <p class="vc-k">兩種<mark>保障不重複，可以一起加</mark>。機車族最常自摔，強制險附加的保費不高，先加這塊。</p>
- <button type="button" class="golink" data-goto="pc-compulsory">看兩種版本 →</button>
-</div>
+<div class="vc"><div class="vc-h"><span class="vc-q">三</span><b>駕駛人傷害：兩種附加</b><button type="button" class="golink" data-goto="pc-compulsory">細節 →</button></div>
+<table class="vt"><thead><tr><th></th><th>強制險附加</th><th>第三人附加</th></tr></thead><tbody>
+<tr data-r="d1"><td>🛵 自撞自摔</td><td><em class="y">✓</em></td><td><em class="y">✓</em></td></tr>
+<tr data-r="d2"><td>🚗 跟車對撞</td><td><em class="n">✕</em></td><td><em class="y">✓</em></td></tr>
+<tr data-r="d3"><td>💰 給多少</td><td>醫療 20 萬<br>失能身故 300 或 350 萬</td><td>住院日額 2,000<br>失能身故 50～600 萬</td></tr>
+<tr data-r="d4"><td>➕ 可以一起加</td><td colspan="2">保障不重複；機車族先加強制險附加</td></tr>
+</tbody></table></div>
 
-<div class="vc">
- <div class="vc-h"><span class="vc-q">對比四</span><b>車體險：甲式 vs 乙式 vs 丙式</b></div>
- <div class="vrow-ic"><button type="button" data-r="b1">🚗<i>車碰車</i></button><button type="button" data-r="b2">🪧<i>自撞翻車</i></button><button type="button" data-r="b3">🔥<i>火災雷擊</i></button><button type="button" data-r="b4">🪨<i>掉東西砸</i></button><button type="button" data-r="b5">🖍️<i>惡意破壞</i></button><button type="button" data-r="b6">❓<i>不明原因</i></button></div>
- <table class="vt c3"><thead><tr><th></th><th>甲式<small>範圍最廣</small></th><th>乙式<small>常見選擇</small></th><th>丙式<small>只保車對車</small></th></tr></thead><tbody>
-  <tr data-r="b1"><td>車碰車</td><td><em class="y">✓</em></td><td><em class="y">✓</em></td><td><em class="y">✓</em></td></tr>
-  <tr data-r="b2"><td>自撞、翻車</td><td><em class="y">✓</em></td><td><em class="y">✓</em></td><td><em class="n">✕</em></td></tr>
-  <tr data-r="b3"><td>火災、雷擊、爆炸</td><td><em class="y">✓</em></td><td><em class="y">✓</em></td><td><em class="n">✕</em></td></tr>
-  <tr data-r="b4"><td>拋擲物、墜落物</td><td><em class="y">✓</em></td><td><em class="y">✓</em></td><td><em class="n">✕</em></td></tr>
-  <tr data-r="b5"><td>惡意破壞</td><td><em class="y">✓</em></td><td><em class="n">✕</em></td><td><em class="n">✕</em></td></tr>
-  <tr data-r="b6"><td>不明原因</td><td><em class="y">✓</em></td><td><em class="n">✕</em></td><td><em class="n">✕</em></td></tr>
- </tbody></table>
- <p class="vc-k">🌀 颱風、地震、洪水：<mark>三式都要另外加附加條款</mark>。乙式可以加「限額不明損失」補被刮的那塊。</p>
- <button type="button" class="golink" data-goto="pc-pd">看甲乙丙細節 →</button>
-</div>
+<div class="vc"><div class="vc-h"><span class="vc-q">四</span><b>車體險：甲 vs 乙 vs 丙</b><button type="button" class="golink" data-goto="pc-pd">細節 →</button></div>
+<table class="vt c3"><thead><tr><th></th><th>甲</th><th>乙</th><th>丙</th></tr></thead><tbody>
+<tr data-r="b1"><td>🚗 車碰車</td><td><em class="y">✓</em></td><td><em class="y">✓</em></td><td><em class="y">✓</em></td></tr>
+<tr data-r="b2"><td>🌳 自撞翻車</td><td><em class="y">✓</em></td><td><em class="y">✓</em></td><td><em class="n">✕</em></td></tr>
+<tr data-r="b3"><td>🔥 火災、掉東西砸</td><td><em class="y">✓</em></td><td><em class="y">✓</em></td><td><em class="n">✕</em></td></tr>
+<tr data-r="b4"><td>🔨 惡意、不明原因</td><td><em class="y">✓</em></td><td><em class="n">✕</em></td><td><em class="n">✕</em></td></tr>
+<tr data-r="b5"><td>🌀 颱風淹水</td><td colspan="3">三式都要另外加</td></tr>
+</tbody></table></div>
 
-<div class="vc vc-wide">
- <div class="vc-h"><span class="vc-q">對比五</span><b>汽車 vs 機車，差在哪？</b></div>
- <div class="vc-2">
-  <div class="vside a"><div class="art">🚗</div><b>汽車</b></div>
-  <div class="vside b"><div class="art">🛵</div><b>機車</b></div>
- </div>
- <div class="vrow-ic"><button type="button" data-r="m1">💰<i>強制險保費</i></button><button type="button" data-r="m2">📅<i>保多久</i></button><button type="button" data-r="m3">🚨<i>沒保罰款</i></button><button type="button" data-r="m4">🔧<i>保自己的車</i></button></div>
- <table class="vt"><thead><tr><th></th><th>汽車</th><th>機車</th></tr></thead><tbody>
-  <tr data-r="m1"><td>強制險保費</td><td>自用小客車 939 元<small>國泰網路投保，30～60 歲女性、3 年無肇事</small></td><td>普通重型一年 513 元、兩年 985 元<small>國泰網路投保價</small></td></tr>
-  <tr data-r="m2"><td>保多久</td><td>一般一年期</td><td>可選一年或兩年；兩年期比較省，也不怕忘了續保</td></tr>
-  <tr data-r="m3"><td>沒保罰款</td><td>3,000～15,000 元</td><td>1,500～3,000 元</td></tr>
-  <tr data-r="m4"><td>保自己的車</td><td>車體險甲、乙、丙式，竊盜險另外買</td><td>多半用方案裡的限額條款，例如整車竊盜、火災限額 2～5 萬</td></tr>
- </tbody></table>
- <p class="vc-k">強制險的保障額度，汽車、機車<mark>一樣</mark>。</p>
- <button type="button" class="golink" data-goto="pc-compulsory">看汽機車強制險 →</button>
+<div class="vc"><div class="vc-h"><span class="vc-q">五</span><b>汽車 vs 機車</b><button type="button" class="golink" data-goto="pc-compulsory">細節 →</button></div>
+<table class="vt"><thead><tr><th></th><th>🚗 汽車</th><th>🛵 機車</th></tr></thead><tbody>
+<tr data-r="m1"><td>💰 強制險</td><td>自小客 939 元</td><td>普重 1 年 513、2 年 985</td></tr>
+<tr data-r="m2"><td>📅 保多久</td><td>1 年</td><td>1 或 2 年</td></tr>
+<tr data-r="m3"><td>🚨 沒保罰</td><td>3,000～15,000</td><td>1,500～3,000</td></tr>
+<tr data-r="m4"><td>🔧 保自己車</td><td>車體險＋竊盜險</td><td>方案限額 2～5 萬</td></tr>
+</tbody></table></div>
 </div>
-
-</div>
-<p class="cmnote">對比卡的內容整理自本手冊「汽機車強制險」「第三人責任險與超額責任」「車體險與竊盜險」三節，出處列在各節最下面。網路投保的額度和保費以國泰產險網頁為準，實際以條款和審核結果為準。</p>
-<script>(function(){var R=document.querySelector(".pg-pc-car .vsx");if(!R)return;R.querySelectorAll(".vc").forEach(function(C){var cur=null;function op(r){cur=(cur==r)?null:r;C.classList.toggle("sel",!!cur);C.querySelectorAll("[data-r]").forEach(function(x){x.classList.toggle("on",x.dataset.r==cur)});}C.querySelectorAll("[data-r]").forEach(function(x){x.addEventListener("click",function(e){if(e.target.closest(".golink"))return;op(x.dataset.r)})});});})();</script>
+<p class="cmnote">整理自本手冊「汽機車強制險」「第三人責任險與超額責任」「車體險與竊盜險」三節，保費是國泰網路投保價（汽車為 30～60 歲女性、3 年無肇事），出處列在各節最下面。實際以條款和審核結果為準。</p>
+<script>(function(){var R=document.querySelector(".pg-pc-car .vsx");if(!R)return;R.querySelectorAll(".vc").forEach(function(C){var cur=null;C.querySelectorAll("[data-r]").forEach(function(x){x.addEventListener("click",function(){cur=(cur==x.dataset.r)?null:x.dataset.r;C.classList.toggle("sel",!!cur);C.querySelectorAll("[data-r]").forEach(function(y){y.classList.toggle("on",y.dataset.r==cur)})})})});})();</script>
 
 <h3 class="sec">先問客戶三句話，就知道要補哪一塊</h3>
 <div class="cmask">
