@@ -432,7 +432,7 @@ const TPLGROUPS = ['LINE', '簡訊', '信件', '通話', '其他'];
 const linkify = (html) => html.replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.length > 60 ? u.slice(0, 57) + '…' : u}</a>`);
 
 /* ================= 狀態與畫面 ================= */
-const S = { ginvOpen: false, gview: 'table', ktable: false, kprog: '全部', kfromTable: false, kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
+const S = { ginvOpen: false, gview: 'table', ktable: false, kprog: '全部', kmark: '全部', khh: false, kedit: false, kfromTable: false, kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
 const cases = () => Vault.all('cases');
 const localDay = (d = new Date()) => { const t = new Date(d); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
 const caseDate = (c) => c.date || (c.createdAt ? localDay(c.createdAt) : '');
@@ -606,28 +606,50 @@ function openCallFlow() {
    ${CALL_FLOW.map(([h, l], i) => `<div class="sec"><h2>${i + 1}. ${h}</h2><ol class="cflow">${l.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>`).join('')}</div></div>`;
   $('cfX').onclick = () => (ov.innerHTML = '');
 }
+const normAddr = (x) => (x || '').replace(/\s+/g, '').replace(/台/g, '臺').replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+const hhKey = (k) => (k.hh ? 'h:' + k.hh : normAddr(k.addr) ? 'a:' + normAddr(k.addr) : 'n:' + k.id);
+function callHouseholds(all) { const m = new Map(); all.forEach((k) => { const key = hhKey(k); m.has(key) ? m.get(key).push(k) : m.set(key, [k]); }); return m; }
+const hhPending = (g) => g.length > 1 && !g.every((k) => k.hhOk);
+const KMARKS = ['全部', '已加 LINE', '未加 LINE', '退件', '同事的件', '家戶待確認'];
 function callTableHTML() {
-  const all = calls(), q = S.q.trim();
+  const all = calls(), q = S.q.trim(), hhs = callHouseholds(all), grpOf = (k) => hhs.get(hhKey(k));
   const areas = [...new Set(all.map((k) => k.area).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant')); if (S.kar !== '全部' && !areas.includes(S.kar)) S.kar = '全部';
-  const list = all.filter((k) => (S.kprog === '全部' || callProg(k) === S.kprog) && (S.kar === '全部' || k.area === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && (!q || [k.no, k.name, k.phone, k.home, k.addr, k.area, k.note].join(' ').includes(q))).sort(noCmp);
-  const n = (f) => all.filter(f).length, prog = (k) => callProg(k);
-  const funnel = [['名單', all.length], ['打過', n((k) => (k.logs || []).length)], ['接通', n((k) => ['已接通', '已排訪', '已見面'].includes(prog(k)))], ['要年曆', n((k) => ['預備', '已送'].includes(callGift(k)))], ['加 LINE', n((k) => k.line)], ['排訪', n((k) => ['已排訪', '已見面'].includes(prog(k)))], ['見面', n((k) => k.met)], ['年曆已送', n((k) => callGift(k) === '已送')]];
+  const markOk = (k) => ({ 全部: true, '已加 LINE': !!k.line, '未加 LINE': !k.line, 退件: !!k.mailBack, 同事的件: !!k.other, 家戶待確認: hhPending(grpOf(k)) })[S.kmark];
+  let list = all.filter((k) => (S.kprog === '全部' || callProg(k) === S.kprog) && (S.kar === '全部' || k.area === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && markOk(k) && (!q || [k.no, k.name, k.phone, k.home, k.addr, k.area, k.note, k.hh, k.otherWho].join(' ').includes(q))).sort(noCmp);
+  if (S.khh) { const first = new Map(); list.forEach((k, i) => { const key = hhKey(k); if (!first.has(key)) first.set(key, i); }); list = list.map((k, i) => [k, i]).sort((x, y) => first.get(hhKey(x[0])) - first.get(hhKey(y[0])) || x[1] - y[1]).map(([k]) => k); }
+  const mine = all.filter((k) => !k.other), n = (f) => mine.filter(f).length, na = (f) => all.filter(f).length, prog = (k) => callProg(k);
+  const funnel = [['名單', mine.length], ['打過', n((k) => (k.logs || []).length)], ['接通', n((k) => ['已接通', '已排訪', '已見面'].includes(prog(k)))], ['要年曆', n((k) => ['預備', '已送'].includes(callGift(k)))], ['加 LINE', n((k) => k.line)], ['排訪', n((k) => ['已排訪', '已見面'].includes(prog(k)))], ['見面', n((k) => k.met)], ['年曆已送', n((k) => callGift(k) === '已送')]];
   const dot = (v, l) => `<span class="kdot ${v}" title="${l}${v === 'ok' ? '接了' : v === 'no' ? '沒接' : '還沒打'}">${l[0]}</span>`;
-  const chip = (key, x, c) => `<button class="chip${S[key] === x ? ' on' : ''}" data-${key === 'kprog' ? 'kprog' : key === 'klv' ? 'klvf' : 'kar'}="${esc(x)}">${esc(x)} <span class="cnt">${c}</span></button>`;
-  return `<div class="colhead"><h1>服務件總表 <span style="display:flex;gap:6px"><button class="btn" data-act="cflow">流程</button><button class="btn" data-act="klist">‹ 回到名單</button><button class="btn" data-act="importcalls">匯入名單</button></span></h1>
-   <div class="kfunnel">${funnel.map(([l, v]) => `<div><span>${l}</span><b>${v}</b></div>`).join('<i>›</i>')}</div>
-   <input class="search" id="q" placeholder="搜尋序號、姓名、電話、地址" value="${esc(S.q)}" autocomplete="off">
-   <div class="chips"><span class="sub" style="align-self:center">進度</span>${['全部', ...PROGS].map((x) => chip('kprog', x, x === '全部' ? all.length : n((k) => prog(k) === x))).join('')}</div>
-   <div class="chips"><span class="sub" style="align-self:center">分級</span>${['全部', ...LEVELS, '未分級'].map((x) => chip('klv', x, x === '全部' ? all.length : x === '未分級' ? n((k) => !k.level) : n((k) => k.level === x))).join('')}</div>
-   ${areas.length ? `<div class="chips"><span class="sub" style="align-self:center">地區</span>${['全部', ...areas].map((x) => chip('kar', x, x === '全部' ? all.length : n((k) => k.area === x))).join('')}</div>` : ''}</div>
-  <div class="ktablewrap"><table class="ktable"><thead><tr><th>序號</th><th>姓名</th><th>地區</th><th>分級</th><th title="上午、下午、晚上">三時段</th><th>進度</th><th>最近結果</th><th>年曆</th><th>LINE</th><th>排訪</th><th>見面</th><th>重要事項</th></tr></thead><tbody>
-   ${list.map((k) => { const sl = callSlots(k), l = logsOf(k)[0], gf = callGift(k), pg = prog(k); return `<tr data-ksel="${k.id}" class="kp-${pg}">
-     <td class="sub">${esc(k.no || '')}</td><td><b>${esc(k.name || '未填')}</b></td><td>${esc(k.area || '')}</td><td>${k.level ? `<b class="lvl lv-${esc(k.level)}">${esc(k.level)}</b>` : ''}</td>
+  const chip = (key, x, c) => `<button class="chip${S[key] === x ? ' on' : ''}" data-${{ kprog: 'kprog', klv: 'klvf', kar: 'kar', kmark: 'kmark' }[key]}="${esc(x)}">${esc(x)} <span class="cnt">${c}</span></button>`;
+  const E = S.kedit, ti = (k, f, w, ph) => `<input class="nctxt" data-kte="${k.id}" data-kfield="${f}" value="${esc(k[f])}" style="width:${w}px"${ph ? ` placeholder="${ph}"` : ''}>`, cb = (k, f) => `<input type="checkbox" data-kte="${k.id}" data-kfield="${f}"${k[f] ? ' checked' : ''}>`;
+  const cols = E ? ['序號', '姓名', '地區', '分級', '家戶', 'LINE', '退件', '同事的件', '排訪日期', '見面', '重要事項', '']
+    : ['序號', '姓名', '地區', '分級', '家戶', '三時段', '進度', '最近結果', '年曆', 'LINE', '排訪', '見面', '重要事項'];
+  let prevKey = null;
+  const rows = list.map((k) => { const sl = callSlots(k), l = logsOf(k)[0], gf = callGift(k), pg = prog(k), g = grpOf(k), key = hhKey(k);
+    let head = '';
+    if (S.khh && key !== prevKey && g.length > 1) { const pend = hhPending(g); head = `<tr class="khh"><td colspan="${cols.length}"><b>家戶・${esc(g.find((x) => x.hh)?.hh || '同地址')}</b> <span class="sub">${g.length} 人・${esc(g[0].addr || '')}</span> ${pend ? `<span class="pill p-wait">待電話確認</span> <button class="btn sm" data-khhok="${esc(key)}">✓ 確認同一戶</button>` : '<span class="pill p-done">已確認</span>'}</td></tr>`; }
+    prevKey = key;
+    const hhCell = k.hh ? esc(k.hh) : g.length > 1 ? `<span class="sub">同地址 ${g.length} 人</span>` : '';
+    const badges = `${k.mailBack ? '<span class="pill p-off">退件</span>' : ''}${k.other ? `<span class="pill p-off">同事${k.otherWho ? '・' + esc(k.otherWho) : ''}</span>` : ''}`;
+    if (E) return head + `<tr class="kedit${k.other ? ' kother' : ''}"><td class="sub">${esc(k.no || '')}</td><td>${ti(k, 'name', 90)} <button class="linkbtn" data-ksel="${k.id}">開</button></td><td>${ti(k, 'area', 70)}</td>
+      <td><select data-kte="${k.id}" data-kfield="level"><option value=""></option>${LEVELS.map((x) => `<option${k.level === x ? ' selected' : ''}>${x}</option>`).join('')}</select></td><td>${ti(k, 'hh', 80, g.length > 1 ? '同地址' : '')}</td>
+      <td>${cb(k, 'line')}</td><td>${cb(k, 'mailBack')}</td><td>${cb(k, 'other')} ${k.other ? ti(k, 'otherWho', 70, '哪位同事') : ''}</td>
+      <td><input type="date" data-kte="${k.id}" data-kfield="visitDate" value="${esc(k.visitDate)}"></td><td>${cb(k, 'met')}</td><td>${ti(k, 'note', 180)}</td><td>${badges}</td></tr>`;
+    return head + `<tr data-ksel="${k.id}" class="kp-${pg}${k.other ? ' kother' : ''}">
+     <td class="sub">${esc(k.no || '')}</td><td><b>${esc(k.name || '未填')}</b> ${badges}</td><td>${esc(k.area || '')}</td><td>${k.level ? `<b class="lvl lv-${esc(k.level)}">${esc(k.level)}</b>` : ''}</td><td>${hhCell}</td>
      <td><span class="kdots">${dot(sl['上午'], '上午')}${dot(sl['下午'], '下午')}${dot(sl['晚上'], '晚上')}</span></td><td><span class="kprog">${pg}</span></td>
      <td>${l ? `${esc(l.result)}<span class="sub"> ${fmtDay(l.date).slice(5)}</span>` : ''}</td><td>${gf ? `<span class="kg kg-${gf}">${gf}</span>` : ''}</td><td>${k.line ? '✓' : ''}</td>
-     <td>${k.visitDate ? fmtDay(k.visitDate).slice(5) : pg === '已排訪' ? '✓' : ''}</td><td>${k.met ? '✓' : ''}</td><td class="knote">${esc((k.note || l?.note || '').slice(0, 40))}</td></tr>`; }).join('')}
-  </tbody></table>${list.length ? '' : '<div class="empty">沒有符合的對象。</div>'}</div>
-  <div class="sub" style="margin-top:8px">三時段：灰色＝還沒打、紅色＝打了沒接、綠色＝接了。點任何一列打開這個人。</div>`;
+     <td>${k.visitDate ? fmtDay(k.visitDate).slice(5) : pg === '已排訪' ? '✓' : ''}</td><td>${k.met ? '✓' : ''}</td><td class="knote">${esc((k.note || l?.note || '').slice(0, 40))}</td></tr>`; }).join('');
+  return `<div class="colhead"><h1>服務件總表 <span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn${S.khh ? ' pri' : ''}" data-act="khh">${S.khh ? '✓ ' : ''}依家戶排</button><button class="btn${E ? ' pri' : ''}" data-act="kedit">${E ? '✓ 改好了' : '✎ 直接修改'}</button><button class="btn" data-act="cflow">流程</button><button class="btn" data-act="klist">‹ 回到名單</button><button class="btn" data-act="importcalls">匯入名單</button></span></h1>
+   <div class="kfunnel">${funnel.map(([l, v]) => `<div><span>${l}</span><b>${v}</b></div>`).join('<i>›</i>')}</div>
+   <input class="search" id="q" placeholder="搜尋序號、姓名、電話、地址、家戶" value="${esc(S.q)}" autocomplete="off">
+   <div class="chips"><span class="sub" style="align-self:center">進度</span>${['全部', ...PROGS].map((x) => chip('kprog', x, x === '全部' ? all.length : na((k) => prog(k) === x))).join('')}</div>
+   <div class="chips"><span class="sub" style="align-self:center">分級</span>${['全部', ...LEVELS, '未分級'].map((x) => chip('klv', x, x === '全部' ? all.length : x === '未分級' ? na((k) => !k.level) : na((k) => k.level === x))).join('')}</div>
+   <div class="chips"><span class="sub" style="align-self:center">標記</span>${KMARKS.map((x) => chip('kmark', x, all.filter((k) => { const o = S.kmark; S.kmark = x; const r = markOk(k); S.kmark = o; return r; }).length)).join('')}</div>
+   ${areas.length ? `<div class="chips"><span class="sub" style="align-self:center">地區</span>${['全部', ...areas].map((x) => chip('kar', x, x === '全部' ? all.length : na((k) => k.area === x))).join('')}</div>` : ''}</div>
+  ${E ? '<div class="note">直接修改模式：改完一格點別的地方就存好。序號不能改，維持名單原本的編號。家戶那格打一樣的名字（例如「王家」），地址不同也會排在一起。</div>' : ''}
+  <div class="ktablewrap"><table class="ktable${E ? ' editing' : ''}"><thead><tr>${cols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>${list.length ? '' : '<div class="empty">沒有符合的對象。</div>'}</div>
+  <div class="sub" style="margin-top:8px">三時段：灰色＝還沒打、紅色＝打了沒接、綠色＝接了。點任何一列打開這個人。同事的件不算進上面的進度條。「依家戶排」只是換顯示順序，序號不會變。</div>`;
 }
 const LEVELS = ['A', 'B', 'C-1', 'C-2', 'C-3'];
 const LEVEL_TIP = { A: 'VIP，高度優先', B: '有預算、有促約機會', 'C-1': '有關鍵人物，預算不夠', 'C-2': '關係好，觀念還沒到', 'C-3': '排斥、忙、沒需求，用寄的' };
@@ -676,7 +698,9 @@ function callDetailHTML() {
    <label class="f">行政區<input id="kf_area" data-kf="area" value="${esc(k.area)}" placeholder="例如：桃園區"></label>
    <label class="f">方便聯絡時段<input id="kf_slot" data-kf="slot" value="${esc(k.slot)}" placeholder="例如：平日晚上"></label></div>
    <label class="f">地址<input id="kf_addr" data-kf="addr" value="${esc(k.addr)}"></label>
-   <div class="tags"><button class="tag${k.line ? ' on' : ''}" data-kchk="line">已加 LINE</button></div>
+   <label class="f">家戶<input id="kf_hh" data-kf="hh" value="${esc(k.hh)}" placeholder="同一戶的人打一樣的名字，例如：王家"></label>
+   <div class="tags"><button class="tag${k.line ? ' on' : ''}" data-kchk="line">已加 LINE</button><button class="tag${k.hhOk ? ' on' : ''}" data-kchk="hhOk">${k.hhOk ? '✓ ' : ''}家戶電話確認過</button><button class="tag${k.mailBack ? ' on' : ''}" data-kchk="mailBack">寄信退件</button><button class="tag${k.other ? ' on' : ''}" data-kchk="other">同事的件</button></div>
+   ${k.other ? `<label class="f">哪位同事<input id="kf_otherWho" data-kf="otherWho" value="${esc(k.otherWho)}"></label>` : ''}
    <label class="f">備註<textarea id="kf_note" class="grow" data-kf="note" rows="2" placeholder="家庭、保單、個性…">${esc(k.note)}</textarea></label></div>
   <div class="sec"><h2>分級 <span class="sub">打完電話再分，之後可以隨時改</span></h2>
    <div class="tags">${LEVELS.map((x) => `<button class="tag lvtag${k.level === x ? ' on' : ''}" data-klv="${x}"><b>${x}</b> ${LEVEL_TIP[x]}</button>`).join('')}</div></div>
@@ -1831,6 +1855,8 @@ app.addEventListener('click', async (e) => {
   if (d.ncflag) { const c2 = cur(); if (!c2) return; c2.nc = c2.nc || {}; c2.nc[d.ncflag] = !c2.nc[d.ncflag]; saveCase(c2); App.render(); return; }
   if (d.klvf) { S.klv = d.klvf; App.render(); return; }
   if (d.kprog) { S.kprog = d.kprog; App.render(); return; }
+  if (d.kmark) { S.kmark = d.kmark; App.render(); return; }
+  if (d.khhok) { const g = callHouseholds(calls()).get(d.khhok) || []; const nm = g.find((x) => x.hh)?.hh || ((g[0]?.name || '').slice(0, 1) + '家'); g.forEach((k) => { k.hh = nm; k.hhOk = true; Vault.put('calls', k); }); toast(`已確認：${nm}`); App.render(); return; }
   if (d.kar) { S.kar = d.kar; App.render(); return; }
   if (d.klv) { const k = curCall(); if (!k) return; k.level = k.level === d.klv ? '' : d.klv; Vault.put('calls', k); App.render(); return; }
   if (d.kchk) { const k = curCall(); if (!k) return; k[d.kchk] = !k[d.kchk]; Vault.put('calls', k); App.render(); return; }
@@ -1907,6 +1933,8 @@ app.addEventListener('click', async (e) => {
     case 'importcalls': openCallImport(); break;
     case 'newgevent': openNewGiftEvent(); break;
     case 'nctpl': openNcTplEditor(); break;
+    case 'khh': S.khh = !S.khh; App.render(); break;
+    case 'kedit': S.kedit = !S.kedit; App.render(); break;
     case 'ktable': S.ktable = true; S.kfromTable = false; S.showDetail = false; App.render(); break;
     case 'klist': S.ktable = false; App.render(); break;
     case 'cflow': openCallFlow(); break;
@@ -2004,6 +2032,7 @@ function linkClient(c) { // 案件填了客戶名字：找到同名客戶就連�
 }
 app.addEventListener('change', (e) => {
   if (e.target.id === 'kScript') { S.script = e.target.value; App.render(); return; }
+  const kte = e.target.dataset?.kte; if (kte) { const k = Vault.get('calls', kte); if (!k) return; const f = e.target.dataset.kfield; k[f] = e.target.type === 'checkbox' ? e.target.checked : f === 'name' || f === 'hh' ? e.target.value.trim() : e.target.value; if (f === 'hh') k.hhOk = !!k.hh; Vault.put('calls', k); if (e.target.type === 'checkbox' || e.target.tagName === 'SELECT' || f === 'hh') App.render(); return; }
   const kf = e.target.dataset?.kf; if (kf) { const k = curCall(); if (!k) return; k[kf] = kf === 'name' ? e.target.value.trim() : e.target.value; Vault.put('calls', k); if (kf !== 'note') App.render(); return; }
   const cf = e.target.dataset?.cf; const cl = curClient();
   if (cf && cl) {

@@ -550,3 +550,10 @@ select.linktpl{border:1px solid var(--line);background:var(--surface);border-rad
 .ginv .gtable .gthumb{width:32px;height:32px}
 .ginv .gtable tr.gcat td{padding:4px 6px}
 .gsheet select.gw{width:auto;min-width:96px}
+.ktable .khh td{background:var(--surface);font-size:13px;cursor:default;white-space:normal}
+.ktable .khh .btn{margin-left:6px}
+.ktable tr.kother{opacity:.55}
+.ktable.editing tr{cursor:default}
+.ktable.editing td{padding:4px 6px}
+.ktable.editing select,.ktable.editing input[type=date]{font:inherit;font-size:13px;padding:4px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+.ktable td .pill{margin-left:4px;font-size:11px}
