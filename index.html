@@ -6708,6 +6708,22 @@ r.addEventListener('change',e=>{if(e.target.matches('select'))run();});run();})(
 .pg-pc-car .qz-tag{display:inline-block;margin:2px 4px;background:#FFF1C9;border-radius:999px;padding:1px 10px;font-weight:700;font-size:13px}
 @media (max-width:760px){.pg-pc-car .qz-main{grid-template-columns:1fr}.pg-pc-car .qz-q{font-size:16px}}
 .pg-pc-car .vt tfoot td{font-size:11.5px;line-height:1.6;color:var(--muted);padding:5px 6px;border-top:1px dashed #DCEBE4;white-space:normal!important;font-weight:400!important}
+.pg-pc-car .ah{display:flex;flex-direction:column;gap:8px}
+.pg-pc-car .ah-blk{background:#fff;border:1px solid #DCEBE4;border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.pg-pc-car .ah-t{font-size:14.5px;color:#1F6E55}
+.pg-pc-car .ah-5,.pg-pc-car .ah-4{list-style:none;margin:0;padding:0;display:grid;gap:6px;counter-reset:n}
+.pg-pc-car .ah-5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.pg-pc-car .ah-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.pg-pc-car .ah-5 li,.pg-pc-car .ah-4 li{background:#F3FAF6;border-radius:10px;padding:8px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px}
+.pg-pc-car .ah-5 i{font-style:normal;font-size:22px}
+.pg-pc-car .ah-5 b{font-family:var(--serif);font-size:20px;color:#C0662B}
+.pg-pc-car .ah-4 li{counter-increment:n;align-items:flex-start;text-align:left;background:#FFF8EE}
+.pg-pc-car .ah-4 b::before{content:counter(n) " ";color:#E89A5B;font-weight:900}
+.pg-pc-car .ah-5 span,.pg-pc-car .ah-4 span{font-size:12px;line-height:1.55;color:var(--ink)}
+.pg-pc-car .ah-warn{display:flex;flex-direction:column;gap:4px;font-size:13px;background:#FFF7E0;border-radius:10px;padding:6px 10px}
+.pg-pc-car .ah-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pg-pc-car .ah-2 ul{margin:4px 0 0;padding-left:18px;font-size:13px;line-height:1.75}
+@media (max-width:760px){.pg-pc-car .ah-5{grid-template-columns:repeat(2,minmax(0,1fr))}.pg-pc-car .ah-4,.pg-pc-car .ah-2{grid-template-columns:1fr}}
 </style>
 <div class="pg-pc-car">
 <div class="orig"><div class="root"><small>原點</small><b>車險只問兩件事：撞到別人，我賠得起嗎？自己的人和車，誰來顧？</b><span>產險和壽險看的不一樣：壽險看<mark>病名、失能等級、住院天數</mark>；車險看<mark>誰的責任、車子折舊、修車估價</mark>，最後還要和解。</span></div><div class="oc"><div><small>法律規定</small><b>強制險：只保別人的身體</b></div><div><small>賠別人</small><b>第三人責任、超額責任</b></div><div><small>顧自己</small><b>車體險、駕駛人傷害</b></div></div></div>
@@ -6888,6 +6904,35 @@ P.querySelectorAll(".fbl [data-c]").forEach(function(x){x.style.cursor="pointer"
  <div><b>常一個人開車、騎機車嗎？</b><span>第 4 塊：駕駛人傷害保費不高；第三人附加的連對撞也賠。</span></div>
 </div>
 
+<h3 class="sec" id="pc-accident">出事了怎麼辦：車禍當下到領到錢</h3>
+<div class="ah">
+ <div class="ah-blk">
+  <b class="ah-t">① 車禍當下：放、撥、劃、移、等</b>
+  <ol class="ah-5">
+   <li><i>⚠️</i><b>放</b><span>開雙黃燈，在車後放故障標誌</span></li>
+   <li><i>📞</i><b>撥</b><span>110 報警，有人受傷撥 119；也通知保險公司和我</span></li>
+   <li><i>📸</i><b>劃</b><span>標出雙方車輛位置，拍下現場和車損</span></li>
+   <li><i>↪️</i><b>移</b><span>沒人受傷、車還能開，劃好位置就移到路邊</span></li>
+   <li><i>⏳</i><b>等</b><span>在安全的地方等警察來處理</span></li>
+  </ol>
+  <div class="ah-warn"><span>📄 做完筆錄，跟警察拿<mark>「道路交通事故當事人登記聯單」</mark>，申請理賠要用。</span><span>🤝 誰的責任說不清楚時，<mark>不要當場和解</mark>，也先別自己答應對方金額、先別自己修車。</span></div>
+ </div>
+ <div class="ah-blk">
+  <b class="ah-t">② 理賠流程</b>
+  <ol class="ah-4">
+   <li><b>報案出險</b><span>事故<mark>五日內</mark>以書面通知保險公司</span></li>
+   <li><b>查證、估損</b><span>理賠人員調現場圖、照片研判責任；車子勘車核價，受傷的人評估醫療、工作損失等</span></li>
+   <li><b>和解</b><span>雙方和保險公司同意；談不攏可以到公所調解委員會調解</span></li>
+   <li><b>撥款</b><span>文件齊全後給付。修車費由修車廠請款，對方的部分依和解給付</span></li>
+  </ol>
+ </div>
+ <div class="ah-blk ah-2">
+  <div><b class="ah-t">③ 要準備的文件</b><ul><li>行照、駕照</li><li>登記聯單（警方處理證明）</li><li>受傷：診斷書、醫療收據</li><li>修車：估價單、修好後的發票</li><li>和解書或判決書</li></ul></div>
+  <div><b class="ah-t">④ 要記得的時間</b><ul><li><b>5 日內</b>：書面通知保險公司</li><li><b>7 日後</b>：可以向處理單位申請現場圖、現場照片</li><li><b>30 日後</b>：可以申請初步分析研判表</li><li><b>6 個月內</b>：受傷的一方可以提出刑事告訴；也可以申請行車事故鑑定</li><li><b>2 年內</b>：受害人可以請求民事賠償（知道損害和賠償義務人起算）</li></ul></div>
+ </div>
+</div>
+<p class="cmnote">出處：法務部轉內政部警政署〈交通事故處理當事人須知〉（<a href="https://laws.gov.taipei/law/Interpretation/Content/FE225880" target="_blank" rel="noopener">臺北市法規查詢系統</a>）、臺中市警察局交通大隊「放、撥、劃、移、等」口訣（<a href="https://en.cofacts.tw/reply/DKjCBHcB9w1KR1IkE544" target="_blank" rel="noopener">Cofacts 整理</a>）、<a href="https://roo.cash/blog/car-insurance-compensation-process" target="_blank" rel="noopener">Roo.Cash 車險理賠流程</a>、民法第 197 條。撥款天數各家不同，以保險公司通知為準。</p>
+
 <h3 class="sec">客戶常問：接住她的擔心</h3>
 <p class="hint2">先接她的擔心，再指回上面五塊的哪一塊。</p>
 <div class="chats">
@@ -7006,45 +7051,61 @@ P.querySelectorAll(".fbl [data-c]").forEach(function(x){x.style.cursor="pointer"
   <p class="hint2" style="margin:0">一句話：強制險只保「<mark>別人的身體</mark>」，自己開車那個人、還有任何一台車，都不在裡面。</p>
 </div>
 
-<h3 class="sec">什麼時候賠？先猜，再點開看積木怎麼拼</h3>
-<div class="scns">
-  <details class="scn yes"><summary>
-    <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="4" y="50" width="56" height="5" rx="2" fill="#9AA5A0"/><circle cx="10" cy="47" r="4.5" fill="#2E2E2E"/><circle cx="28" cy="47" r="4.5" fill="#2E2E2E"/><path d="M6 45 q0 -9 9 -9 h4 v9z" fill="#E07B39"/><rect x="14" y="42" width="12" height="3" rx="1.5" fill="#E07B39"/><path d="M26 45 L30 33 h-4" fill="none" stroke="#E07B39" stroke-width="3" stroke-linecap="round"/><circle cx="14" cy="26" r="4" fill="#F1C7A0"/><path d="M10 25 a4 4 0 0 1 8 0z" fill="#F4B942"/><path d="M14 30 v7" stroke="#7A5BA6" stroke-width="4" stroke-linecap="round"/><circle cx="46" cy="22" r="4.5" fill="#F1C7A0"/><path d="M45 27 L50 40 M48 32 l8 -3 M47 32 l-6 4 M50 40 l-6 8 M50 40 l6 6" stroke="#C97B9A" stroke-width="3.5" stroke-linecap="round"/><path d="M36 30 l4 -2 M36 36 l5 0" stroke="#E5604D" stroke-width="2.5" stroke-linecap="round"/></svg>
-    <span class="q">騎車撞到路人，對方醫療費 30 萬</span><span class="stamp">賠</span></summary>
-    <div class="ans"><p>路人是強制險要保的人，但<mark>傷害醫療每人最高 20 萬</mark>。超過的 10 萬，沒有任意險就要<mark>自己賠</mark>。</p>
-      <div class="blocks"><span class="blk b1">傷害醫療 20 萬<small>強制險・到頂</small></span><span class="plus">＋</span><span class="blk self">剩下 10 萬<small>自己付</small></span></div></div>
-  </details>
-  <details class="scn no"><summary>
-    <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="44" y="8" width="6" height="46" fill="#8C8C8C"/><g transform="rotate(-28 24 40)"><circle cx="14" cy="46" r="4.5" fill="#2E2E2E"/><circle cx="34" cy="46" r="4.5" fill="#2E2E2E"/><path d="M10 44 q0 -9 9 -9 h4 v9z" fill="#3E7CB1"/><rect x="18" y="41" width="12" height="3" rx="1.5" fill="#3E7CB1"/><path d="M30 44 L34 32 h-4" fill="none" stroke="#3E7CB1" stroke-width="3" stroke-linecap="round"/></g><circle cx="20" cy="50" r="4" fill="#F1C7A0"/><path d="M24 50 h12" stroke="#7A5BA6" stroke-width="4" stroke-linecap="round"/><path d="M14 16 q3 -6 6 0 q-3 5 -6 0z M26 10 q3 -6 6 0 q-3 5 -6 0z M8 30 q3 -6 6 0 q-3 5 -6 0z" fill="#9CC8E8"/><path d="M50 30 l6 -3 M51 38 l6 1" stroke="#E5604D" stroke-width="2.5" stroke-linecap="round"/></svg>
-    <span class="q">下雨天自己騎車打滑，撞電線桿受傷</span><span class="stamp">不賠</span></summary>
-    <div class="ans"><p>強制險<mark>不保我方駕駛</mark>。自撞、自摔要靠<mark>駕駛人傷害附加條款</mark>，強制險附加的版本限「單一事故」，正好接這種情況。</p>
-      <div class="blocks"><span class="blk x">強制險<small>不保自己</small></span><span class="arrow">→</span><span class="blk cdrv">駕駛人傷害<small>強制險附加・自撞自摔</small></span></div></div>
-  </details>
-  <details class="scn yes"><summary>
-    <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="6" y="30" width="50" height="14" rx="5" fill="#3E7CB1"/><path d="M15 30 l7 -11 h18 l8 11z" fill="#3E7CB1"/><path d="M19 30 l5 -8 h6 v8z M33 30 v-8 h5 l6 8z" fill="#CFE3F2"/><circle cx="27" cy="25" r="3.5" fill="#F1C7A0"/><circle cx="38" cy="25" r="3.5" fill="#F1C7A0"/><path d="M23.5 23 h7" stroke="#fff" stroke-width="2"/><circle cx="18" cy="46" r="5" fill="#2E2E2E"/><circle cx="46" cy="46" r="5" fill="#2E2E2E"/><path d="M56 34 l4 -2 M56 40 l5 1" stroke="#E5604D" stroke-width="2.5" stroke-linecap="round"/><path d="M22 12 h6 M25 9 v6" stroke="#E5604D" stroke-width="2.5" stroke-linecap="round"/></svg>
-    <span class="q">開車追撞前車，我車上的朋友撞到頭</span><span class="stamp">賠</span></summary>
-    <div class="ans"><p>強制險保<mark>雙方乘客</mark>，自己車上的乘客也算。國泰網頁情境：乘客醫療費 5,000 元，強制險就賠 5,000 元。</p>
-      <div class="blocks"><span class="blk b1">我方乘客醫療<small>強制險</small></span><span class="plus">＋</span><span class="blk x">我自己受傷<small>強制險不保</small></span></div></div>
-  </details>
-  <details class="scn no"><summary>
-    <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="10" y="30" width="44" height="13" rx="5" fill="#E07B39"/><path d="M18 30 l6 -10 h16 l7 10z" fill="#E07B39"/><path d="M22 30 l4 -7 h5 v7z M34 30 v-7 h5 l5 7z" fill="#CFE3F2"/><path d="M54 30 l-4 4 l4 3 l-4 3 l4 3" fill="none" stroke="#2E2E2E" stroke-width="2"/><circle cx="20" cy="45" r="5" fill="#2E2E2E"/><circle cx="44" cy="45" r="5" fill="#2E2E2E"/><path d="M36 10 l8 8 M44 10 l-8 8" stroke="#C0662B" stroke-width="3" stroke-linecap="round"/></svg>
-    <span class="q">撞凹對方的車，修車費要 5 萬</span><span class="stamp">不賠</span></summary>
-    <div class="ans"><p>強制險<mark>不保車、不保財物</mark>。對方的車要靠<mark>第三人責任險的財損</mark>，自己的車要靠<mark>車體險</mark>。</p>
-      <div class="blocks"><span class="blk x">強制險<small>不保車</small></span><span class="arrow">→</span><span class="blk cpd">第三人財損<small>對方的車</small></span><span class="blk cbody">車體險<small>自己的車</small></span></div></div>
-  </details>
-  <details class="scn maybe"><summary>
-    <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><path d="M14 14 h8 v6 q5 3 5 10 v22 h-18 v-22 q0 -7 5 -10z" fill="#7FB2DE" stroke="#2E2E2E" stroke-width="2"/><rect x="9" y="34" width="18" height="8" fill="#F4E27A"/><rect x="32" y="34" width="26" height="9" rx="4" fill="#3E7CB1"/><path d="M36 34 l4 -7 h10 l5 7z" fill="#3E7CB1"/><circle cx="38" cy="45" r="3.5" fill="#2E2E2E"/><circle cx="52" cy="45" r="3.5" fill="#2E2E2E"/><path d="M46 12 a7 7 0 1 1 8 7 v4" fill="none" stroke="#B07A1E" stroke-width="3" stroke-linecap="round"/><circle cx="54" cy="27" r="1.8" fill="#B07A1E"/></svg>
-    <span class="q">喝酒開車撞傷人，強制險還會賠嗎</span><span class="stamp">看條款</span></summary>
-    <div class="ans"><p>酒駕、無照、吸毒、故意等，國泰寫明肇事的人<mark>無法獲得理賠</mark>。但受害人還是能拿到強制險給付，保險公司付完後<mark>會向肇事的被保險人追回來</mark>。等於錢最後還是自己出。</p>
-      <div class="blocks"><span class="blk b1">先賠受害人<small>強制險</small></span><span class="arrow">→</span><span class="blk self">再向我追償<small>錢由自己還</small></span></div></div>
-  </details>
-  <details class="scn yes"><summary>
-    <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="28" y="28" width="30" height="12" rx="4" fill="#5E6A64"/><path d="M34 28 l5 -8 h12 l5 8z" fill="#5E6A64"/><circle cx="35" cy="42" r="4" fill="#2E2E2E"/><circle cx="51" cy="42" r="4" fill="#2E2E2E"/><path d="M6 28 h16 M10 34 h14 M4 40 h18" stroke="#9AA5A0" stroke-width="3" stroke-linecap="round"/><text x="40" y="20" font-size="14" font-weight="900" fill="#B07A1E">?</text><circle cx="14" cy="50" r="4" fill="#F1C7A0"/><path d="M18 51 h12" stroke="#C97B9A" stroke-width="4" stroke-linecap="round"/></svg>
-    <span class="q">被撞了，對方肇事逃逸找不到人</span><span class="stamp">賠</span></summary>
-    <div class="ans"><p>撞人的車<mark>找不到、沒保強制險、或是贓車</mark>時，受害人可以向<mark>特別補償基金</mark>申請，金額在強制險範圍內，找任何一家產險公司都能申請。</p>
-      <div class="blocks"><span class="blk cfund">特別補償基金<small>依強制險的額度</small></span><span class="plus">＋</span><span class="blk q">就近找產險公司<small>代收申請</small></span></div></div>
-  </details>
-</div>
+<h3 class="sec">強制險：先猜賠不賠</h3>
+<p class="hint2">6張牌卡直接猜：賠、看條款、還是不賠？點上面的標籤可以跳到那一張；按「全部重來」一鍵復原。</p>
+<div class="road" data-road style="--n:6"><div class="road-top"><b class="road-score" data-t="六張牌卡，先猜猜看">六張牌卡，先猜猜看</b><button class="road-reset" type="button">↺ 全部重來</button></div>
+<div class="road-line" role="tablist">
+<button class="rd" type="button" role="tab" data-k="0" data-ans="yes"><i>1</i><span>撞路人</span></button>
+<button class="rd" type="button" role="tab" data-k="1" data-ans="no"><i>2</i><span>自摔</span></button>
+<button class="rd" type="button" role="tab" data-k="2" data-ans="yes"><i>3</i><span>載朋友</span></button>
+<button class="rd" type="button" role="tab" data-k="3" data-ans="no"><i>4</i><span>撞車</span></button>
+<button class="rd" type="button" role="tab" data-k="4" data-ans="maybe"><i>5</i><span>酒駕</span></button>
+<button class="rd" type="button" role="tab" data-k="5" data-ans="yes"><i>6</i><span>逃逸</span></button>
+</div><div class="rrow">
+<div class="rc" data-k="0" data-ans="yes">
+    <div class="rc-art"><svg class="rsv" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="4" y="50" width="56" height="5" rx="2" fill="#9AA5A0"/><circle cx="10" cy="47" r="4.5" fill="#2E2E2E"/><circle cx="28" cy="47" r="4.5" fill="#2E2E2E"/><path d="M6 45 q0 -9 9 -9 h4 v9z" fill="#E07B39"/><rect x="14" y="42" width="12" height="3" rx="1.5" fill="#E07B39"/><path d="M26 45 L30 33 h-4" fill="none" stroke="#E07B39" stroke-width="3" stroke-linecap="round"/><circle cx="14" cy="26" r="4" fill="#F1C7A0"/><path d="M10 25 a4 4 0 0 1 8 0z" fill="#F4B942"/><path d="M14 30 v7" stroke="#7A5BA6" stroke-width="4" stroke-linecap="round"/><circle cx="46" cy="22" r="4.5" fill="#F1C7A0"/><path d="M45 27 L50 40 M48 32 l8 -3 M47 32 l-6 4 M50 40 l-6 8 M50 40 l6 6" stroke="#C97B9A" stroke-width="3.5" stroke-linecap="round"/><path d="M36 30 l4 -2 M36 36 l5 0" stroke="#E5604D" stroke-width="2.5" stroke-linecap="round"/></svg><span class="rc-stamp">賠</span></div>
+    <span class="rs-age">第 1 張・撞路人</span><b class="rs-q">騎車撞到路人，對方醫療費 30 萬</b>
+    <div class="rg"><button type="button" data-g="yes">賠</button><button type="button" data-g="maybe">看條款</button><button type="button" data-g="no">不賠</button></div>
+    <span class="rs-res"></span>
+  </div>
+<div class="rc" data-k="1" data-ans="no">
+    <div class="rc-art"><svg class="rsv" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="44" y="8" width="6" height="46" fill="#8C8C8C"/><g transform="rotate(-28 24 40)"><circle cx="14" cy="46" r="4.5" fill="#2E2E2E"/><circle cx="34" cy="46" r="4.5" fill="#2E2E2E"/><path d="M10 44 q0 -9 9 -9 h4 v9z" fill="#3E7CB1"/><rect x="18" y="41" width="12" height="3" rx="1.5" fill="#3E7CB1"/><path d="M30 44 L34 32 h-4" fill="none" stroke="#3E7CB1" stroke-width="3" stroke-linecap="round"/></g><circle cx="20" cy="50" r="4" fill="#F1C7A0"/><path d="M24 50 h12" stroke="#7A5BA6" stroke-width="4" stroke-linecap="round"/><path d="M14 16 q3 -6 6 0 q-3 5 -6 0z M26 10 q3 -6 6 0 q-3 5 -6 0z M8 30 q3 -6 6 0 q-3 5 -6 0z" fill="#9CC8E8"/><path d="M50 30 l6 -3 M51 38 l6 1" stroke="#E5604D" stroke-width="2.5" stroke-linecap="round"/></svg><span class="rc-stamp">不賠</span></div>
+    <span class="rs-age">第 2 張・自摔</span><b class="rs-q">下雨天自己騎車打滑，撞電線桿受傷</b>
+    <div class="rg"><button type="button" data-g="yes">賠</button><button type="button" data-g="maybe">看條款</button><button type="button" data-g="no">不賠</button></div>
+    <span class="rs-res"></span>
+  </div>
+<div class="rc" data-k="2" data-ans="yes">
+    <div class="rc-art"><svg class="rsv" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="6" y="30" width="50" height="14" rx="5" fill="#3E7CB1"/><path d="M15 30 l7 -11 h18 l8 11z" fill="#3E7CB1"/><path d="M19 30 l5 -8 h6 v8z M33 30 v-8 h5 l6 8z" fill="#CFE3F2"/><circle cx="27" cy="25" r="3.5" fill="#F1C7A0"/><circle cx="38" cy="25" r="3.5" fill="#F1C7A0"/><path d="M23.5 23 h7" stroke="#fff" stroke-width="2"/><circle cx="18" cy="46" r="5" fill="#2E2E2E"/><circle cx="46" cy="46" r="5" fill="#2E2E2E"/><path d="M56 34 l4 -2 M56 40 l5 1" stroke="#E5604D" stroke-width="2.5" stroke-linecap="round"/><path d="M22 12 h6 M25 9 v6" stroke="#E5604D" stroke-width="2.5" stroke-linecap="round"/></svg><span class="rc-stamp">賠</span></div>
+    <span class="rs-age">第 3 張・載朋友</span><b class="rs-q">開車追撞前車，我車上的朋友撞到頭</b>
+    <div class="rg"><button type="button" data-g="yes">賠</button><button type="button" data-g="maybe">看條款</button><button type="button" data-g="no">不賠</button></div>
+    <span class="rs-res"></span>
+  </div>
+<div class="rc" data-k="3" data-ans="no">
+    <div class="rc-art"><svg class="rsv" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="10" y="30" width="44" height="13" rx="5" fill="#E07B39"/><path d="M18 30 l6 -10 h16 l7 10z" fill="#E07B39"/><path d="M22 30 l4 -7 h5 v7z M34 30 v-7 h5 l5 7z" fill="#CFE3F2"/><path d="M54 30 l-4 4 l4 3 l-4 3 l4 3" fill="none" stroke="#2E2E2E" stroke-width="2"/><circle cx="20" cy="45" r="5" fill="#2E2E2E"/><circle cx="44" cy="45" r="5" fill="#2E2E2E"/><path d="M36 10 l8 8 M44 10 l-8 8" stroke="#C0662B" stroke-width="3" stroke-linecap="round"/></svg><span class="rc-stamp">不賠</span></div>
+    <span class="rs-age">第 4 張・撞車</span><b class="rs-q">撞凹對方的車，修車費要 5 萬</b>
+    <div class="rg"><button type="button" data-g="yes">賠</button><button type="button" data-g="maybe">看條款</button><button type="button" data-g="no">不賠</button></div>
+    <span class="rs-res"></span>
+  </div>
+<div class="rc" data-k="4" data-ans="maybe">
+    <div class="rc-art"><svg class="rsv" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><path d="M14 14 h8 v6 q5 3 5 10 v22 h-18 v-22 q0 -7 5 -10z" fill="#7FB2DE" stroke="#2E2E2E" stroke-width="2"/><rect x="9" y="34" width="18" height="8" fill="#F4E27A"/><rect x="32" y="34" width="26" height="9" rx="4" fill="#3E7CB1"/><path d="M36 34 l4 -7 h10 l5 7z" fill="#3E7CB1"/><circle cx="38" cy="45" r="3.5" fill="#2E2E2E"/><circle cx="52" cy="45" r="3.5" fill="#2E2E2E"/><path d="M46 12 a7 7 0 1 1 8 7 v4" fill="none" stroke="#B07A1E" stroke-width="3" stroke-linecap="round"/><circle cx="54" cy="27" r="1.8" fill="#B07A1E"/></svg><span class="rc-stamp">看條款</span></div>
+    <span class="rs-age">第 5 張・酒駕</span><b class="rs-q">喝酒開車撞傷人，強制險還會賠嗎</b>
+    <div class="rg"><button type="button" data-g="yes">賠</button><button type="button" data-g="maybe">看條款</button><button type="button" data-g="no">不賠</button></div>
+    <span class="rs-res"></span>
+  </div>
+<div class="rc" data-k="5" data-ans="yes">
+    <div class="rc-art"><svg class="rsv" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="28" y="28" width="30" height="12" rx="4" fill="#5E6A64"/><path d="M34 28 l5 -8 h12 l5 8z" fill="#5E6A64"/><circle cx="35" cy="42" r="4" fill="#2E2E2E"/><circle cx="51" cy="42" r="4" fill="#2E2E2E"/><path d="M6 28 h16 M10 34 h14 M4 40 h18" stroke="#9AA5A0" stroke-width="3" stroke-linecap="round"/><text x="40" y="20" font-size="14" font-weight="900" fill="#B07A1E">?</text><circle cx="14" cy="50" r="4" fill="#F1C7A0"/><path d="M18 51 h12" stroke="#C97B9A" stroke-width="4" stroke-linecap="round"/></svg><span class="rc-stamp">賠</span></div>
+    <span class="rs-age">第 6 張・逃逸</span><b class="rs-q">被撞了，對方肇事逃逸找不到人</b>
+    <div class="rg"><button type="button" data-g="yes">賠</button><button type="button" data-g="maybe">看條款</button><button type="button" data-g="no">不賠</button></div>
+    <span class="rs-res"></span>
+  </div>
+</div><div class="rexp"><p class="rexp-empty">先在上面任選一張牌卡猜猜看，答案會出現在這裡。</p>
+<div class="rx" data-k="0" data-ans="yes" hidden><div class="rs-verdict"><span class="stamp2">賠</span><b>騎車撞到路人，對方醫療費 30 萬</b></div><p>路人是強制險要保的人，但<mark>傷害醫療每人最高 20 萬</mark>。超過的 10 萬，沒有任意險就要<mark>自己賠</mark>。</p><div class="blocks"><span class="blk b1">傷害醫療 20 萬<small>強制險・到頂</small></span><span class="plus">＋</span><span class="blk self">剩下 10 萬<small>自己付</small></span></div></div>
+<div class="rx" data-k="1" data-ans="no" hidden><div class="rs-verdict"><span class="stamp2">不賠</span><b>下雨天自己騎車打滑，撞電線桿受傷</b></div><p>強制險<mark>不保我方駕駛</mark>。自撞、自摔要靠<mark>駕駛人傷害附加條款</mark>，強制險附加的版本限「單一事故」，正好接這種情況。</p><div class="blocks"><span class="blk x">強制險<small>不保自己</small></span><span class="arrow">→</span><span class="blk cdrv">駕駛人傷害<small>強制險附加・自撞自摔</small></span></div></div>
+<div class="rx" data-k="2" data-ans="yes" hidden><div class="rs-verdict"><span class="stamp2">賠</span><b>開車追撞前車，我車上的朋友撞到頭</b></div><p>強制險保<mark>雙方乘客</mark>，自己車上的乘客也算。國泰網頁情境：乘客醫療費 5,000 元，強制險就賠 5,000 元。</p><div class="blocks"><span class="blk b1">我方乘客醫療<small>強制險</small></span><span class="plus">＋</span><span class="blk x">我自己受傷<small>強制險不保</small></span></div></div>
+<div class="rx" data-k="3" data-ans="no" hidden><div class="rs-verdict"><span class="stamp2">不賠</span><b>撞凹對方的車，修車費要 5 萬</b></div><p>強制險<mark>不保車、不保財物</mark>。對方的車要靠<mark>第三人責任險的財損</mark>，自己的車要靠<mark>車體險</mark>。</p><div class="blocks"><span class="blk x">強制險<small>不保車</small></span><span class="arrow">→</span><span class="blk cpd">第三人財損<small>對方的車</small></span><span class="blk cbody">車體險<small>自己的車</small></span></div></div>
+<div class="rx" data-k="4" data-ans="maybe" hidden><div class="rs-verdict"><span class="stamp2">看條款</span><b>喝酒開車撞傷人，強制險還會賠嗎</b></div><p>酒駕、無照、吸毒、故意等，國泰寫明肇事的人<mark>無法獲得理賠</mark>。但受害人還是能拿到強制險給付，保險公司付完後<mark>會向肇事的被保險人追回來</mark>。等於錢最後還是自己出。</p><div class="blocks"><span class="blk b1">先賠受害人<small>強制險</small></span><span class="arrow">→</span><span class="blk self">再向我追償<small>錢由自己還</small></span></div></div>
+<div class="rx" data-k="5" data-ans="yes" hidden><div class="rs-verdict"><span class="stamp2">賠</span><b>被撞了，對方肇事逃逸找不到人</b></div><p>撞人的車<mark>找不到、沒保強制險、或是贓車</mark>時，受害人可以向<mark>特別補償基金</mark>申請，金額在強制險範圍內，找任何一家產險公司都能申請。</p><div class="blocks"><span class="blk cfund">特別補償基金<small>依強制險的額度</small></span><span class="plus">＋</span><span class="blk q">就近找產險公司<small>代收申請</small></span></div></div>
+</div><div class="road-end"><p>強制險只保<mark>別人的身體</mark>，不保車、不保駕駛自己；額度有上限，超過的要靠任意險。</p></div></div>
 
 <h3 class="sec">保多少？2026 年 7 月 1 日起的新上限</h3>
 <p class="hint2">金管會修正給付標準，<mark>死亡、失能從 200 萬提高到 300 萬</mark>，保費不調整；7 月 1 日以後發生的事故，新舊保單都適用。</p>
@@ -7082,7 +7143,7 @@ P.querySelectorAll(".fbl [data-c]").forEach(function(x){x.style.cursor="pointer"
   <span class="garrow" aria-hidden="true">›</span>
   <div class="gate"><div class="g-top"><span class="g-n">5</span><b>撞人的車找不到</b></div><span class="blk cfund">特別補償基金</span><p>肇事逃逸、對方沒保，<mark>就近找一家產險公司</mark>幫您申請。</p></div>
   <span class="garrow" aria-hidden="true">›</span>
-  <div class="gate pass"><div class="g-top"><span class="g-n">✓</span><b>申請理賠</b></div><span class="blk b2">依檢附文件審核</span><p>診斷書、醫療收據收好。出事先打給我，<mark>國泰客服 0800-212-880</mark>，晚上也有車禍事故諮詢。</p></div>
+  <div class="gate pass"><div class="g-top"><span class="g-n">✓</span><b>申請理賠</b></div><span class="blk b2">流程都一樣</span><p>車禍當下五步驟、理賠流程、要準備的文件，整理在車險地圖。</p><button type="button" class="golink" data-goto="pc-car" data-anchor="pc-accident">看出事了怎麼辦 →</button></div>
 </div>
 
 <h3 class="sec">汽車和機車的強制險，差在哪</h3>
@@ -7273,45 +7334,61 @@ P.querySelectorAll(".fbl [data-c]").forEach(function(x){x.style.cursor="pointer"
 </div>
 <button class="pop-btn" data-pop="pop-pc-liab-tower" type="button" style="align-self:flex-start;margin-top:-6px">看國泰的兩個大額情境：撞到超跑、行人癱瘓</button>
 
-<h3 class="sec">什麼時候賠？先猜，再點開看積木怎麼拼</h3>
-<div class="scns">
-  <details class="scn yes"><summary>
-    <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="4" y="32" width="28" height="11" rx="4" fill="#3E7CB1"/><path d="M9 32 l4 -7 h10 l5 7z" fill="#3E7CB1"/><circle cx="10" cy="44" r="3.5" fill="#2E2E2E"/><circle cx="26" cy="44" r="3.5" fill="#2E2E2E"/><g transform="rotate(22 46 40)"><circle cx="38" cy="46" r="4" fill="#2E2E2E"/><circle cx="56" cy="46" r="4" fill="#2E2E2E"/><path d="M50 44 q0 -8 8 -8 h0 v8z" fill="#E07B39"/><rect x="40" y="41" width="12" height="3" rx="1.5" fill="#E07B39"/><path d="M40 44 L36 33" stroke="#E07B39" stroke-width="3" stroke-linecap="round"/></g><circle cx="50" cy="18" r="4" fill="#F1C7A0"/><path d="M50 22 l2 8" stroke="#7A5BA6" stroke-width="4" stroke-linecap="round"/><path d="M32 22 l2 5 l4 -2 l-2 4 l3 3 l-5 0 l0 4 l-2 -3 l-3 3 l0 -4 l-4 0 l3 -3 l-2 -4 l4 2z" fill="#F4B942"/></svg>
-    <span class="q">開車撞到機車騎士，對方醫療費 40 萬</span><span class="stamp">賠</span></summary>
-    <div class="ans"><p>先用<mark>強制險 20 萬</mark>，超過的 20 萬由<mark>第三人責任的體傷</mark>接住。國泰網頁情境就是這樣分。</p>
-      <div class="blocks"><span class="blk b1">強制險 20 萬</span><span class="plus">＋</span><span class="blk b2">第三人體傷 20 萬<small>超過強制險的部分</small></span></div></div>
-  </details>
-  <details class="scn yes"><summary>
-    <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><g transform="rotate(-70 30 40)"><circle cx="18" cy="46" r="5" fill="#2E2E2E"/><circle cx="42" cy="46" r="5" fill="#2E2E2E"/><path d="M12 44 q0 -10 10 -10 h5 v10z" fill="#E07B39"/><rect x="24" y="40" width="14" height="4" rx="2" fill="#E07B39"/><path d="M38 44 L43 30 h-5" fill="none" stroke="#E07B39" stroke-width="3.5" stroke-linecap="round"/></g><path d="M44 14 l8 8 M52 14 l-8 8" stroke="#2C8FA3" stroke-width="3" stroke-linecap="round"/><path d="M40 46 l10 -6 l6 4" fill="none" stroke="#2E2E2E" stroke-width="2.5" stroke-linecap="round"/></svg>
-    <span class="q">對方機車被撞壞，維修費 3 萬</span><span class="stamp">賠</span></summary>
-    <div class="ans"><p>強制險不保車。對方的車、財物，由<mark>第三人責任的財損</mark>賠，每事故額度 20～100 萬看您買多少。</p>
-      <div class="blocks"><span class="blk x">強制險<small>不保車</small></span><span class="arrow">→</span><span class="blk cpd">第三人財損 3 萬</span></div></div>
-  </details>
-  <details class="scn no"><summary>
-    <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="30" y="30" width="28" height="11" rx="4" fill="#3E7CB1"/><path d="M35 30 l4 -7 h10 l5 7z" fill="#3E7CB1"/><circle cx="36" cy="42" r="3.5" fill="#2E2E2E"/><circle cx="52" cy="42" r="3.5" fill="#2E2E2E"/><rect x="4" y="30" width="24" height="11" rx="4" fill="#5E6A64"/><path d="M8 30 l4 -7 h8 l5 7z" fill="#5E6A64"/><circle cx="10" cy="42" r="3.5" fill="#2E2E2E"/><circle cx="23" cy="42" r="3.5" fill="#2E2E2E"/><path d="M29 22 l1.5 4 l3.5 -1.5 l-2 3.5 l3 2 h-4 l0 4 l-2 -3 l-2 3 l0 -4 h-4 l3 -2 l-2 -3.5 l3.5 1.5z" fill="#F4B942"/><path d="M38 12 h14" stroke="#2F7D5B" stroke-width="3" stroke-linecap="round"/><path d="M48 8 l4 4 l-4 4" fill="none" stroke="#2F7D5B" stroke-width="3" stroke-linecap="round"/></svg>
-    <span class="q">紅燈停車被後車追撞，我完全沒責任</span><span class="stamp">不賠</span></summary>
-    <div class="ans"><p>第三人責任險是「<mark>您要賠別人</mark>」時才啟動。您沒責任，損失由對方承擔，<mark>您的第三人責任險不會動</mark>。保險公司也不會替您向對方求償。</p>
-      <div class="blocks"><span class="blk x">我的第三人責任<small>不啟動</small></span><span class="arrow">→</span><span class="blk cpd">對方的第三人責任<small>賠我的損失</small></span></div></div>
-  </details>
-  <details class="scn yes"><summary>
-    <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><path d="M6 42 q2 -8 14 -9 l10 -7 h12 l12 8 q6 1 6 8z" fill="#E5604D"/><path d="M24 33 l7 -5 h10 l7 5z" fill="#CFE3F2"/><circle cx="17" cy="43" r="5" fill="#2E2E2E"/><circle cx="48" cy="43" r="5" fill="#2E2E2E"/><text x="32" y="20" font-size="13" font-weight="900" text-anchor="middle" fill="#B07A1E">＄＄＄</text></svg>
-    <span class="q">開車撞到路邊停著的超跑，損失約 300 萬</span><span class="stamp">賠</span></summary>
-    <div class="ans"><p>財損每事故頂多買到 100 萬，<mark>超過的由超額責任險接</mark>。國泰網頁情境：第三人責任和超額險分擔，<mark>小華不用自己負擔約 250 萬的差額</mark>。</p>
-      <div class="blocks"><span class="blk cpd">第三人財損<small>先用完</small></span><span class="plus">＋</span><span class="blk b3">超額責任<small>補上面</small></span></div></div>
-  </details>
-  <details class="scn no"><summary>
-    <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><path d="M8 30 L22 18 L36 30 V48 H8z" fill="#CFA36B"/><rect x="18" y="36" width="8" height="12" fill="#8C6A4F"/><rect x="32" y="36" width="26" height="10" rx="4" fill="#3E7CB1"/><path d="M36 36 l4 -6 h10 l5 6z" fill="#3E7CB1"/><circle cx="38" cy="47" r="3.5" fill="#2E2E2E"/><circle cx="52" cy="47" r="3.5" fill="#2E2E2E"/><circle cx="46" cy="18" r="4" fill="#F1C7A0"/><path d="M42 17 a4 4 0 0 1 8 0z" fill="#BDBDBD"/><path d="M46 22 v6" stroke="#C97B9A" stroke-width="4" stroke-linecap="round"/></svg>
-    <span class="q">在家門口倒車，不小心撞傷自己的媽媽</span><span class="stamp">不賠</span></summary>
-    <div class="ans"><p>第三人責任險的「第三人」<mark>不包括被保險人自己、家屬和雇用的司機</mark>。家人受傷可以先看強制險（路人、乘客的身體），其他要靠家人自己的醫療、意外險。</p>
-      <div class="blocks"><span class="blk x">第三人責任<small>家屬不算第三人</small></span><span class="arrow">→</span><span class="blk q">強制險、家人自己的保單<small>看條款與情況</small></span></div></div>
-  </details>
-  <details class="scn maybe"><summary>
-    <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="6" y="30" width="26" height="11" rx="4" fill="#3E7CB1"/><path d="M10 30 l4 -7 h9 l5 7z" fill="#3E7CB1"/><circle cx="12" cy="42" r="3.5" fill="#2E2E2E"/><circle cx="26" cy="42" r="3.5" fill="#2E2E2E"/><rect x="34" y="30" width="24" height="11" rx="4" fill="#E07B39"/><path d="M38 30 l4 -7 h8 l5 7z" fill="#E07B39"/><circle cx="40" cy="42" r="3.5" fill="#2E2E2E"/><circle cx="53" cy="42" r="3.5" fill="#2E2E2E"/><circle cx="20" cy="26" r="3" fill="#F1C7A0"/><path d="M16 12 h8 M20 8 v8" stroke="#E5604D" stroke-width="3" stroke-linecap="round"/><text x="46" y="18" font-size="14" font-weight="900" fill="#B07A1E">?</text></svg>
-    <span class="q">兩車對撞，我自己住院 10 天</span><span class="stamp">看條款</span></summary>
-    <div class="ans"><p>強制險、第三人責任都<mark>不保我方駕駛</mark>。要看您加了哪一種駕駛人傷害：強制險附加的<mark>只保單一事故</mark>，對撞不賠；<mark>第三人責任附加的不限單一事故</mark>，國泰情境住院 10 天 × 日額 2,000 ＝ 2 萬。</p>
-      <div class="blocks"><span class="blk x">強制險附加駕傷<small>限單一事故</small></span><span class="blk cdrv">第三人附加駕傷<small>對撞也賠</small></span></div></div>
-  </details>
-</div>
+<h3 class="sec">第三人責任與超額：先猜賠不賠</h3>
+<p class="hint2">6張牌卡直接猜：賠、看條款、還是不賠？點上面的標籤可以跳到那一張；按「全部重來」一鍵復原。</p>
+<div class="road" data-road style="--n:6"><div class="road-top"><b class="road-score" data-t="六張牌卡，先猜猜看">六張牌卡，先猜猜看</b><button class="road-reset" type="button">↺ 全部重來</button></div>
+<div class="road-line" role="tablist">
+<button class="rd" type="button" role="tab" data-k="0" data-ans="yes"><i>1</i><span>撞機車</span></button>
+<button class="rd" type="button" role="tab" data-k="1" data-ans="yes"><i>2</i><span>對方車</span></button>
+<button class="rd" type="button" role="tab" data-k="2" data-ans="no"><i>3</i><span>被追撞</span></button>
+<button class="rd" type="button" role="tab" data-k="3" data-ans="yes"><i>4</i><span>撞超跑</span></button>
+<button class="rd" type="button" role="tab" data-k="4" data-ans="no"><i>5</i><span>撞家人</span></button>
+<button class="rd" type="button" role="tab" data-k="5" data-ans="maybe"><i>6</i><span>對撞</span></button>
+</div><div class="rrow">
+<div class="rc" data-k="0" data-ans="yes">
+    <div class="rc-art"><svg class="rsv" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="4" y="32" width="28" height="11" rx="4" fill="#3E7CB1"/><path d="M9 32 l4 -7 h10 l5 7z" fill="#3E7CB1"/><circle cx="10" cy="44" r="3.5" fill="#2E2E2E"/><circle cx="26" cy="44" r="3.5" fill="#2E2E2E"/><g transform="rotate(22 46 40)"><circle cx="38" cy="46" r="4" fill="#2E2E2E"/><circle cx="56" cy="46" r="4" fill="#2E2E2E"/><path d="M50 44 q0 -8 8 -8 h0 v8z" fill="#E07B39"/><rect x="40" y="41" width="12" height="3" rx="1.5" fill="#E07B39"/><path d="M40 44 L36 33" stroke="#E07B39" stroke-width="3" stroke-linecap="round"/></g><circle cx="50" cy="18" r="4" fill="#F1C7A0"/><path d="M50 22 l2 8" stroke="#7A5BA6" stroke-width="4" stroke-linecap="round"/><path d="M32 22 l2 5 l4 -2 l-2 4 l3 3 l-5 0 l0 4 l-2 -3 l-3 3 l0 -4 l-4 0 l3 -3 l-2 -4 l4 2z" fill="#F4B942"/></svg><span class="rc-stamp">賠</span></div>
+    <span class="rs-age">第 1 張・撞機車</span><b class="rs-q">開車撞到機車騎士，對方醫療費 40 萬</b>
+    <div class="rg"><button type="button" data-g="yes">賠</button><button type="button" data-g="maybe">看條款</button><button type="button" data-g="no">不賠</button></div>
+    <span class="rs-res"></span>
+  </div>
+<div class="rc" data-k="1" data-ans="yes">
+    <div class="rc-art"><svg class="rsv" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><g transform="rotate(-70 30 40)"><circle cx="18" cy="46" r="5" fill="#2E2E2E"/><circle cx="42" cy="46" r="5" fill="#2E2E2E"/><path d="M12 44 q0 -10 10 -10 h5 v10z" fill="#E07B39"/><rect x="24" y="40" width="14" height="4" rx="2" fill="#E07B39"/><path d="M38 44 L43 30 h-5" fill="none" stroke="#E07B39" stroke-width="3.5" stroke-linecap="round"/></g><path d="M44 14 l8 8 M52 14 l-8 8" stroke="#2C8FA3" stroke-width="3" stroke-linecap="round"/><path d="M40 46 l10 -6 l6 4" fill="none" stroke="#2E2E2E" stroke-width="2.5" stroke-linecap="round"/></svg><span class="rc-stamp">賠</span></div>
+    <span class="rs-age">第 2 張・對方車</span><b class="rs-q">對方機車被撞壞，維修費 3 萬</b>
+    <div class="rg"><button type="button" data-g="yes">賠</button><button type="button" data-g="maybe">看條款</button><button type="button" data-g="no">不賠</button></div>
+    <span class="rs-res"></span>
+  </div>
+<div class="rc" data-k="2" data-ans="no">
+    <div class="rc-art"><svg class="rsv" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="30" y="30" width="28" height="11" rx="4" fill="#3E7CB1"/><path d="M35 30 l4 -7 h10 l5 7z" fill="#3E7CB1"/><circle cx="36" cy="42" r="3.5" fill="#2E2E2E"/><circle cx="52" cy="42" r="3.5" fill="#2E2E2E"/><rect x="4" y="30" width="24" height="11" rx="4" fill="#5E6A64"/><path d="M8 30 l4 -7 h8 l5 7z" fill="#5E6A64"/><circle cx="10" cy="42" r="3.5" fill="#2E2E2E"/><circle cx="23" cy="42" r="3.5" fill="#2E2E2E"/><path d="M29 22 l1.5 4 l3.5 -1.5 l-2 3.5 l3 2 h-4 l0 4 l-2 -3 l-2 3 l0 -4 h-4 l3 -2 l-2 -3.5 l3.5 1.5z" fill="#F4B942"/><path d="M38 12 h14" stroke="#2F7D5B" stroke-width="3" stroke-linecap="round"/><path d="M48 8 l4 4 l-4 4" fill="none" stroke="#2F7D5B" stroke-width="3" stroke-linecap="round"/></svg><span class="rc-stamp">不賠</span></div>
+    <span class="rs-age">第 3 張・被追撞</span><b class="rs-q">紅燈停車被後車追撞，我完全沒責任</b>
+    <div class="rg"><button type="button" data-g="yes">賠</button><button type="button" data-g="maybe">看條款</button><button type="button" data-g="no">不賠</button></div>
+    <span class="rs-res"></span>
+  </div>
+<div class="rc" data-k="3" data-ans="yes">
+    <div class="rc-art"><svg class="rsv" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><path d="M6 42 q2 -8 14 -9 l10 -7 h12 l12 8 q6 1 6 8z" fill="#E5604D"/><path d="M24 33 l7 -5 h10 l7 5z" fill="#CFE3F2"/><circle cx="17" cy="43" r="5" fill="#2E2E2E"/><circle cx="48" cy="43" r="5" fill="#2E2E2E"/><text x="32" y="20" font-size="13" font-weight="900" text-anchor="middle" fill="#B07A1E">＄＄＄</text></svg><span class="rc-stamp">賠</span></div>
+    <span class="rs-age">第 4 張・撞超跑</span><b class="rs-q">開車撞到路邊停著的超跑，損失約 300 萬</b>
+    <div class="rg"><button type="button" data-g="yes">賠</button><button type="button" data-g="maybe">看條款</button><button type="button" data-g="no">不賠</button></div>
+    <span class="rs-res"></span>
+  </div>
+<div class="rc" data-k="4" data-ans="no">
+    <div class="rc-art"><svg class="rsv" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><path d="M8 30 L22 18 L36 30 V48 H8z" fill="#CFA36B"/><rect x="18" y="36" width="8" height="12" fill="#8C6A4F"/><rect x="32" y="36" width="26" height="10" rx="4" fill="#3E7CB1"/><path d="M36 36 l4 -6 h10 l5 6z" fill="#3E7CB1"/><circle cx="38" cy="47" r="3.5" fill="#2E2E2E"/><circle cx="52" cy="47" r="3.5" fill="#2E2E2E"/><circle cx="46" cy="18" r="4" fill="#F1C7A0"/><path d="M42 17 a4 4 0 0 1 8 0z" fill="#BDBDBD"/><path d="M46 22 v6" stroke="#C97B9A" stroke-width="4" stroke-linecap="round"/></svg><span class="rc-stamp">不賠</span></div>
+    <span class="rs-age">第 5 張・撞家人</span><b class="rs-q">在家門口倒車，不小心撞傷自己的媽媽</b>
+    <div class="rg"><button type="button" data-g="yes">賠</button><button type="button" data-g="maybe">看條款</button><button type="button" data-g="no">不賠</button></div>
+    <span class="rs-res"></span>
+  </div>
+<div class="rc" data-k="5" data-ans="maybe">
+    <div class="rc-art"><svg class="rsv" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="6" y="30" width="26" height="11" rx="4" fill="#3E7CB1"/><path d="M10 30 l4 -7 h9 l5 7z" fill="#3E7CB1"/><circle cx="12" cy="42" r="3.5" fill="#2E2E2E"/><circle cx="26" cy="42" r="3.5" fill="#2E2E2E"/><rect x="34" y="30" width="24" height="11" rx="4" fill="#E07B39"/><path d="M38 30 l4 -7 h8 l5 7z" fill="#E07B39"/><circle cx="40" cy="42" r="3.5" fill="#2E2E2E"/><circle cx="53" cy="42" r="3.5" fill="#2E2E2E"/><circle cx="20" cy="26" r="3" fill="#F1C7A0"/><path d="M16 12 h8 M20 8 v8" stroke="#E5604D" stroke-width="3" stroke-linecap="round"/><text x="46" y="18" font-size="14" font-weight="900" fill="#B07A1E">?</text></svg><span class="rc-stamp">看條款</span></div>
+    <span class="rs-age">第 6 張・對撞</span><b class="rs-q">兩車對撞，我自己住院 10 天</b>
+    <div class="rg"><button type="button" data-g="yes">賠</button><button type="button" data-g="maybe">看條款</button><button type="button" data-g="no">不賠</button></div>
+    <span class="rs-res"></span>
+  </div>
+</div><div class="rexp"><p class="rexp-empty">先在上面任選一張牌卡猜猜看，答案會出現在這裡。</p>
+<div class="rx" data-k="0" data-ans="yes" hidden><div class="rs-verdict"><span class="stamp2">賠</span><b>開車撞到機車騎士，對方醫療費 40 萬</b></div><p>先用<mark>強制險 20 萬</mark>，超過的 20 萬由<mark>第三人責任的體傷</mark>接住。國泰網頁情境就是這樣分。</p><div class="blocks"><span class="blk b1">強制險 20 萬</span><span class="plus">＋</span><span class="blk b2">第三人體傷 20 萬<small>超過強制險的部分</small></span></div></div>
+<div class="rx" data-k="1" data-ans="yes" hidden><div class="rs-verdict"><span class="stamp2">賠</span><b>對方機車被撞壞，維修費 3 萬</b></div><p>強制險不保車。對方的車、財物，由<mark>第三人責任的財損</mark>賠，每事故額度 20～100 萬看您買多少。</p><div class="blocks"><span class="blk x">強制險<small>不保車</small></span><span class="arrow">→</span><span class="blk cpd">第三人財損 3 萬</span></div></div>
+<div class="rx" data-k="2" data-ans="no" hidden><div class="rs-verdict"><span class="stamp2">不賠</span><b>紅燈停車被後車追撞，我完全沒責任</b></div><p>第三人責任險是「<mark>您要賠別人</mark>」時才啟動。您沒責任，損失由對方承擔，<mark>您的第三人責任險不會動</mark>。保險公司也不會替您向對方求償。</p><div class="blocks"><span class="blk x">我的第三人責任<small>不啟動</small></span><span class="arrow">→</span><span class="blk cpd">對方的第三人責任<small>賠我的損失</small></span></div></div>
+<div class="rx" data-k="3" data-ans="yes" hidden><div class="rs-verdict"><span class="stamp2">賠</span><b>開車撞到路邊停著的超跑，損失約 300 萬</b></div><p>財損每事故頂多買到 100 萬，<mark>超過的由超額責任險接</mark>。國泰網頁情境：第三人責任和超額險分擔，<mark>小華不用自己負擔約 250 萬的差額</mark>。</p><div class="blocks"><span class="blk cpd">第三人財損<small>先用完</small></span><span class="plus">＋</span><span class="blk b3">超額責任<small>補上面</small></span></div></div>
+<div class="rx" data-k="4" data-ans="no" hidden><div class="rs-verdict"><span class="stamp2">不賠</span><b>在家門口倒車，不小心撞傷自己的媽媽</b></div><p>第三人責任險的「第三人」<mark>不包括被保險人自己、家屬和雇用的司機</mark>。家人受傷可以先看強制險（路人、乘客的身體），其他要靠家人自己的醫療、意外險。</p><div class="blocks"><span class="blk x">第三人責任<small>家屬不算第三人</small></span><span class="arrow">→</span><span class="blk q">強制險、家人自己的保單<small>看條款與情況</small></span></div></div>
+<div class="rx" data-k="5" data-ans="maybe" hidden><div class="rs-verdict"><span class="stamp2">看條款</span><b>兩車對撞，我自己住院 10 天</b></div><p>強制險、第三人責任都<mark>不保我方駕駛</mark>。要看您加了哪一種駕駛人傷害：強制險附加的<mark>只保單一事故</mark>，對撞不賠；<mark>第三人責任附加的不限單一事故</mark>，國泰情境住院 10 天 × 日額 2,000 ＝ 2 萬。</p><div class="blocks"><span class="blk x">強制險附加駕傷<small>限單一事故</small></span><span class="blk cdrv">第三人附加駕傷<small>對撞也賠</small></span></div></div>
+</div><div class="road-end"><p>責任險只在<mark>您依法要賠別人</mark>時啟動：體傷先扣強制險，不夠再往上一層；家屬不算第三人，也不賠自己。</p></div></div>
 
 <h3 class="sec">時間線：一場車禍，錢從哪裡流出去、誰接住</h3>
 <div class="tl">
@@ -7340,7 +7417,7 @@ P.querySelectorAll(".fbl [data-c]").forEach(function(x){x.style.cursor="pointer"
   <span class="garrow" aria-hidden="true">›</span>
   <div class="gate"><div class="g-top"><span class="g-n">5</span><b>當下怎麼開車</b></div><span class="blk x">無照・酒駕・吸毒・故意</span><p>這幾種<mark>全部不賠</mark>，責任險買再多都沒用。</p></div>
   <span class="garrow" aria-hidden="true">›</span>
-  <div class="gate pass"><div class="g-top"><span class="g-n">✓</span><b>和解理賠</b></div><span class="blk b2">依檢附文件審核</span><p>先別自己答應對方金額，<mark>保險公司會協助處理和解</mark>。出事先打給我。</p></div>
+  <div class="gate pass"><div class="g-top"><span class="g-n">✓</span><b>申請理賠</b></div><span class="blk b2">流程都一樣</span><p>車禍當下五步驟、理賠流程、要準備的文件，整理在車險地圖。</p><button type="button" class="golink" data-goto="pc-car" data-anchor="pc-accident">看出事了怎麼辦 →</button></div>
 </div>
 
 <h3 class="sec">我的商品比較：責任險家族</h3>
@@ -7541,51 +7618,61 @@ P.querySelectorAll(".fbl [data-c]").forEach(function(x){x.style.cursor="pointer"
   <p class="note">限額丙式範圍和丙式一樣，但投保時約定保額，所以保費比丙式便宜。颱風、地震、洪水，還有罷工暴動，三種式別都要<mark>另加附加條款</mark>。</p>
 </div>
 
-<h3 class="sec">什麼時候賠？先猜，再點開看積木怎麼拼</h3>
-<div class="scns">
-  <details class="scn yes"><summary>
-    <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="4" y="30" width="28" height="11" rx="4" fill="#3E7CB1"/><path d="M9 30 l4 -7 h10 l5 7z" fill="#3E7CB1"/><circle cx="10" cy="42" r="3.5" fill="#2E2E2E"/><circle cx="26" cy="42" r="3.5" fill="#2E2E2E"/><rect x="34" y="30" width="26" height="11" rx="4" fill="#E07B39"/><path d="M38 30 l4 -7 h8 l5 7z" fill="#E07B39"/><circle cx="40" cy="42" r="3.5" fill="#2E2E2E"/><circle cx="54" cy="42" r="3.5" fill="#2E2E2E"/><path d="M33 20 l1.5 4 l3.5 -1.5 l-2 3.5 l3 2 h-4 l0 4 l-2 -3 l-2 3 l0 -4 h-4 l3 -2 l-2 -3.5 l3.5 1.5z" fill="#F4B942"/></svg>
-    <span class="q">開車撞上前車，自己車頭凹了修 3 萬</span><span class="stamp">賠</span></summary>
-    <div class="ans"><p>車碰車，<mark>甲乙丙三式都賠</mark>。國泰網頁情境：投保丙式＋第三人責任，丙式賠自己的 3 萬，對方修車 5 萬由第三人責任處理。</p>
-      <div class="blocks"><span class="blk cbody">丙式 3 萬<small>自己的車</small></span><span class="plus">＋</span><span class="blk cpd">第三人財損 5 萬<small>對方的車</small></span></div></div>
-  </details>
-  <details class="scn maybe"><summary>
-    <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="46" y="8" width="6" height="46" fill="#8C8C8C"/><g transform="rotate(-18 26 36)"><rect x="8" y="30" width="34" height="12" rx="4" fill="#3E7CB1"/><path d="M14 30 l5 -7 h12 l6 7z" fill="#3E7CB1"/><circle cx="15" cy="44" r="4" fill="#2E2E2E"/><circle cx="35" cy="44" r="4" fill="#2E2E2E"/></g><path d="M12 14 q3 -6 6 0 q-3 5 -6 0z M24 8 q3 -6 6 0 q-3 5 -6 0z" fill="#9CC8E8"/></svg>
-    <span class="q">下雨打滑，自己撞上電線桿</span><span class="stamp">看條款</span></summary>
-    <div class="ans"><p>要看買哪一式：自撞屬於「碰撞」，<mark>甲式、乙式賠</mark>；<mark>丙式只保跟其他車輛碰撞</mark>，自撞不賠。</p>
-      <div class="blocks"><span class="blk cbody">甲式・乙式<small>碰撞</small></span><span class="blk x">丙式<small>沒有撞到別台車</small></span></div></div>
-  </details>
-  <details class="scn maybe"><summary>
-    <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="8" y="30" width="48" height="14" rx="5" fill="#3E7CB1"/><path d="M17 30 l7 -10 h16 l8 10z" fill="#3E7CB1"/><path d="M21 30 l5 -7 h5 v7z M34 30 v-7 h5 l6 7z" fill="#CFE3F2"/><circle cx="18" cy="46" r="4.5" fill="#2E2E2E"/><circle cx="46" cy="46" r="4.5" fill="#2E2E2E"/><path d="M14 37 l6 3 l6 -3 l6 3 l6 -3 l6 3 l6 -3" fill="none" stroke="#fff" stroke-width="2.2"/><text x="54" y="20" font-size="14" font-weight="900" text-anchor="middle" fill="#B07A1E">?</text></svg>
-    <span class="q">停在路邊一晚，早上發現車門被刮花</span><span class="stamp">看條款</span></summary>
-    <div class="ans"><p>他人惡意破壞、不明原因，<mark>只有甲式賠</mark>。乙式可以另加<mark>限額不明損失附加條款</mark>，保停放時被不明車輛或不明原因碰撞、刮損，額度有上限。</p>
-      <div class="blocks"><span class="blk cbody">甲式<small>惡意破壞・不明原因</small></span><span class="blk q">乙式加附加<small>限額不明損失</small></span><span class="blk x">丙式</span></div></div>
-  </details>
-  <details class="scn maybe"><summary>
-    <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="10" y="22" width="44" height="13" rx="5" fill="#3E7CB1"/><path d="M18 22 l6 -9 h16 l7 9z" fill="#3E7CB1"/><circle cx="20" cy="36" r="4.5" fill="#2E2E2E"/><circle cx="44" cy="36" r="4.5" fill="#2E2E2E"/><path d="M2 34 q5 -4 10 0 t10 0 t10 0 t10 0 t10 0 t10 0 V62 H2z" fill="#5FA8D3" opacity=".9"/><path d="M8 44 q4 -3 8 0 t8 0 M34 50 q4 -3 8 0 t8 0" fill="none" stroke="#fff" stroke-width="2"/></svg>
-    <span class="q">颱風天地下室淹水，車子泡水</span><span class="stamp">看條款</span></summary>
-    <div class="ans"><p>颱風、地震、洪水<mark>不在甲乙丙的基本範圍</mark>，要另外加<mark>颱風、地震、洪水等附加條款</mark>，保額跟車體險一樣。颱風季前先幫客戶確認有沒有加。</p>
-      <div class="blocks"><span class="blk x">只有車體險<small>基本範圍沒有</small></span><span class="arrow">→</span><span class="blk q">颱風地震洪水附加<small>保額同車體險</small></span></div></div>
-  </details>
-  <details class="scn yes"><summary>
-    <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="8" y="26" width="48" height="16" rx="5" fill="none" stroke="#5E6A64" stroke-width="2.5" stroke-dasharray="4 3"/><path d="M8 48 h48" stroke="#F4E27A" stroke-width="3"/><path d="M14 52 l4 -4 M24 54 l4 -4 M34 52 l4 -4" stroke="#5E6A64" stroke-width="2.5" stroke-linecap="round"/><text x="32" y="40" font-size="15" font-weight="900" text-anchor="middle" fill="#B07A1E">?</text></svg>
-    <span class="q">整台車被偷，一直沒找回來</span><span class="stamp">賠</span></summary>
-    <div class="ans"><p>車體險不管失竊，要靠<mark>竊盜險</mark>。沒找回就給保險金，但要<mark>先扣折舊和自負額</mark>，賠的是失竊當下的剩餘價值，不是新車價。</p>
-      <div class="blocks"><span class="blk cthf">竊盜險<small>保額</small></span><span class="op" style="font-weight:900;color:var(--muted)">－</span><span class="blk self">折舊</span><span class="op" style="font-weight:900;color:var(--muted)">－</span><span class="blk self">自負額 基本 10%</span></div></div>
-  </details>
-  <details class="scn yes"><summary>
-    <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><path d="M18 60 L28 6 h8 L46 60z" fill="#7E8A85"/><path d="M32 12 v8 M32 28 v8 M32 44 v8" stroke="#fff" stroke-width="2.5"/><rect x="22" y="30" width="10" height="14" rx="3" fill="#3E7CB1"/><rect x="33" y="40" width="10" height="14" rx="3" fill="#E07B39"/><rect x="44" y="10" width="16" height="10" rx="2" fill="#2F7D5B"/><path d="M48 15 h8" stroke="#fff" stroke-width="2"/></svg>
-    <span class="q">在高速公路上追撞前車，國道警察到場</span><span class="stamp">賠</span></summary>
-    <div class="ans"><p>有買<mark>高速公路碰撞險</mark>，在國道交通隊轄區處理的事故，<mark>定額補 5,000 元</mark>，修車費另外由車體險賠。國泰情境：丙式 5 萬＋5,000 ＝ 5.5 萬。</p>
-      <div class="blocks"><span class="blk cbody">丙式 5 萬<small>修車</small></span><span class="plus">＋</span><span class="blk cfwy">定額 5,000<small>高速公路碰撞</small></span></div></div>
-  </details>
-  <details class="scn no"><summary>
-    <svg class="ico" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><path d="M6 56 q20 -4 30 -24 q6 -12 22 -16" fill="none" stroke="#7E8A85" stroke-width="12"/><path d="M40 22 l14 -6" stroke="#B0BEC5" stroke-width="4" stroke-linecap="round"/><rect x="26" y="30" width="14" height="9" rx="3" fill="#3E7CB1" transform="rotate(-40 33 34)"/><path d="M42 30 l2 4 l4 -1 l-2 3 l3 2 h-4 v4 l-2 -3 l-2 3 v-4 h-4 l3 -2 l-2 -3 l4 1z" fill="#F4B942"/></svg>
-    <span class="q">在交流道入口匝道自撞護欄，地方警察處理</span><span class="stamp">不賠</span></summary>
-    <div class="ans"><p>高速公路碰撞險要<mark>國道交通隊轄區</mark>處理才啟動。國泰情境：這種情況<mark>只有車體險賠 8,000 元</mark>，定額補償不給。</p>
-      <div class="blocks"><span class="blk x">高速公路碰撞<small>不是國道隊轄區</small></span><span class="blk cbody">車體險 8,000<small>照賠</small></span></div></div>
-  </details>
-</div>
+<h3 class="sec">車體與竊盜：先猜賠不賠</h3>
+<p class="hint2">6張牌卡直接猜：賠、看條款、還是不賠？點上面的標籤可以跳到那一張；按「全部重來」一鍵復原。</p>
+<div class="road" data-road style="--n:6"><div class="road-top"><b class="road-score" data-t="六張牌卡，先猜猜看">六張牌卡，先猜猜看</b><button class="road-reset" type="button">↺ 全部重來</button></div>
+<div class="road-line" role="tablist">
+<button class="rd" type="button" role="tab" data-k="0" data-ans="yes"><i>1</i><span>車碰車</span></button>
+<button class="rd" type="button" role="tab" data-k="1" data-ans="maybe"><i>2</i><span>自撞</span></button>
+<button class="rd" type="button" role="tab" data-k="2" data-ans="maybe"><i>3</i><span>被刮花</span></button>
+<button class="rd" type="button" role="tab" data-k="3" data-ans="maybe"><i>4</i><span>颱風</span></button>
+<button class="rd" type="button" role="tab" data-k="4" data-ans="yes"><i>5</i><span>被偷</span></button>
+<button class="rd" type="button" role="tab" data-k="5" data-ans="yes"><i>6</i><span>國道</span></button>
+</div><div class="rrow">
+<div class="rc" data-k="0" data-ans="yes">
+    <div class="rc-art"><svg class="rsv" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="4" y="30" width="28" height="11" rx="4" fill="#3E7CB1"/><path d="M9 30 l4 -7 h10 l5 7z" fill="#3E7CB1"/><circle cx="10" cy="42" r="3.5" fill="#2E2E2E"/><circle cx="26" cy="42" r="3.5" fill="#2E2E2E"/><rect x="34" y="30" width="26" height="11" rx="4" fill="#E07B39"/><path d="M38 30 l4 -7 h8 l5 7z" fill="#E07B39"/><circle cx="40" cy="42" r="3.5" fill="#2E2E2E"/><circle cx="54" cy="42" r="3.5" fill="#2E2E2E"/><path d="M33 20 l1.5 4 l3.5 -1.5 l-2 3.5 l3 2 h-4 l0 4 l-2 -3 l-2 3 l0 -4 h-4 l3 -2 l-2 -3.5 l3.5 1.5z" fill="#F4B942"/></svg><span class="rc-stamp">賠</span></div>
+    <span class="rs-age">第 1 張・車碰車</span><b class="rs-q">開車撞上前車，自己車頭凹了修 3 萬</b>
+    <div class="rg"><button type="button" data-g="yes">賠</button><button type="button" data-g="maybe">看條款</button><button type="button" data-g="no">不賠</button></div>
+    <span class="rs-res"></span>
+  </div>
+<div class="rc" data-k="1" data-ans="maybe">
+    <div class="rc-art"><svg class="rsv" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="46" y="8" width="6" height="46" fill="#8C8C8C"/><g transform="rotate(-18 26 36)"><rect x="8" y="30" width="34" height="12" rx="4" fill="#3E7CB1"/><path d="M14 30 l5 -7 h12 l6 7z" fill="#3E7CB1"/><circle cx="15" cy="44" r="4" fill="#2E2E2E"/><circle cx="35" cy="44" r="4" fill="#2E2E2E"/></g><path d="M12 14 q3 -6 6 0 q-3 5 -6 0z M24 8 q3 -6 6 0 q-3 5 -6 0z" fill="#9CC8E8"/></svg><span class="rc-stamp">看條款</span></div>
+    <span class="rs-age">第 2 張・自撞</span><b class="rs-q">下雨打滑，自己撞上電線桿</b>
+    <div class="rg"><button type="button" data-g="yes">賠</button><button type="button" data-g="maybe">看條款</button><button type="button" data-g="no">不賠</button></div>
+    <span class="rs-res"></span>
+  </div>
+<div class="rc" data-k="2" data-ans="maybe">
+    <div class="rc-art"><svg class="rsv" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="8" y="30" width="48" height="14" rx="5" fill="#3E7CB1"/><path d="M17 30 l7 -10 h16 l8 10z" fill="#3E7CB1"/><path d="M21 30 l5 -7 h5 v7z M34 30 v-7 h5 l6 7z" fill="#CFE3F2"/><circle cx="18" cy="46" r="4.5" fill="#2E2E2E"/><circle cx="46" cy="46" r="4.5" fill="#2E2E2E"/><path d="M14 37 l6 3 l6 -3 l6 3 l6 -3 l6 3 l6 -3" fill="none" stroke="#fff" stroke-width="2.2"/><text x="54" y="20" font-size="14" font-weight="900" text-anchor="middle" fill="#B07A1E">?</text></svg><span class="rc-stamp">看條款</span></div>
+    <span class="rs-age">第 3 張・被刮花</span><b class="rs-q">停在路邊一晚，早上發現車門被刮花</b>
+    <div class="rg"><button type="button" data-g="yes">賠</button><button type="button" data-g="maybe">看條款</button><button type="button" data-g="no">不賠</button></div>
+    <span class="rs-res"></span>
+  </div>
+<div class="rc" data-k="3" data-ans="maybe">
+    <div class="rc-art"><svg class="rsv" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="10" y="22" width="44" height="13" rx="5" fill="#3E7CB1"/><path d="M18 22 l6 -9 h16 l7 9z" fill="#3E7CB1"/><circle cx="20" cy="36" r="4.5" fill="#2E2E2E"/><circle cx="44" cy="36" r="4.5" fill="#2E2E2E"/><path d="M2 34 q5 -4 10 0 t10 0 t10 0 t10 0 t10 0 t10 0 V62 H2z" fill="#5FA8D3" opacity=".9"/><path d="M8 44 q4 -3 8 0 t8 0 M34 50 q4 -3 8 0 t8 0" fill="none" stroke="#fff" stroke-width="2"/></svg><span class="rc-stamp">看條款</span></div>
+    <span class="rs-age">第 4 張・颱風</span><b class="rs-q">颱風天地下室淹水，車子泡水</b>
+    <div class="rg"><button type="button" data-g="yes">賠</button><button type="button" data-g="maybe">看條款</button><button type="button" data-g="no">不賠</button></div>
+    <span class="rs-res"></span>
+  </div>
+<div class="rc" data-k="4" data-ans="yes">
+    <div class="rc-art"><svg class="rsv" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><rect x="8" y="26" width="48" height="16" rx="5" fill="none" stroke="#5E6A64" stroke-width="2.5" stroke-dasharray="4 3"/><path d="M8 48 h48" stroke="#F4E27A" stroke-width="3"/><path d="M14 52 l4 -4 M24 54 l4 -4 M34 52 l4 -4" stroke="#5E6A64" stroke-width="2.5" stroke-linecap="round"/><text x="32" y="40" font-size="15" font-weight="900" text-anchor="middle" fill="#B07A1E">?</text></svg><span class="rc-stamp">賠</span></div>
+    <span class="rs-age">第 5 張・被偷</span><b class="rs-q">整台車被偷，一直沒找回來</b>
+    <div class="rg"><button type="button" data-g="yes">賠</button><button type="button" data-g="maybe">看條款</button><button type="button" data-g="no">不賠</button></div>
+    <span class="rs-res"></span>
+  </div>
+<div class="rc" data-k="5" data-ans="yes">
+    <div class="rc-art"><svg class="rsv" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--icobg)"/><path d="M18 60 L28 6 h8 L46 60z" fill="#7E8A85"/><path d="M32 12 v8 M32 28 v8 M32 44 v8" stroke="#fff" stroke-width="2.5"/><rect x="22" y="30" width="10" height="14" rx="3" fill="#3E7CB1"/><rect x="33" y="40" width="10" height="14" rx="3" fill="#E07B39"/><rect x="44" y="10" width="16" height="10" rx="2" fill="#2F7D5B"/><path d="M48 15 h8" stroke="#fff" stroke-width="2"/></svg><span class="rc-stamp">賠</span></div>
+    <span class="rs-age">第 6 張・國道</span><b class="rs-q">在高速公路上追撞前車，國道警察到場</b>
+    <div class="rg"><button type="button" data-g="yes">賠</button><button type="button" data-g="maybe">看條款</button><button type="button" data-g="no">不賠</button></div>
+    <span class="rs-res"></span>
+  </div>
+</div><div class="rexp"><p class="rexp-empty">先在上面任選一張牌卡猜猜看，答案會出現在這裡。</p>
+<div class="rx" data-k="0" data-ans="yes" hidden><div class="rs-verdict"><span class="stamp2">賠</span><b>開車撞上前車，自己車頭凹了修 3 萬</b></div><p>車碰車，<mark>甲乙丙三式都賠</mark>。國泰網頁情境：投保丙式＋第三人責任，丙式賠自己的 3 萬，對方修車 5 萬由第三人責任處理。</p><div class="blocks"><span class="blk cbody">丙式 3 萬<small>自己的車</small></span><span class="plus">＋</span><span class="blk cpd">第三人財損 5 萬<small>對方的車</small></span></div></div>
+<div class="rx" data-k="1" data-ans="maybe" hidden><div class="rs-verdict"><span class="stamp2">看條款</span><b>下雨打滑，自己撞上電線桿</b></div><p>要看買哪一式：自撞屬於「碰撞」，<mark>甲式、乙式賠</mark>；<mark>丙式只保跟其他車輛碰撞</mark>，自撞不賠。</p><div class="blocks"><span class="blk cbody">甲式・乙式<small>碰撞</small></span><span class="blk x">丙式<small>沒有撞到別台車</small></span></div></div>
+<div class="rx" data-k="2" data-ans="maybe" hidden><div class="rs-verdict"><span class="stamp2">看條款</span><b>停在路邊一晚，早上發現車門被刮花</b></div><p>他人惡意破壞、不明原因，<mark>只有甲式賠</mark>。乙式可以另加<mark>限額不明損失附加條款</mark>，保停放時被不明車輛或不明原因碰撞、刮損，額度有上限。</p><div class="blocks"><span class="blk cbody">甲式<small>惡意破壞・不明原因</small></span><span class="blk q">乙式加附加<small>限額不明損失</small></span><span class="blk x">丙式</span></div></div>
+<div class="rx" data-k="3" data-ans="maybe" hidden><div class="rs-verdict"><span class="stamp2">看條款</span><b>颱風天地下室淹水，車子泡水</b></div><p>颱風、地震、洪水<mark>不在甲乙丙的基本範圍</mark>，要另外加<mark>颱風、地震、洪水等附加條款</mark>，保額跟車體險一樣。颱風季前先幫客戶確認有沒有加。</p><div class="blocks"><span class="blk x">只有車體險<small>基本範圍沒有</small></span><span class="arrow">→</span><span class="blk q">颱風地震洪水附加<small>保額同車體險</small></span></div></div>
+<div class="rx" data-k="4" data-ans="yes" hidden><div class="rs-verdict"><span class="stamp2">賠</span><b>整台車被偷，一直沒找回來</b></div><p>車體險不管失竊，要靠<mark>竊盜險</mark>。沒找回就給保險金，但要<mark>先扣折舊和自負額</mark>，賠的是失竊當下的剩餘價值，不是新車價。</p><div class="blocks"><span class="blk cthf">竊盜險<small>保額</small></span><span class="op" style="font-weight:900;color:var(--muted)">－</span><span class="blk self">折舊</span><span class="op" style="font-weight:900;color:var(--muted)">－</span><span class="blk self">自負額 基本 10%</span></div></div>
+<div class="rx" data-k="5" data-ans="yes" hidden><div class="rs-verdict"><span class="stamp2">賠</span><b>在高速公路上追撞前車，國道警察到場</b></div><p>有買<mark>高速公路碰撞險</mark>，在國道交通隊轄區處理的事故，<mark>定額補 5,000 元</mark>，修車費另外由車體險賠。國泰情境：丙式 5 萬＋5,000 ＝ 5.5 萬。</p><div class="blocks"><span class="blk cbody">丙式 5 萬<small>修車</small></span><span class="plus">＋</span><span class="blk cfwy">定額 5,000<small>高速公路碰撞</small></span></div><div class="rx-fix"><b>國道隊轄區才算</b><p>交流道入口匝道自撞護欄、由地方警察處理，<mark>高速公路碰撞險不啟動</mark>，只有車體險照賠。</p></div></div>
+</div><div class="road-end"><p>保自己的車，先看<mark>式別</mark>：丙式只保車碰車、乙式再加自撞、甲式再加惡意和不明原因；颱風淹水三式都要另外加。</p></div></div>
 
 <h3 class="sec">時間線：車子被偷，錢從哪裡流出去、誰接住</h3>
 <div class="tl">
@@ -7613,7 +7700,7 @@ P.querySelectorAll(".fbl [data-c]").forEach(function(x){x.style.cursor="pointer"
   <span class="garrow" aria-hidden="true">›</span>
   <div class="gate"><div class="g-top"><span class="g-n">5</span><b>自己出多少</b></div><span class="blk self">自負額</span><p>竊盜險<mark>基本自負額 10%</mark>，也可以另外約定；車體險依投保約定。</p></div>
   <span class="garrow" aria-hidden="true">›</span>
-  <div class="gate pass"><div class="g-top"><span class="g-n">✓</span><b>申請理賠</b></div><span class="blk b2">依檢附文件審核</span><p>先拍照、報警，<mark>盡快通知保險公司</mark>。出事先打給我。</p></div>
+  <div class="gate pass"><div class="g-top"><span class="g-n">✓</span><b>申請理賠</b></div><span class="blk b2">流程都一樣</span><p>車禍當下五步驟、理賠流程、要準備的文件，整理在車險地圖。</p><button type="button" class="golink" data-goto="pc-car" data-anchor="pc-accident">看出事了怎麼辦 →</button></div>
 </div>
 
 <h3 class="sec">我的商品比較：保自己的車</h3>
@@ -8507,7 +8594,7 @@ navs.forEach(n=>n.onclick=()=>show(+n.dataset.i));
 function setStory(m){document.querySelectorAll('[data-m]').forEach(r=>r.dataset.m=m);document.querySelectorAll('.mswitch button').forEach(x=>x.classList.toggle('on',x.dataset.set===m));try{localStorage.setItem('story',m)}catch(e){}}
 document.addEventListener('click',e=>{const b=e.target.closest('.mswitch button');if(b)setStory(b.dataset.set);});
 try{const m0=localStorage.getItem('story');if(m0)setStory(m0)}catch(e){}
-document.addEventListener('click',e=>{const tg=e.target.closest('[data-goto]');if(tg&&window.TOPIC_IDX&&tg.dataset.goto in TOPIC_IDX){const cur=panes.findIndex(p=>!p.hidden);const y=window.scrollY;show(TOPIC_IDX[tg.dataset.goto]);if(cur>=0&&cur!==TOPIC_IDX[tg.dataset.goto]){goBack={i:cur,y:y};const bb=document.getElementById('goBack');bb.querySelector('b').textContent=(panes[cur].querySelector('h2')||{}).textContent||'剛剛那一節';bb.hidden=false;}return;}const g=e.target.closest('.sm-chip');if(g){show(+g.dataset.go);return;}
+document.addEventListener('click',e=>{const tg=e.target.closest('[data-goto]');if(tg&&window.TOPIC_IDX&&tg.dataset.goto in TOPIC_IDX){const cur=panes.findIndex(p=>!p.hidden);const y=window.scrollY;show(TOPIC_IDX[tg.dataset.goto]);if(tg.dataset.anchor){const an=document.getElementById(tg.dataset.anchor);an&&setTimeout(()=>an.scrollIntoView({behavior:'smooth',block:'start'}),80);}if(cur>=0&&cur!==TOPIC_IDX[tg.dataset.goto]){goBack={i:cur,y:y};const bb=document.getElementById('goBack');bb.querySelector('b').textContent=(panes[cur].querySelector('h2')||{}).textContent||'剛剛那一節';bb.hidden=false;}return;}const g=e.target.closest('.sm-chip');if(g){show(+g.dataset.go);return;}
   const h=e.target.closest('.sm-flow button');if(h){const pane=h.closest('.pane');const t=pane&&pane.querySelectorAll('h3.sec')[+h.dataset.h];if(t)t.scrollIntoView({behavior:'smooth',block:'start'});}});
 document.querySelectorAll('.pop-btn').forEach(b=>b.onclick=()=>{const p=document.getElementById(b.dataset.pop);p.hidden=false;p.querySelector('.pop-x').focus();});
 document.querySelectorAll('.pop').forEach(p=>{p.addEventListener('click',e=>{if(e.target===p||e.target.classList.contains('pop-x'))p.hidden=true;});});
