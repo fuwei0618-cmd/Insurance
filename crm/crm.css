@@ -557,3 +557,11 @@ select.linktpl{border:1px solid var(--line);background:var(--surface);border-rad
 .ktable.editing td{padding:4px 6px}
 .ktable.editing select,.ktable.editing input[type=date]{font:inherit;font-size:13px;padding:4px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
 .ktable td .pill{margin-left:4px;font-size:11px}
+.klink{border:1px dashed var(--line);background:none;border-radius:6px;font-size:11px;padding:1px 4px;margin-right:4px;cursor:pointer;color:var(--muted)}
+.klink.on{border-style:solid;border-color:var(--accent);color:var(--accent)}
+.ktable tr.klinked td{border-top-color:transparent}
+.ktable tr.klinked td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.kjump{color:var(--warn);font-weight:700;margin-left:3px}
+.khrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+.khrow>span:first-child{flex:1;min-width:0}
+.khrow .pill{font-size:11px}

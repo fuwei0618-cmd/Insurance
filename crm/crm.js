@@ -432,7 +432,7 @@ const TPLGROUPS = ['LINE', '簡訊', '信件', '通話', '其他'];
 const linkify = (html) => html.replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.length > 60 ? u.slice(0, 57) + '…' : u}</a>`);
 
 /* ================= 狀態與畫面 ================= */
-const S = { ginvOpen: false, gview: 'table', ktable: false, kprog: '全部', kmark: '全部', khh: false, kedit: false, kfromTable: false, kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
+const S = { ginvOpen: false, gview: 'table', ktable: false, kprog: '全部', kmark: '全部', ksort: 'no', kedit: false, kfromTable: false, kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
 const cases = () => Vault.all('cases');
 const localDay = (d = new Date()) => { const t = new Date(d); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
 const caseDate = (c) => c.date || (c.createdAt ? localDay(c.createdAt) : '');
@@ -610,13 +610,32 @@ const normAddr = (x) => (x || '').replace(/\s+/g, '').replace(/台/g, '臺').rep
 const hhKey = (k) => (k.hh ? 'h:' + k.hh : normAddr(k.addr) ? 'a:' + normAddr(k.addr) : 'n:' + k.id);
 function callHouseholds(all) { const m = new Map(); all.forEach((k) => { const key = hhKey(k); m.has(key) ? m.get(key).push(k) : m.set(key, [k]); }); return m; }
 const hhPending = (g) => g.length > 1 && !g.every((k) => k.hhOk);
+const addrParts = (k) => { const m = normAddr(k.addr).match(/^(\d{3,6})?(.*)$/); return [m[1] ? parseInt(m[1].slice(0, 3), 10) : 1e6, m[2] || '']; };
+const addrCmp = (a, b) => { const [za, ra] = addrParts(a), [zb, rb] = addrParts(b); return (!ra) - (!rb) || za - zb || ra.localeCompare(rb, 'zh-Hant', { numeric: true }) || noCmp(a, b); };
+function linkHH(a, b) { // 把 b 拉進 a 那一戶，不用決定戶長
+  const all = calls(), nm = a.hh || b.hh || '戶' + (a.no || a.name || '');
+  [a.hh, b.hh].filter((x) => x && x !== nm).forEach((old) => all.filter((k) => k.hh === old).forEach((k) => { k.hh = nm; Vault.put('calls', k); }));
+  [a, b].forEach((k) => { k.hh = nm; k.hhOk = true; Vault.put('calls', k); }); return nm;
+}
+const phoneDigits = (x) => (x || '').replace(/\D/g, '');
+function hhCandidates(k) { const ad = normAddr(k.addr), hp = phoneDigits(k.home), [z] = addrParts(k), sn = (k.name || '').slice(0, 1);
+  return calls().filter((o) => o.id !== k.id && !(k.hh && o.hh === k.hh)).map((o) => [o, ad && normAddr(o.addr) === ad ? '同地址' : hp.length >= 7 && phoneDigits(o.home) === hp ? '同住家電話' : sn && o.name?.[0] === sn && z < 1e6 && addrParts(o)[0] === z ? '同姓・同郵遞區號' : '']).filter(([, w]) => w); }
+function callHHSectionHTML(k) {
+  const mem = k.hh ? calls().filter((o) => o.hh === k.hh && o.id !== k.id).sort(noCmp) : [], cand = hhCandidates(k);
+  const row = (o, btn) => `<div class="khrow"><span><span class="kno">${esc(o.no || '')}</span><b>${esc(o.name || '未填')}</b> <span class="sub">${esc(o.addr || '')}</span></span>${btn}</div>`;
+  return `<div class="sec"><h2>家戶 <span class="sub">${k.hh ? esc(k.hh) + `・${mem.length + 1} 人` : '還沒拉家戶'}</span></h2>
+   ${mem.map((o) => row(o, `<button class="btn sm" data-khout="${o.id}">移出</button>`)).join('')}
+   ${cand.length ? `<div class="sub" style="margin:6px 0 4px">可能同一戶，電話中問到就按「＋ 同一戶」：</div>${cand.map(([o, w]) => row(o, `<span class="pill">${w}</span><button class="btn sm" data-khadd="${o.id}">＋ 同一戶</button>`)).join('')}` : mem.length ? '' : '<div class="sub">沒有找到同地址、同住家電話的人。</div>'}
+   ${k.hh ? `<div class="actions" style="margin:6px 0 0"><button class="linkbtn" data-khout="${k.id}">把自己移出這一戶</button></div>` : ''}</div>`;
+}
 const KMARKS = ['全部', '已加 LINE', '未加 LINE', '退件', '同事的件', '家戶待確認'];
 function callTableHTML() {
   const all = calls(), q = S.q.trim(), hhs = callHouseholds(all), grpOf = (k) => hhs.get(hhKey(k));
   const areas = [...new Set(all.map((k) => k.area).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant')); if (S.kar !== '全部' && !areas.includes(S.kar)) S.kar = '全部';
   const markOk = (k) => ({ 全部: true, '已加 LINE': !!k.line, '未加 LINE': !k.line, 退件: !!k.mailBack, 同事的件: !!k.other, 家戶待確認: hhPending(grpOf(k)) })[S.kmark];
   let list = all.filter((k) => (S.kprog === '全部' || callProg(k) === S.kprog) && (S.kar === '全部' || k.area === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && markOk(k) && (!q || [k.no, k.name, k.phone, k.home, k.addr, k.area, k.note, k.hh, k.otherWho].join(' ').includes(q))).sort(noCmp);
-  if (S.khh) { const first = new Map(); list.forEach((k, i) => { const key = hhKey(k); if (!first.has(key)) first.set(key, i); }); list = list.map((k, i) => [k, i]).sort((x, y) => first.get(hhKey(x[0])) - first.get(hhKey(y[0])) || x[1] - y[1]).map(([k]) => k); }
+  if (S.ksort === 'addr') list.sort(addrCmp);
+  if (S.ksort === 'hh') { const first = new Map(); list.forEach((k, i) => { const key = hhKey(k); if (!first.has(key)) first.set(key, i); }); list = list.map((k, i) => [k, i]).sort((x, y) => first.get(hhKey(x[0])) - first.get(hhKey(y[0])) || x[1] - y[1]).map(([k]) => k); }
   const mine = all.filter((k) => !k.other), n = (f) => mine.filter(f).length, na = (f) => all.filter(f).length, prog = (k) => callProg(k);
   const funnel = [['名單', mine.length], ['打過', n((k) => (k.logs || []).length)], ['接通', n((k) => ['已接通', '已排訪', '已見面'].includes(prog(k)))], ['要年曆', n((k) => ['預備', '已送'].includes(callGift(k)))], ['加 LINE', n((k) => k.line)], ['排訪', n((k) => ['已排訪', '已見面'].includes(prog(k)))], ['見面', n((k) => k.met)], ['年曆已送', n((k) => callGift(k) === '已送')]];
   const dot = (v, l) => `<span class="kdot ${v}" title="${l}${v === 'ok' ? '接了' : v === 'no' ? '沒接' : '還沒打'}">${l[0]}</span>`;
@@ -624,32 +643,34 @@ function callTableHTML() {
   const E = S.kedit, ti = (k, f, w, ph) => `<input class="nctxt" data-kte="${k.id}" data-kfield="${f}" value="${esc(k[f])}" style="width:${w}px"${ph ? ` placeholder="${ph}"` : ''}>`, cb = (k, f) => `<input type="checkbox" data-kte="${k.id}" data-kfield="${f}"${k[f] ? ' checked' : ''}>`;
   const cols = E ? ['序號', '姓名', '地區', '分級', '家戶', 'LINE', '退件', '同事的件', '排訪日期', '見面', '重要事項', '']
     : ['序號', '姓名', '地區', '分級', '家戶', '三時段', '進度', '最近結果', '年曆', 'LINE', '排訪', '見面', '重要事項'];
-  let prevKey = null;
-  const rows = list.map((k) => { const sl = callSlots(k), l = logsOf(k)[0], gf = callGift(k), pg = prog(k), g = grpOf(k), key = hhKey(k);
+  let prevKey = null, maxNo = -1, jumps = 0;
+  const rows = list.map((k, ri) => { const nn = parseInt(k.no, 10), jump = S.ksort === 'addr' && !isNaN(nn) && nn < maxNo; if (jump) jumps++; if (!isNaN(nn)) maxNo = Math.max(maxNo, nn);
+    const prevK = list[ri - 1], linked = prevK && k.hh && prevK.hh === k.hh, lk = S.ksort !== 'no' && prevK ? `<button class="klink${linked ? ' on' : ''}" data-klink="${k.id}" data-kprev="${prevK.id}" title="${linked ? '已跟上一位同一戶，再按一下拆開' : '跟上一位同一戶'}">${linked ? '🔗' : '＋🔗'}</button>` : ''; const sl = callSlots(k), l = logsOf(k)[0], gf = callGift(k), pg = prog(k), g = grpOf(k), key = hhKey(k);
     let head = '';
-    if (S.khh && key !== prevKey && g.length > 1) { const pend = hhPending(g); head = `<tr class="khh"><td colspan="${cols.length}"><b>家戶・${esc(g.find((x) => x.hh)?.hh || '同地址')}</b> <span class="sub">${g.length} 人・${esc(g[0].addr || '')}</span> ${pend ? `<span class="pill p-wait">待電話確認</span> <button class="btn sm" data-khhok="${esc(key)}">✓ 確認同一戶</button>` : '<span class="pill p-done">已確認</span>'}</td></tr>`; }
+    if (S.ksort === 'hh' && key !== prevKey && g.length > 1) { const pend = hhPending(g); head = `<tr class="khh"><td colspan="${cols.length}"><b>家戶・${esc(g.find((x) => x.hh)?.hh || '同地址')}</b> <span class="sub">${g.length} 人・${esc(g[0].addr || '')}</span> ${pend ? `<span class="pill p-wait">待電話確認</span> <button class="btn sm" data-khhok="${esc(key)}">✓ 確認同一戶</button>` : '<span class="pill p-done">已確認</span>'}</td></tr>`; }
     prevKey = key;
     const hhCell = k.hh ? esc(k.hh) : g.length > 1 ? `<span class="sub">同地址 ${g.length} 人</span>` : '';
     const badges = `${k.mailBack ? '<span class="pill p-off">退件</span>' : ''}${k.other ? `<span class="pill p-off">同事${k.otherWho ? '・' + esc(k.otherWho) : ''}</span>` : ''}`;
-    if (E) return head + `<tr class="kedit${k.other ? ' kother' : ''}"><td class="sub">${esc(k.no || '')}</td><td>${ti(k, 'name', 90)} <button class="linkbtn" data-ksel="${k.id}">開</button></td><td>${ti(k, 'area', 70)}</td>
+    if (E) return head + `<tr class="kedit${k.other ? ' kother' : ''}${linked ? ' klinked' : ''}"><td class="sub">${lk}${esc(k.no || '')}${jump ? '<span class="kjump" title="序號比上一位小">↰</span>' : ''}</td><td>${ti(k, 'name', 90)} <button class="linkbtn" data-ksel="${k.id}">開</button></td><td>${ti(k, 'area', 70)}</td>
       <td><select data-kte="${k.id}" data-kfield="level"><option value=""></option>${LEVELS.map((x) => `<option${k.level === x ? ' selected' : ''}>${x}</option>`).join('')}</select></td><td>${ti(k, 'hh', 80, g.length > 1 ? '同地址' : '')}</td>
       <td>${cb(k, 'line')}</td><td>${cb(k, 'mailBack')}</td><td>${cb(k, 'other')} ${k.other ? ti(k, 'otherWho', 70, '哪位同事') : ''}</td>
       <td><input type="date" data-kte="${k.id}" data-kfield="visitDate" value="${esc(k.visitDate)}"></td><td>${cb(k, 'met')}</td><td>${ti(k, 'note', 180)}</td><td>${badges}</td></tr>`;
-    return head + `<tr data-ksel="${k.id}" class="kp-${pg}${k.other ? ' kother' : ''}">
-     <td class="sub">${esc(k.no || '')}</td><td><b>${esc(k.name || '未填')}</b> ${badges}</td><td>${esc(k.area || '')}</td><td>${k.level ? `<b class="lvl lv-${esc(k.level)}">${esc(k.level)}</b>` : ''}</td><td>${hhCell}</td>
+    return head + `<tr data-ksel="${k.id}" class="kp-${pg}${k.other ? ' kother' : ''}${linked ? ' klinked' : ''}">
+     <td class="sub">${lk}${esc(k.no || '')}${jump ? '<span class="kjump" title="序號比上一位小">↰</span>' : ''}</td><td><b>${esc(k.name || '未填')}</b> ${badges}</td><td>${esc(k.area || '')}</td><td>${k.level ? `<b class="lvl lv-${esc(k.level)}">${esc(k.level)}</b>` : ''}</td><td>${hhCell}</td>
      <td><span class="kdots">${dot(sl['上午'], '上午')}${dot(sl['下午'], '下午')}${dot(sl['晚上'], '晚上')}</span></td><td><span class="kprog">${pg}</span></td>
      <td>${l ? `${esc(l.result)}<span class="sub"> ${fmtDay(l.date).slice(5)}</span>` : ''}</td><td>${gf ? `<span class="kg kg-${gf}">${gf}</span>` : ''}</td><td>${k.line ? '✓' : ''}</td>
      <td>${k.visitDate ? fmtDay(k.visitDate).slice(5) : pg === '已排訪' ? '✓' : ''}</td><td>${k.met ? '✓' : ''}</td><td class="knote">${esc((k.note || l?.note || '').slice(0, 40))}</td></tr>`; }).join('');
-  return `<div class="colhead"><h1>服務件總表 <span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn${S.khh ? ' pri' : ''}" data-act="khh">${S.khh ? '✓ ' : ''}依家戶排</button><button class="btn${E ? ' pri' : ''}" data-act="kedit">${E ? '✓ 改好了' : '✎ 直接修改'}</button><button class="btn" data-act="cflow">流程</button><button class="btn" data-act="klist">‹ 回到名單</button><button class="btn" data-act="importcalls">匯入名單</button></span></h1>
+  return `<div class="colhead"><h1>服務件總表 <span style="display:flex;gap:6px;flex-wrap:wrap"><span class="seg2">${[['no', '序號'], ['addr', '地址'], ['hh', '家戶']].map(([v, l]) => `<button class="btn sm${S.ksort === v ? ' pri' : ''}" data-ksort="${v}">${l}</button>`).join('')}</span><button class="btn${E ? ' pri' : ''}" data-act="kedit">${E ? '✓ 改好了' : '✎ 直接修改'}</button><button class="btn" data-act="cflow">流程</button><button class="btn" data-act="klist">‹ 回到名單</button><button class="btn" data-act="importcalls">匯入名單</button></span></h1>
    <div class="kfunnel">${funnel.map(([l, v]) => `<div><span>${l}</span><b>${v}</b></div>`).join('<i>›</i>')}</div>
    <input class="search" id="q" placeholder="搜尋序號、姓名、電話、地址、家戶" value="${esc(S.q)}" autocomplete="off">
    <div class="chips"><span class="sub" style="align-self:center">進度</span>${['全部', ...PROGS].map((x) => chip('kprog', x, x === '全部' ? all.length : na((k) => prog(k) === x))).join('')}</div>
    <div class="chips"><span class="sub" style="align-self:center">分級</span>${['全部', ...LEVELS, '未分級'].map((x) => chip('klv', x, x === '全部' ? all.length : x === '未分級' ? na((k) => !k.level) : na((k) => k.level === x))).join('')}</div>
    <div class="chips"><span class="sub" style="align-self:center">標記</span>${KMARKS.map((x) => chip('kmark', x, all.filter((k) => { const o = S.kmark; S.kmark = x; const r = markOk(k); S.kmark = o; return r; }).length)).join('')}</div>
    ${areas.length ? `<div class="chips"><span class="sub" style="align-self:center">地區</span>${['全部', ...areas].map((x) => chip('kar', x, x === '全部' ? all.length : na((k) => k.area === x))).join('')}</div>` : ''}</div>
+  ${S.ksort === 'addr' ? `<div class="note">照郵遞區號、地址排。${jumps ? `有 <b>${jumps}</b> 位的序號比上一位小（標 ↰），那些就是跟你原本順序不一樣的地方。` : '跟你原本的序號順序完全一樣。'}地址相鄰、看起來同一戶的，按序號前面的「＋🔗」就跟上一位拉成同一戶，再按一下拆開。</div>` : S.ksort === 'hh' ? '<div class="note">同一戶的排在一起。沒拉過的，地址一樣也會先放一起，標「待電話確認」。</div>' : ''}
   ${E ? '<div class="note">直接修改模式：改完一格點別的地方就存好。序號不能改，維持名單原本的編號。家戶那格打一樣的名字（例如「王家」），地址不同也會排在一起。</div>' : ''}
   <div class="ktablewrap"><table class="ktable${E ? ' editing' : ''}"><thead><tr>${cols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>${list.length ? '' : '<div class="empty">沒有符合的對象。</div>'}</div>
-  <div class="sub" style="margin-top:8px">三時段：灰色＝還沒打、紅色＝打了沒接、綠色＝接了。點任何一列打開這個人。同事的件不算進上面的進度條。「依家戶排」只是換顯示順序，序號不會變。</div>`;
+  <div class="sub" style="margin-top:8px">三時段：灰色＝還沒打、紅色＝打了沒接、綠色＝接了。點任何一列打開這個人。同事的件不算進上面的進度條。換排序只是換顯示順序，序號不會變。</div>`;
 }
 const LEVELS = ['A', 'B', 'C-1', 'C-2', 'C-3'];
 const LEVEL_TIP = { A: 'VIP，高度優先', B: '有預算、有促約機會', 'C-1': '有關鍵人物，預算不夠', 'C-2': '關係好，觀念還沒到', 'C-3': '排斥、忙、沒需求，用寄的' };
@@ -713,6 +734,7 @@ function callDetailHTML() {
    <label class="f">保單概況<textarea id="kf_policy" class="grow" data-kf="policy" rows="2" placeholder="有哪些保單、繳費狀況…">${esc(k.policy)}</textarea></label></details>
   <div class="sec"><h2>約訪</h2><div class="grid2"><label class="f">約訪日期<input type="date" id="kf_visitDate" data-kf="visitDate" value="${esc(k.visitDate)}"></label>
    <div class="f">結果<div class="tags"><button class="tag${k.met ? ' on' : ''}" data-kchk="met">${k.met ? '✓ ' : ''}已見面</button><button class="tag${k.giftSkip ? ' on' : ''}" data-kchk="giftSkip">不送年曆</button></div></div></div></div>
+  ${callHHSectionHTML(k)}
   ${giftSectionHTML('call', k.id, k.name)}
   ${answerStatsHTML(k)}
   <details class="sec script" open><summary><h2 style="display:inline">話術 SOP</h2></summary>
@@ -1814,6 +1836,7 @@ app.addEventListener('click', async (e) => {
   const gn = e.target.closest('[data-gonode]'); if (gn) { S.view = 'clients'; S.csel = gn.dataset.gonode; S.ccat = '全部'; S.showDetail = true; S.showIds = false; App.render(); return; }
   const tileImg = e.target.closest('.doc[data-di] canvas, .doc[data-di] .pdftile'); // 點圖片＝看
   if (tileImg) { tileImg.closest('.doc').querySelector('[data-view],[data-cview]')?.click(); return; }
+  const kl = e.target.closest('[data-klink]'); if (kl) { const a = Vault.get('calls', kl.dataset.kprev), b = Vault.get('calls', kl.dataset.klink); if (a && b) { if (a.hh && a.hh === b.hh) { b.hh = ''; b.hhOk = false; Vault.put('calls', b); if (!calls().some((x) => x.id !== a.id && x.hh === a.hh)) { a.hh = ''; a.hhOk = false; Vault.put('calls', a); } toast('拆開了'); } else toast('同一戶：' + linkHH(a, b)); App.render(); } return; }
   const kr = e.target.closest('tr[data-ksel]'); if (kr) { S.ktable = false; S.kfromTable = true; S.ksel = kr.dataset.ksel; S.kres = ''; S.showDetail = true; App.render(); window.scrollTo(0, 0); return; }
   const b = e.target.closest('button'); if (!b) return; const d = b.dataset; const c = cur();
   if (d.nav) { S.view = d.nav; S.showDetail = false; S.q = ''; App.render(); return; }
@@ -1856,6 +1879,9 @@ app.addEventListener('click', async (e) => {
   if (d.klvf) { S.klv = d.klvf; App.render(); return; }
   if (d.kprog) { S.kprog = d.kprog; App.render(); return; }
   if (d.kmark) { S.kmark = d.kmark; App.render(); return; }
+  if (d.ksort) { S.ksort = d.ksort; App.render(); return; }
+  if (d.khadd) { const k = curCall(), o = Vault.get('calls', d.khadd); if (k && o) { toast('同一戶：' + linkHH(k, o)); App.render(); } return; }
+  if (d.khout) { const o = Vault.get('calls', d.khout); if (o) { const old = o.hh; o.hh = ''; o.hhOk = false; Vault.put('calls', o); const left = calls().filter((x) => x.hh === old); if (left.length === 1) { left[0].hh = ''; left[0].hhOk = false; Vault.put('calls', left[0]); } App.render(); } return; }
   if (d.khhok) { const g = callHouseholds(calls()).get(d.khhok) || []; const nm = g.find((x) => x.hh)?.hh || ((g[0]?.name || '').slice(0, 1) + '家'); g.forEach((k) => { k.hh = nm; k.hhOk = true; Vault.put('calls', k); }); toast(`已確認：${nm}`); App.render(); return; }
   if (d.kar) { S.kar = d.kar; App.render(); return; }
   if (d.klv) { const k = curCall(); if (!k) return; k.level = k.level === d.klv ? '' : d.klv; Vault.put('calls', k); App.render(); return; }
@@ -1933,7 +1959,6 @@ app.addEventListener('click', async (e) => {
     case 'importcalls': openCallImport(); break;
     case 'newgevent': openNewGiftEvent(); break;
     case 'nctpl': openNcTplEditor(); break;
-    case 'khh': S.khh = !S.khh; App.render(); break;
     case 'kedit': S.kedit = !S.kedit; App.render(); break;
     case 'ktable': S.ktable = true; S.kfromTable = false; S.showDetail = false; App.render(); break;
     case 'klist': S.ktable = false; App.render(); break;
