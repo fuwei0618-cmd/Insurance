@@ -1,5 +1,5 @@
 /* 保險手冊 service worker：網路優先，離線時用看過的內容 */
-const CACHE='insurance-20261023135124';
+const CACHE='insurance-20261023135952';
 const CORE=['./','index.html','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png','icons/icon-180.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>(k.startsWith('insurance-')||k.startsWith('handbook-'))&&k!==CACHE&&k!=='handbook-ext').map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
