@@ -6707,6 +6707,7 @@ r.addEventListener('change',e=>{if(e.target.matches('select'))run();});run();})(
 .pg-pc-car .qz-end p{margin:0;font-size:14px}
 .pg-pc-car .qz-tag{display:inline-block;margin:2px 4px;background:#FFF1C9;border-radius:999px;padding:1px 10px;font-weight:700;font-size:13px}
 @media (max-width:760px){.pg-pc-car .qz-main{grid-template-columns:1fr}.pg-pc-car .qz-q{font-size:16px}}
+.pg-pc-car .vt tfoot td{font-size:11.5px;line-height:1.6;color:var(--muted);padding:5px 6px;border-top:1px dashed #DCEBE4;white-space:normal!important;font-weight:400!important}
 </style>
 <div class="pg-pc-car">
 <div class="orig"><div class="root"><small>原點</small><b>車險只問兩件事：撞到別人，我賠得起嗎？自己的人和車，誰來顧？</b><span>產險和壽險看的不一樣：壽險看<mark>病名、失能等級、住院天數</mark>；車險看<mark>誰的責任、車子折舊、修車估價</mark>，最後還要和解。</span></div><div class="oc"><div><small>法律規定</small><b>強制險：只保別人的身體</b></div><div><small>賠別人</small><b>第三人責任、超額責任</b></div><div><small>顧自己</small><b>車體險、駕駛人傷害</b></div></div></div>
@@ -6803,14 +6804,13 @@ F.querySelectorAll(".fbp,.fbh button").forEach(function(b){b.addEventListener("c
 
 <div class="vc"><div class="vc-h"><span class="vc-q">三</span><b>駕駛人傷害：兩種附加</b><button type="button" class="golink" data-goto="pc-compulsory">細節 →</button></div>
 <table class="vt"><thead><tr><th></th><th class="scb" data-sc="dq" role="button" tabindex="0">強制險附加 <i>看圖</i></th><th class="scb" data-sc="dt" role="button" tabindex="0">第三人附加 <i>看圖</i></th></tr></thead><tbody>
-<tr data-r="d1"><td>🛵 自撞自摔</td><td><em class="y">✓</em></td><td><em class="y">✓</em></td></tr>
-<tr data-r="d2"><td>🚗 跟車對撞</td><td><em class="n">✕</em></td><td><em class="y">✓</em></td></tr>
-<tr data-r="d3"><td>💰 給多少</td><td>醫療 20 萬<br>失能身故 300 或 350 萬</td><td>住院日額 2,000<br>失能身故 50～600 萬</td></tr>
-<tr data-r="d4"><td>➕ 可以一起加</td><td colspan="2">保障不重複；機車族先加強制險附加</td></tr>
-<tr data-r="d6"><td>📋 名冊</td><td>不用名冊</td><td>要附名冊（列冊的駕駛才保）</td></tr>
-<tr data-r="d5"><td>🧡 人身險對照</td><td>實支＋身故、失能</td><td>住院日額＋身故、失能</td></tr>
-<tr data-r="d7"><td></td><td colspan="2">已有意外險、實支、日額的人，自己受傷這塊大多接得住；駕傷跟著<mark>車</mark>走，常借車給別人開時更有用</td></tr>
-</tbody></table></div>
+<tr data-r="d1"><td>🛵 自撞自摔</td><td><em class="y">✓</em>賠</td><td><em class="y">✓</em>賠</td></tr>
+<tr data-r="d2"><td>🚗 跟車對撞</td><td><em class="n">✕</em>不賠</td><td><em class="y">✓</em>賠</td></tr>
+<tr data-r="d3"><td>🏥 醫療</td><td>醫療費 20 萬</td><td>住院日額 2,000 元</td></tr>
+<tr data-r="d4"><td>🕊️ 身故失能</td><td>車主本人 300 萬<br>保障駕駛人 350 萬</td><td>每人 50～600 萬</td></tr>
+<tr data-r="d6"><td>📋 名冊</td><td>不用</td><td>要附，列冊的才保</td></tr>
+<tr data-r="d5"><td>🧡 人身險替代</td><td>實支＋意外險</td><td>住院日額＋意外險</td></tr>
+</tbody><tfoot><tr data-r="d7"><td colspan="3">➕ 兩種<mark>保障不重複，可以一起加</mark>；機車族常自摔，先加強制險附加。已有意外險、實支、日額的人，自己受傷大多接得住；駕傷跟著<mark>車</mark>走，常借車給別人開時更有用。</td></tr></tfoot></table></div>
 
 <div class="vc"><div class="vc-h"><span class="vc-q">四</span><b>車體險：甲 vs 乙 vs 丙</b><button type="button" class="golink" data-goto="pc-pd">細節 →</button></div>
 <table class="vt c3"><thead><tr><th></th><th class="scb" data-sc="ba" role="button" tabindex="0">甲 <i>圖</i></th><th class="scb" data-sc="bb" role="button" tabindex="0">乙 <i>圖</i></th><th class="scb" data-sc="bc" role="button" tabindex="0">丙 <i>圖</i></th></tr></thead><tbody>
