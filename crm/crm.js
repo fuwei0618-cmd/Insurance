@@ -450,6 +450,7 @@ const syncHTML = (cls = '') => `<span class="sync ${cls}" data-s="${Vault.state}
 
 const App = {
   render() {
+    if (App._defer) { clearTimeout(App._dt); App._dt = setTimeout(() => App.render(), 0); return; } // 改完一格跳到下一格時，等游標到新格子再重畫
     if (!Vault.db) return;
     syncCats(); syncRefLists(); if (S.cat !== '全部' && !CATS.includes(S.cat)) S.cat = '全部'; if (S.cg !== '全部' && !GROUPS.some((g) => g.name === S.cg)) S.cg = '全部';
     const v = S.view;
@@ -466,12 +467,14 @@ const App = {
     else if (v === 'tpl') h += '<section class="wide">' + notesHTML('tpl') + '</section>';
     else if (v === 'gifts') h += '<section class="wide">' + giftsHTML() + '</section>';
     h += tabsHTML();
-    const keep = document.activeElement?.id, pos = document.activeElement?.selectionStart;
+    const ae = document.activeElement, keep = ae?.id, pos = ae?.selectionStart, pos2 = ae?.selectionEnd; // 重畫後把游標放回原本那格，鍵盤才不會收起來
+    const typing = ae && app.contains(ae) && (ae.tagName === 'TEXTAREA' || (ae.tagName === 'INPUT' && !['checkbox', 'radio', 'file', 'button'].includes(ae.type)));
+    const keepSel = typing ? (keep ? '#' + CSS.escape(keep) : [...ae.attributes].filter((x) => x.name.startsWith('data-')).map((x) => `[${x.name}="${CSS.escape(x.value)}"]`).join('')) : '';
     const sc = [...app.querySelectorAll('section, .list')].map((el) => [el.className, el.scrollTop]), wy = window.scrollY; // 重畫後回到原本的捲動位置
     app.innerHTML = h;
     const pk = [S.view, S.sel, S.csel, S.ksel, S.rsel, S.showDetail].join('|'), same = App._pk === pk; App._pk = pk;
     if (same) { const els = [...app.querySelectorAll('section, .list')]; sc.forEach(([cn, t]) => { const el = els.find((e) => e.className === cn); if (el && t) el.scrollTop = t; }); if (wy) window.scrollTo(0, wy); }
-    if (keep && (keep === 'q')) { const el = $(keep); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) { } } }
+    if (keepSel && (same || keep === 'q')) { const el = app.querySelector(keepSel); if (el) { el.focus({ preventScroll: true }); try { el.setSelectionRange(pos, pos2 ?? pos); } catch (e) { } } }
     drawThumbs(); fitNotes();
     if (v === 'gifts' && S.gedit) giftSortWire();
     if (v === 'clients' && curClient()) drawEgo(curClient());
@@ -2139,13 +2142,14 @@ function linkClient(c) { // 案件填了客戶名字：找到同名客戶就連�
   if (!cl) { cl = Vault.put('clients', { name, docs: [] }); made = true; }
   c.clientId = cl.id; return made ? cl : null;
 }
+app.addEventListener('change', () => { App._defer = true; setTimeout(() => (App._defer = false), 0); }, true);
 app.addEventListener('change', (e) => {
   if (e.target.id === 'kScript') { S.script = e.target.value; App.render(); return; }
   const kgq = e.target.dataset?.kgq; if (kgq) { const [cid, iid] = kgq.split(':'), n = Math.max(0, parseInt(e.target.value, 10) || 0), g = kgRec(cid); if (!g) return; g.items = { ...(g.items || {}) }; if (n) g.items[iid] = n; else delete g.items[iid]; kgTidy(g); if (n) { const k = Vault.get('calls', cid); if (k?.giftSkip) { k.giftSkip = false; Vault.put('calls', k); } } App.render(); return; }
   const kgm = e.target.dataset?.kgm; if (kgm) { const g = kgRec(kgm); if (!g) return; g.method = e.target.value; kgTidy(g); App.render(); return; }
   const kgd = e.target.dataset?.kgd; if (kgd) { const g = kgRec(kgd); if (!g) return; g.status = e.target.checked ? '已送' : '預備'; g.doneDate = e.target.checked ? localDay() : ''; kgTidy(g); App.render(); return; }
-  const kte = e.target.dataset?.kte; if (kte) { const k = Vault.get('calls', kte); if (!k) return; const f = e.target.dataset.kfield; k[f] = e.target.type === 'checkbox' ? e.target.checked : f === 'name' || f === 'hh' ? e.target.value.trim() : e.target.value; if (f === 'hh') k.hhOk = !!k.hh; Vault.put('calls', k); if (e.target.type === 'checkbox' || e.target.tagName === 'SELECT' || f === 'hh') App.render(); return; }
-  const kf = e.target.dataset?.kf; if (kf) { const k = curCall(); if (!k) return; k[kf] = kf === 'name' ? e.target.value.trim() : e.target.value; Vault.put('calls', k); if (kf !== 'note') App.render(); return; }
+  const kte = e.target.dataset?.kte; if (kte) { const k = Vault.get('calls', kte); if (!k) return; const f = e.target.dataset.kfield; k[f] = e.target.type === 'checkbox' ? e.target.checked : f === 'name' || f === 'hh' ? e.target.value.trim() : e.target.value; if (f === 'hh') k.hhOk = !!k.hh; Vault.put('calls', k); if (e.target.type === 'checkbox' || e.target.tagName === 'SELECT' || f === 'visitDate') App.render(); return; }
+  const kf = e.target.dataset?.kf; if (kf) { const k = curCall(); if (!k) return; k[kf] = kf === 'name' ? e.target.value.trim() : e.target.value; Vault.put('calls', k); if (['status', 'nextDate', 'visitDate', 'otherWhy'].includes(kf)) App.render(); return; } // 打字的欄位不重畫，鍵盤才不會收起來
   const cf = e.target.dataset?.cf; const cl = curClient();
   if (cf && cl) {
     cl[cf] = e.target.value; if (cf === 'name') cl.name = cl.name.trim();
