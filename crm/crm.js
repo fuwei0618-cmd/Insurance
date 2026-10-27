@@ -696,7 +696,7 @@ function callListHTML() {
   if (S.kar !== '全部' && !areas.includes(S.kar)) S.kar = '全部';
   const list = all.filter((k) => (S.kst === '全部' || k.status === S.kst) && (S.kar === '全部' || k.area === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && (!q || [k.name, k.phone, k.source, k.note, k.addr, k.area].join(' ').includes(q)))
     .sort((a, b) => rank(a) - rank(b) || (a.nextDate || '9999').localeCompare(b.nextDate || '9999') || noCmp(a, b));
-  return `<section class="col"><div class="colhead"><h1>服務件 <span style="display:flex;gap:6px"><button class="btn" data-act="cflow">流程</button><button class="btn pri" data-act="ktable">總表</button><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="newcall">＋ 新增</button></span></h1>
+  return `<section class="col"><div class="colhead"><h1>服務件 <span style="display:flex;gap:6px"><button class="btn" data-act="cflow">流程</button><button class="btn pri" data-act="ktable">總表</button><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="kphoto">📷 拍照新增</button><button class="btn" data-act="newcall">＋ 新增</button></span></h1>
   <div class="mobsync">${syncHTML()}</div>
   <input class="search" id="q" placeholder="搜尋姓名、電話、地址、來源" value="${esc(S.q)}" autocomplete="off">
   <div class="chips">${['全部', ...CALL_ST].map((x) => `<button class="chip${S.kst === x ? ' on' : ''}" data-kst="${x}">${x} <span class="cnt">${x === '全部' ? all.length : all.filter((k) => k.status === x).length}</span></button>`).join('')}</div>
@@ -710,7 +710,7 @@ function callDetailHTML() {
   const scs = scripts(); if (!scs.some((x) => x.id === S.script)) S.script = scs[0]?.id || null; const sc = Vault.get('notes', S.script);
   const cl = k.clientId && Vault.get('clients', k.clientId), logs = logsOf(k);
   return `<button class="back" data-act="back">‹ 服務件名單</button>${S.kfromTable ? '<button class="btn sm" data-act="ktable" style="margin-bottom:8px">‹ 回總表</button>' : ''}
-  <div class="dhead"><input class="title" id="kf_name" data-kf="name" value="${esc(k.name)}" placeholder="姓名" aria-label="姓名"><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></div>
+  <div class="dhead"><input class="title" id="kf_name" data-kf="name" value="${esc(k.name)}" placeholder="姓名" aria-label="姓名"><button class="btn sm" data-act="kphotoin">📷 拍照帶入</button><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></div>
   <div class="sec"><h2>聯絡資料</h2><div class="grid2">
    <label class="f"><span style="display:flex;justify-content:space-between">電話${k.phone ? `<a class="linkbtn" href="tel:${esc(k.phone.replace(/[^0-9+#*]/g, ''))}">撥打</a>` : ''}</span><input id="kf_phone" data-kf="phone" inputmode="tel" value="${esc(k.phone)}"></label>
    <label class="f">狀態<select id="kf_status" data-kf="status">${CALL_ST.map((x) => `<option${x === k.status ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
@@ -1195,6 +1195,38 @@ function openCrmImport(target) {
   $('ciPaste').onclick = async () => { try { const items = await navigator.clipboard.read(); for (const it of items) { const t = it.types.find((y) => y.startsWith('image/')); if (t) { crmFromImage(new File([await it.getType(t)], 'shot.png', { type: t })); return; } if (it.types.includes('text/plain')) { $('ciText').value = await (await it.getType('text/plain')).text(); showCrmForm(parseCRM($('ciText').value)); return; } } toast('剪貼簿是空的'); } catch (err) { toast('這裡不能讀剪貼簿，請直接按 Ctrl+V'); } };
   $('ciText').addEventListener('paste', () => setTimeout(() => showCrmForm(parseCRM($('ciText').value)), 30));
   setTimeout(() => $('ciText')?.focus(), 50);
+}
+let KPH = null; // 服務件拍照帶入
+const nextCallNo = () => { const ns = calls().map((k) => parseInt(k.no, 10)).filter((n) => !isNaN(n)); return String(ns.length ? Math.max(...ns) + 1 : 1); };
+const KPH_F = [['no', '序號'], ['name', '姓名'], ['phone', '手機'], ['home', '住家電話'], ['addr', '地址']];
+function openCallPhoto(target) {
+  KPH = { target };
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${target ? '拍照帶入「' + esc(target.name || '這位') + '」' : '拍照新增服務件'}</h2><button class="btn" id="kpX">取消</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:760px;margin:0 auto;width:100%">
+   <div class="note">拍公司系統的「客戶資訊」畫面，或截圖後按「選照片」、Ctrl+V 貼上。文字在這台裝置上辨識，照片不會傳出去，也不會存起來。只帶入姓名、手機、住家電話、地址，身分證字號不帶。</div>
+   <div class="actions"><label class="btn pri">📷 拍照／選照片<input type="file" id="kpFile" accept="image/*" hidden></label><span class="sub" id="kpSt"></span></div>
+   <div id="kpForm"></div></div></div>`;
+  $('kpX').onclick = () => { KPH = null; ov.innerHTML = ''; };
+  $('kpFile').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) callPhotoFrom(f); };
+  if (target) callPhotoForm({});
+}
+async function callPhotoFrom(f) {
+  if (!KPH) return; $('kpSt').textContent = OCR ? '辨識中…' : '第一次使用要先下載辨識元件（約 13MB），請稍等…';
+  try { const d = parseCRM(await ocrImage(f)); if (!KPH) return; $('kpSt').textContent = d.name || d.phone ? '辨識完成，請檢查下面的欄位' : '沒讀到資料，可以重拍，或直接在下面打'; callPhotoForm({ name: d.name, phone: d.phone, home: d.homeTel, addr: d.address || d.billAddress }); }
+  catch (e) { console.warn(e); $('kpSt').textContent = '辨識失敗：' + (e.message || e); }
+}
+function callPhotoForm(d) {
+  if (!KPH) return; const t = KPH.target;
+  const same = !t && calls().find((k) => (d.phone && k.phone && k.phone.replace(/\D/g, '') === d.phone) || (d.name && k.name === d.name));
+  const v = { ...d, no: t ? t.no : same ? same.no : nextCallNo() };
+  $('kpForm').innerHTML = `<div class="sec"><h2>確認資料 <span class="sub">${t ? '空的欄位才會填進去，有值的會顯示「目前」讓你選' : same ? `名單裡已經有「${esc(same.name || '')}」（序號 ${esc(same.no || '—')}） <button class="linkbtn" id="kpUse">改成更新這位</button>` : '會新增一位'}</span></h2>
+   ${KPH_F.map(([k, l]) => `<div class="cirow"><label class="cichk" style="min-width:80px">${l}</label><input class="ciin" id="kp_${k}" value="${esc(v[k] || (t && !d[k] ? t[k] : '') || '')}"${k === 'no' && t ? ' disabled' : ''}>${k === 'no' && !t ? '<span class="sub">接在名單最後，可以改</span>' : t && d[k] && t[k] && t[k] !== d[k] ? `<span class="sub">目前：${esc(t[k])}</span>` : ''}</div>`).join('')}
+   <div class="note">地址、姓名請看一下，辨識偶爾會錯一兩個字。</div>
+   <div class="actions"><button class="btn pri" id="kpGo">${t ? '帶入' : '新增'}</button></div></div>`;
+  if ($('kpUse')) $('kpUse').onclick = () => { KPH.target = same; callPhotoForm(d); };
+  $('kpGo').onclick = () => { const r = {}; KPH_F.forEach(([k]) => (r[k] = $('kp_' + k).value.trim())); if (!r.name && !r.phone) { toast('至少要有姓名或手機'); return; }
+    let k = KPH.target; if (k) { k = Vault.get('calls', k.id); KPH_F.forEach(([f]) => { if (f !== 'no' && r[f]) k[f] = r[f]; }); } else k = { ...r, source: '拍照新增', status: '待撥', nextDate: '', logs: [] };
+    if (r.addr) k.area = areaOf(r.addr) || k.area; k = Vault.put('calls', k); KPH = null; ov.innerHTML = ''; S.view = 'calls'; S.ktable = false; S.ksel = k.id; S.showDetail = true; App.render(); toast('已存好'); };
 }
 function closeCrmImport() { CRMI = null; ov.innerHTML = ''; }
 async function crmFromImage(f) {
@@ -1979,6 +2011,8 @@ app.addEventListener('click', async (e) => {
     case 'kedit': S.kedit = !S.kedit; App.render(); break;
     case 'railtog': S.railMini = !S.railMini; try { localStorage.setItem('crm-railmini', S.railMini ? '1' : '0'); } catch (e) { } App.render(); break;
     case 'korder': openCallOrderImport(); break;
+    case 'kphoto': openCallPhoto(null); break;
+    case 'kphotoin': openCallPhoto(curCall()); break;
     case 'ktable': S.ktable = true; S.kfromTable = false; S.showDetail = false; App.render(); break;
     case 'klist': S.ktable = false; App.render(); break;
     case 'cflow': openCallFlow(); break;
@@ -2412,7 +2446,7 @@ document.addEventListener('paste', (e) => {
   if (!Vault.key || MK) return;
   const files = [...(e.clipboardData?.items || [])].filter((i) => i.kind === 'file' && /^image\//.test(i.type)).map((i) => i.getAsFile()).filter(Boolean);
   if (!files.length) return; // 一般文字照常貼上
-  e.preventDefault(); if (DSC) { discAddFiles(files, true); return; } if (CRMI) { crmFromImage(files[0]); return; } takeImages(files);
+  e.preventDefault(); if (DSC) { discAddFiles(files, true); return; } if (CRMI) { crmFromImage(files[0]); return; } if (KPH) { callPhotoFrom(files[0]); return; } takeImages(files);
 });
 function nextQueued() { if (SC.queue.length) loadFile(SC.queue.shift()); else renderScanner(); }
 function onFiles(files) { if (!SC || !files.length) return; SC.queue.push(...[...files].slice(1)); loadFile(files[0]); }
