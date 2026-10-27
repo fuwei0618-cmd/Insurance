@@ -432,7 +432,7 @@ const TPLGROUPS = ['LINE', '簡訊', '信件', '通話', '其他'];
 const linkify = (html) => html.replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.length > 60 ? u.slice(0, 57) + '…' : u}</a>`);
 
 /* ================= 狀態與畫面 ================= */
-const S = { railMini: (() => { try { return localStorage.getItem('crm-railmini') === '1'; } catch (e) { return false; } })(), ginvOpen: false, gview: 'table', ktable: false, kprog: '全部', kmark: '全部', ksort: 'no', kedit: false, kfromTable: false, kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
+const S = { railMini: (() => { try { return localStorage.getItem('crm-railmini') === '1'; } catch (e) { return false; } })(), ginvOpen: false, gview: 'table', ktable: false, kprog: '全部', kmark: '全部', ksort: 'no', kview: 'prog', kedit: false, kfromTable: false, kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
 const cases = () => Vault.all('cases');
 const localDay = (d = new Date()) => { const t = new Date(d); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
 const caseDate = (c) => c.date || (c.createdAt ? localDay(c.createdAt) : '');
@@ -631,6 +631,30 @@ function callHHSectionHTML(k) {
 const KSKIP = ['同事的件', '保經', '其他'];
 const skipWhy = (k) => k.otherWhy || '同事的件';
 const KMARKS = ['全部', '已加 LINE', '未加 LINE', '退件', '不追蹤', '家戶待確認'];
+function callGiftSheetHTML(list, ev, evs) { // 服務件專區裡的送禮表：一列一位，一欄一個品項，填數字就自動記到送禮專區
+  if (!ev) return '<div class="empty">還沒有送禮活動。先到「送禮」按「＋ 新活動」建一個，例如「2027 年曆」，再回來這裡填。</div>';
+  const items = giftItemsSorted(ev.items || []), cats = []; items.forEach((it) => { const c = it.cat || '未分類'; const l = cats[cats.length - 1]; l && l.c === c ? l.n++ : cats.push({ c, n: 1 }); });
+  const gmap = new Map(giftsOf(ev.id).filter((g) => g.who?.type === 'call').map((g) => [g.who.id, g])), tot = (id) => list.reduce((a, k) => a + (gmap.get(k.id)?.items?.[id] || 0), 0);
+  const sent = list.filter((k) => gmap.get(k.id)?.status === '已送').length, want = list.filter((k) => gmap.has(k.id)).length;
+  return `${evs.length > 1 ? `<div class="chips"><span class="sub" style="align-self:center">活動</span>${evs.map((x) => `<button class="chip${x.id === ev.id ? ' on' : ''}" data-kgev="${x.id}">${esc(x.name || '未命名')}</button>`).join('')}</div>` : ''}
+  <div class="note">「${esc(ev.name || '')}」：在品項格子填數量就會自動記到送禮專區；不要的勾「不送」。上面的篩選、排序一樣能用。</div>
+  <div class="ktablewrap"><table class="ktable gsheet"><thead>
+   <tr><th rowspan="2" class="gstick">序號・姓名</th><th rowspan="2">地區</th><th rowspan="2">分級</th>${cats.map((c) => `<th colspan="${c.n}" class="gcath">${esc(c.c)}</th>`).join('')}<th rowspan="2">送法</th><th rowspan="2">已送</th><th rowspan="2">不送</th></tr>
+   <tr>${items.map((it) => `<th class="gith">${giftThumb(it)}<div>${esc(it.name || it.code || '品項')}</div></th>`).join('')}</tr></thead><tbody>
+   ${list.map((k) => { const g = gmap.get(k.id); return `<tr class="${g?.status === '已送' ? 'gdone' : ''}${k.other || k.giftSkip ? ' kother' : ''}"><td class="gstick"><span class="kno">${esc(k.no || '')}</span><button class="linkbtn" data-ksel="${k.id}">${esc(k.name || '未填')}</button>${k.other ? ` <span class="pill p-off">${esc(skipWhy(k))}</span>` : ''}${k.mailBack ? ' <span class="pill p-off">退件</span>' : ''}</td><td>${esc(k.area || '')}</td><td>${k.level ? `<b class="lvl lv-${esc(k.level)}">${esc(k.level)}</b>` : ''}</td>
+     ${items.map((it) => `<td><input class="gcell gn" inputmode="numeric" data-kgq="${k.id}:${it.id}" value="${g?.items?.[it.id] || ''}"></td>`).join('')}
+     <td><select class="gcell" data-kgm="${k.id}">${['', '當面', '寄送', '放管理室'].map((m) => `<option${(g?.method || '') === m ? ' selected' : ''}>${m}</option>`).join('')}</select></td>
+     <td style="text-align:center"><input type="checkbox" class="gchk" data-kgd="${k.id}"${g?.status === '已送' ? ' checked' : ''}></td>
+     <td style="text-align:center"><input type="checkbox" data-kte="${k.id}" data-kfield="giftSkip"${k.giftSkip ? ' checked' : ''}></td></tr>`; }).join('')}
+   <tr class="gtot"><td class="gstick">合計（${want} 位要送）</td><td></td><td></td>${items.map((it) => `<td>${tot(it.id) || ''}</td>`).join('')}<td></td><td>${sent}/${want}</td><td>${list.filter((k) => k.giftSkip).length}</td></tr>
+  </tbody></table>${list.length ? '' : '<div class="empty">沒有符合的對象。</div>'}</div>`;
+}
+function kgRec(callId) { // 找這位在目前活動的送禮紀錄，沒有就建一筆
+  const k = Vault.get('calls', callId); let g = giftsOf(S.gev).find((x) => x.who?.type === 'call' && x.who.id === callId);
+  if (!g && k) g = Vault.put('gifts', { eventId: S.gev, who: { type: 'call', id: callId, name: k.name || '' }, group: '', items: {}, method: '', status: '預備', note: '' });
+  return g;
+}
+function kgTidy(g) { if (g && !Object.keys(g.items || {}).length && !g.method && g.status !== '已送' && !g.note) Vault.del('gifts', g.id); else if (g) Vault.put('gifts', g); }
 function callTableHTML() {
   const all = calls(), q = S.q.trim(), hhs = callHouseholds(all), grpOf = (k) => hhs.get(hhKey(k));
   const areas = [...new Set(all.map((k) => k.area).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant')); if (S.kar !== '全部' && !areas.includes(S.kar)) S.kar = '全部';
@@ -643,7 +667,8 @@ function callTableHTML() {
   const funnel = [['名單', mine.length], ['打過', n((k) => (k.logs || []).length)], ['接通', n((k) => ['已接通', '已排訪', '已見面'].includes(prog(k)))], ['要年曆', n((k) => ['預備', '已送'].includes(callGift(k)))], ['加 LINE', n((k) => k.line)], ['排訪', n((k) => ['已排訪', '已見面'].includes(prog(k)))], ['見面', n((k) => k.met)], ['年曆已送', n((k) => callGift(k) === '已送')]];
   const dot = (v, l) => `<span class="kdot ${v}" title="${l}${v === 'ok' ? '接了' : v === 'no' ? '沒接' : '還沒打'}">${l[0]}</span>`;
   const chip = (key, x, c) => `<button class="chip${S[key] === x ? ' on' : ''}" data-${{ kprog: 'kprog', klv: 'klvf', kar: 'kar', kmark: 'kmark' }[key]}="${esc(x)}">${esc(x)} <span class="cnt">${c}</span></button>`;
-  const E = S.kedit, ti = (k, f, w, ph) => `<input class="nctxt" data-kte="${k.id}" data-kfield="${f}" value="${esc(k[f])}" style="width:${w}px"${ph ? ` placeholder="${ph}"` : ''}>`, cb = (k, f) => `<input type="checkbox" data-kte="${k.id}" data-kfield="${f}"${k[f] ? ' checked' : ''}>`;
+  const KG = S.kview === 'gift', gevs = KG ? gevents() : []; if (KG && !gevs.some((x) => x.id === S.gev)) S.gev = gevs[0]?.id || null; const gev = KG ? Vault.get('gevents', S.gev) : null;
+  const E = S.kedit && !KG, ti = (k, f, w, ph) => `<input class="nctxt" data-kte="${k.id}" data-kfield="${f}" value="${esc(k[f])}" style="width:${w}px"${ph ? ` placeholder="${ph}"` : ''}>`, cb = (k, f) => `<input type="checkbox" data-kte="${k.id}" data-kfield="${f}"${k[f] ? ' checked' : ''}>`;
   const cols = E ? ['序號', '姓名', '地區', '分級', '家戶', 'LINE', '退件', '不追蹤', '排訪日期', '見面', '重要事項', '']
     : ['序號', '姓名', '地區', '分級', '家戶', '三時段', '進度', '最近結果', '年曆', 'LINE', '排訪', '見面', '重要事項'];
   let prevKey = null, maxNo = -1, jumps = 0;
@@ -663,7 +688,8 @@ function callTableHTML() {
      <td><span class="kdots">${dot(sl['上午'], '上午')}${dot(sl['下午'], '下午')}${dot(sl['晚上'], '晚上')}</span></td><td><span class="kprog">${pg}</span></td>
      <td>${l ? `${esc(l.result)}<span class="sub"> ${fmtDay(l.date).slice(5)}</span>` : ''}</td><td>${gf ? `<span class="kg kg-${gf}">${gf}</span>` : ''}</td><td>${k.line ? '✓' : ''}</td>
      <td>${k.visitDate ? fmtDay(k.visitDate).slice(5) : pg === '已排訪' ? '✓' : ''}</td><td>${k.met ? '✓' : ''}</td><td class="knote">${esc((k.note || l?.note || '').slice(0, 40))}</td></tr>`; }).join('');
-  return `<div class="colhead"><h1>服務件總表 <span style="display:flex;gap:6px;flex-wrap:wrap"><span class="seg2">${[['no', '序號'], ['addr', '地址'], ...(all.some((k) => k.ord2 != null) ? [['co', '公司順序']] : []), ['hh', '家戶']].map(([v, l]) => `<button class="btn sm${S.ksort === v ? ' pri' : ''}" data-ksort="${v}">${l}</button>`).join('')}</span><button class="btn${E ? ' pri' : ''}" data-act="kedit">${E ? '✓ 改好了' : '✎ 直接修改'}</button><button class="btn" data-act="cflow">流程</button><button class="btn" data-act="klist">‹ 回到名單</button><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="korder">匯入另一種排序</button></span></h1>
+  const tableHTML = KG ? callGiftSheetHTML(list, gev, gevs) : `<div class="ktablewrap"><table class="ktable${E ? ' editing' : ''}"><thead><tr>${cols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>${list.length ? '' : '<div class="empty">沒有符合的對象。</div>'}</div>`;
+  return `<div class="colhead"><h1>服務件總表 <span style="display:flex;gap:6px;flex-wrap:wrap"><span class="seg2"><button class="btn sm${KG ? '' : ' pri'}" data-kview="prog">進度</button><button class="btn sm${KG ? ' pri' : ''}" data-kview="gift">🎁 送禮</button></span><span class="seg2">${[['no', '序號'], ['addr', '地址'], ...(all.some((k) => k.ord2 != null) ? [['co', '公司順序']] : []), ['hh', '家戶']].map(([v, l]) => `<button class="btn sm${S.ksort === v ? ' pri' : ''}" data-ksort="${v}">${l}</button>`).join('')}</span>${KG ? '' : `<button class="btn${E ? ' pri' : ''}" data-act="kedit">${E ? '✓ 改好了' : '✎ 直接修改'}</button>`}<button class="btn" data-act="cflow">流程</button><button class="btn" data-act="klist">‹ 回到名單</button><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="korder">匯入另一種排序</button></span></h1>
    <div class="kfunnel">${funnel.map(([l, v]) => `<div><span>${l}</span><b>${v}</b></div>`).join('<i>›</i>')}</div>
    <input class="search" id="q" placeholder="搜尋序號、姓名、電話、地址、家戶" value="${esc(S.q)}" autocomplete="off">
    <div class="chips"><span class="sub" style="align-self:center">進度</span>${['全部', ...PROGS].map((x) => chip('kprog', x, x === '全部' ? all.length : na((k) => prog(k) === x))).join('')}</div>
@@ -673,7 +699,7 @@ function callTableHTML() {
   ${S.ksort === 'co' ? `<div class="note">照你匯入的公司排序。${jumps ? `有 <b>${jumps}</b> 位的序號比上一位小（標 ↰），就是公司排得跟序號不一樣的地方。` : '跟序號順序完全一樣。'}${all.some((k) => k.ord2 == null) ? `另外有 ${all.filter((k) => k.ord2 == null).length} 位不在那份排序裡，放在最後。` : ''} <button class="linkbtn" data-act="korder">重新匯入排序</button></div>` : ''}
   ${S.ksort === 'addr' ? `<div class="note">照郵遞區號、地址排。${jumps ? `有 <b>${jumps}</b> 位的序號比上一位小（標 ↰），那些就是跟你原本順序不一樣的地方。` : '跟你原本的序號順序完全一樣。'}地址相鄰、看起來同一戶的，按序號前面的「＋🔗」就跟上一位拉成同一戶，再按一下拆開。</div>` : S.ksort === 'hh' ? '<div class="note">同一戶的排在一起。沒拉過的，地址一樣也會先放一起，標「待電話確認」。</div>' : ''}
   ${E ? '<div class="note">直接修改模式：改完一格點別的地方就存好。序號不能改，維持名單原本的編號。家戶那格打一樣的名字（例如「王家」），地址不同也會排在一起。</div>' : ''}
-  <div class="ktablewrap"><table class="ktable${E ? ' editing' : ''}"><thead><tr>${cols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>${list.length ? '' : '<div class="empty">沒有符合的對象。</div>'}</div>
+  ${tableHTML}
   <div class="sub" style="margin-top:8px">三時段：灰色＝還沒打、紅色＝打了沒接、綠色＝接了。點任何一列打開這個人。不追蹤的（同事的件、保經…）不算進上面的進度條。換排序只是換顯示順序，序號不會變。</div>`;
 }
 const LEVELS = ['A', 'B', 'C-1', 'C-2', 'C-3'];
@@ -849,7 +875,7 @@ function giftTableHTML(all, ev) { // 像試算表：一列一個人，一欄一�
      <td><select class="gcell" data-gg="${g.id}:method">${['', '當面', '寄送', '放管理室'].map((m) => `<option${(g.method || '') === m ? ' selected' : ''}>${m}</option>`).join('')}</select></td>
      <td style="text-align:center"><input type="checkbox" class="gchk" data-gdone="${g.id}"${g.status === '已送' ? ' checked' : ''}></td>
      <td><input class="gcell gw2" data-gg="${g.id}:note" value="${esc(g.note)}"></td></tr>`).join('')}
-   ${svc.length ? `<tr class="gsvc"><td class="gstick"><button class="linkbtn" data-gtype="call">服務件（${svc.length} 位）›</button></td><td class="sub">服務件</td><td></td>${items.map((it) => `<td style="text-align:center">${stot(it.id) || ''}</td>`).join('')}<td></td><td style="text-align:center">${svc.filter((g) => g.status === '已送').length}/${svc.length}</td><td class="sub">在服務件專區記錄，點左邊看每一位</td></tr>` : ''}
+   ${fold && calls().length ? `<tr class="gsvc"><td class="gstick"><button class="linkbtn" data-act="kgiftgo">服務件（${svc.length} 位）›</button></td><td class="sub">服務件</td><td></td>${items.map((it) => `<td style="text-align:center">${stot(it.id) || ''}</td>`).join('')}<td></td><td style="text-align:center">${svc.filter((g) => g.status === '已送').length}/${svc.length}</td><td class="sub">自動加總，到服務件專區的「🎁 送禮」表填</td></tr>` : ''}
    <tr class="gtot"><td class="gstick">合計</td><td></td><td></td>${items.map((it) => `<td>${tot(it.id) || ''}</td>`).join('')}<td></td><td>${all.filter((g) => g.status === '已送').length}/${all.length}</td><td></td></tr>
   </tbody></table></div><div class="sub" style="margin-top:6px">格子可以直接改，改完點別的地方就會存。點名字可以打開完整資料。</div>`;
 }
@@ -1931,6 +1957,8 @@ app.addEventListener('click', async (e) => {
   if (d.kprog) { S.kprog = d.kprog; App.render(); return; }
   if (d.kmark) { S.kmark = d.kmark; App.render(); return; }
   if (d.ksort) { S.ksort = d.ksort; App.render(); return; }
+  if (d.kview) { S.kview = d.kview; App.render(); return; }
+  if (d.kgev) { S.gev = d.kgev; App.render(); return; }
   if (d.khadd) { const k = curCall(), o = Vault.get('calls', d.khadd); if (k && o) { toast('同一戶：' + linkHH(k, o)); App.render(); } return; }
   if (d.khout) { const o = Vault.get('calls', d.khout); if (o) { const old = o.hh; o.hh = ''; o.hhOk = false; Vault.put('calls', o); const left = calls().filter((x) => x.hh === old); if (left.length === 1) { left[0].hh = ''; left[0].hhOk = false; Vault.put('calls', left[0]); } App.render(); } return; }
   if (d.khhok) { const g = callHouseholds(calls()).get(d.khhok) || []; const nm = g.find((x) => x.hh)?.hh || ((g[0]?.name || '').slice(0, 1) + '家'); g.forEach((k) => { k.hh = nm; k.hhOk = true; Vault.put('calls', k); }); toast(`已確認：${nm}`); App.render(); return; }
@@ -2014,6 +2042,7 @@ app.addEventListener('click', async (e) => {
     case 'railtog': S.railMini = !S.railMini; try { localStorage.setItem('crm-railmini', S.railMini ? '1' : '0'); } catch (e) { } App.render(); break;
     case 'korder': openCallOrderImport(); break;
     case 'kphoto': openCallPhoto(null); break;
+    case 'kgiftgo': S.view = 'calls'; S.ktable = true; S.kview = 'gift'; S.showDetail = false; S.q = ''; App.render(); break;
     case 'kphotoin': openCallPhoto(curCall()); break;
     case 'ktable': S.ktable = true; S.kfromTable = false; S.showDetail = false; App.render(); break;
     case 'klist': S.ktable = false; App.render(); break;
@@ -2112,6 +2141,9 @@ function linkClient(c) { // 案件填了客戶名字：找到同名客戶就連�
 }
 app.addEventListener('change', (e) => {
   if (e.target.id === 'kScript') { S.script = e.target.value; App.render(); return; }
+  const kgq = e.target.dataset?.kgq; if (kgq) { const [cid, iid] = kgq.split(':'), n = Math.max(0, parseInt(e.target.value, 10) || 0), g = kgRec(cid); if (!g) return; g.items = { ...(g.items || {}) }; if (n) g.items[iid] = n; else delete g.items[iid]; kgTidy(g); if (n) { const k = Vault.get('calls', cid); if (k?.giftSkip) { k.giftSkip = false; Vault.put('calls', k); } } App.render(); return; }
+  const kgm = e.target.dataset?.kgm; if (kgm) { const g = kgRec(kgm); if (!g) return; g.method = e.target.value; kgTidy(g); App.render(); return; }
+  const kgd = e.target.dataset?.kgd; if (kgd) { const g = kgRec(kgd); if (!g) return; g.status = e.target.checked ? '已送' : '預備'; g.doneDate = e.target.checked ? localDay() : ''; kgTidy(g); App.render(); return; }
   const kte = e.target.dataset?.kte; if (kte) { const k = Vault.get('calls', kte); if (!k) return; const f = e.target.dataset.kfield; k[f] = e.target.type === 'checkbox' ? e.target.checked : f === 'name' || f === 'hh' ? e.target.value.trim() : e.target.value; if (f === 'hh') k.hhOk = !!k.hh; Vault.put('calls', k); if (e.target.type === 'checkbox' || e.target.tagName === 'SELECT' || f === 'hh') App.render(); return; }
   const kf = e.target.dataset?.kf; if (kf) { const k = curCall(); if (!k) return; k[kf] = kf === 'name' ? e.target.value.trim() : e.target.value; Vault.put('calls', k); if (kf !== 'note') App.render(); return; }
   const cf = e.target.dataset?.cf; const cl = curClient();
