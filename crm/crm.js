@@ -628,11 +628,13 @@ function callHHSectionHTML(k) {
    ${cand.length ? `<div class="sub" style="margin:6px 0 4px">可能同一戶，電話中問到就按「＋ 同一戶」：</div>${cand.map(([o, w]) => row(o, `<span class="pill">${w}</span><button class="btn sm" data-khadd="${o.id}">＋ 同一戶</button>`)).join('')}` : mem.length ? '' : '<div class="sub">沒有找到同地址、同住家電話的人。</div>'}
    ${k.hh ? `<div class="actions" style="margin:6px 0 0"><button class="linkbtn" data-khout="${k.id}">把自己移出這一戶</button></div>` : ''}</div>`;
 }
-const KMARKS = ['全部', '已加 LINE', '未加 LINE', '退件', '同事的件', '家戶待確認'];
+const KSKIP = ['同事的件', '保經', '其他'];
+const skipWhy = (k) => k.otherWhy || '同事的件';
+const KMARKS = ['全部', '已加 LINE', '未加 LINE', '退件', '不追蹤', '家戶待確認'];
 function callTableHTML() {
   const all = calls(), q = S.q.trim(), hhs = callHouseholds(all), grpOf = (k) => hhs.get(hhKey(k));
   const areas = [...new Set(all.map((k) => k.area).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant')); if (S.kar !== '全部' && !areas.includes(S.kar)) S.kar = '全部';
-  const markOk = (k) => ({ 全部: true, '已加 LINE': !!k.line, '未加 LINE': !k.line, 退件: !!k.mailBack, 同事的件: !!k.other, 家戶待確認: hhPending(grpOf(k)) })[S.kmark];
+  const markOk = (k) => ({ 全部: true, '已加 LINE': !!k.line, '未加 LINE': !k.line, 退件: !!k.mailBack, 不追蹤: !!k.other, 家戶待確認: hhPending(grpOf(k)) })[S.kmark];
   let list = all.filter((k) => (S.kprog === '全部' || callProg(k) === S.kprog) && (S.kar === '全部' || k.area === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && markOk(k) && (!q || [k.no, k.name, k.phone, k.home, k.addr, k.area, k.note, k.hh, k.otherWho].join(' ').includes(q))).sort(noCmp);
   if (S.ksort === 'addr') list.sort(addrCmp);
   if (S.ksort === 'co') list.sort((a, b) => (a.ord2 ?? 1e9) - (b.ord2 ?? 1e9) || noCmp(a, b));
@@ -642,7 +644,7 @@ function callTableHTML() {
   const dot = (v, l) => `<span class="kdot ${v}" title="${l}${v === 'ok' ? '接了' : v === 'no' ? '沒接' : '還沒打'}">${l[0]}</span>`;
   const chip = (key, x, c) => `<button class="chip${S[key] === x ? ' on' : ''}" data-${{ kprog: 'kprog', klv: 'klvf', kar: 'kar', kmark: 'kmark' }[key]}="${esc(x)}">${esc(x)} <span class="cnt">${c}</span></button>`;
   const E = S.kedit, ti = (k, f, w, ph) => `<input class="nctxt" data-kte="${k.id}" data-kfield="${f}" value="${esc(k[f])}" style="width:${w}px"${ph ? ` placeholder="${ph}"` : ''}>`, cb = (k, f) => `<input type="checkbox" data-kte="${k.id}" data-kfield="${f}"${k[f] ? ' checked' : ''}>`;
-  const cols = E ? ['序號', '姓名', '地區', '分級', '家戶', 'LINE', '退件', '同事的件', '排訪日期', '見面', '重要事項', '']
+  const cols = E ? ['序號', '姓名', '地區', '分級', '家戶', 'LINE', '退件', '不追蹤', '排訪日期', '見面', '重要事項', '']
     : ['序號', '姓名', '地區', '分級', '家戶', '三時段', '進度', '最近結果', '年曆', 'LINE', '排訪', '見面', '重要事項'];
   let prevKey = null, maxNo = -1, jumps = 0;
   const rows = list.map((k, ri) => { const nn = parseInt(k.no, 10), jump = (S.ksort === 'addr' || S.ksort === 'co') && !isNaN(nn) && nn < maxNo; if (jump) jumps++; if (!isNaN(nn)) maxNo = Math.max(maxNo, nn);
@@ -651,10 +653,10 @@ function callTableHTML() {
     if (S.ksort === 'hh' && key !== prevKey && g.length > 1) { const pend = hhPending(g); head = `<tr class="khh"><td colspan="${cols.length}"><b>家戶・${esc(g.find((x) => x.hh)?.hh || '同地址')}</b> <span class="sub">${g.length} 人・${esc(g[0].addr || '')}</span> ${pend ? `<span class="pill p-wait">待電話確認</span> <button class="btn sm" data-khhok="${esc(key)}">✓ 確認同一戶</button>` : '<span class="pill p-done">已確認</span>'}</td></tr>`; }
     prevKey = key;
     const hhCell = k.hh ? esc(k.hh) : g.length > 1 ? `<span class="sub">同地址 ${g.length} 人</span>` : '';
-    const badges = `${k.mailBack ? '<span class="pill p-off">退件</span>' : ''}${k.other ? `<span class="pill p-off">同事${k.otherWho ? '・' + esc(k.otherWho) : ''}</span>` : ''}`;
+    const badges = `${k.mailBack ? '<span class="pill p-off">退件</span>' : ''}${k.other ? `<span class="pill p-off">${esc(skipWhy(k))}${k.otherWho ? '・' + esc(k.otherWho) : ''}</span>` : ''}`;
     if (E) return head + `<tr class="kedit${k.other ? ' kother' : ''}${linked ? ' klinked' : ''}"><td class="sub">${lk}${esc(k.no || '')}${jump ? '<span class="kjump" title="序號比上一位小">↰</span>' : ''}</td><td>${ti(k, 'name', 90)} <button class="linkbtn" data-ksel="${k.id}">開</button></td><td>${ti(k, 'area', 70)}</td>
       <td><select data-kte="${k.id}" data-kfield="level"><option value=""></option>${LEVELS.map((x) => `<option${k.level === x ? ' selected' : ''}>${x}</option>`).join('')}</select></td><td>${ti(k, 'hh', 80, g.length > 1 ? '同地址' : '')}</td>
-      <td>${cb(k, 'line')}</td><td>${cb(k, 'mailBack')}</td><td>${cb(k, 'other')} ${k.other ? ti(k, 'otherWho', 70, '哪位同事') : ''}</td>
+      <td>${cb(k, 'line')}</td><td>${cb(k, 'mailBack')}</td><td>${cb(k, 'other')} ${k.other ? `<select data-kte="${k.id}" data-kfield="otherWhy">${KSKIP.map((x) => `<option${skipWhy(k) === x ? ' selected' : ''}>${x}</option>`).join('')}</select> ${ti(k, 'otherWho', 70, skipWhy(k) === '同事的件' ? '哪位同事' : '補充')}` : ''}</td>
       <td><input type="date" data-kte="${k.id}" data-kfield="visitDate" value="${esc(k.visitDate)}"></td><td>${cb(k, 'met')}</td><td>${ti(k, 'note', 180)}</td><td>${badges}</td></tr>`;
     return head + `<tr data-ksel="${k.id}" class="kp-${pg}${k.other ? ' kother' : ''}${linked ? ' klinked' : ''}">
      <td class="sub">${lk}${esc(k.no || '')}${jump ? '<span class="kjump" title="序號比上一位小">↰</span>' : ''}</td><td><b>${esc(k.name || '未填')}</b> ${badges}</td><td>${esc(k.area || '')}</td><td>${k.level ? `<b class="lvl lv-${esc(k.level)}">${esc(k.level)}</b>` : ''}</td><td>${hhCell}</td>
@@ -672,7 +674,7 @@ function callTableHTML() {
   ${S.ksort === 'addr' ? `<div class="note">照郵遞區號、地址排。${jumps ? `有 <b>${jumps}</b> 位的序號比上一位小（標 ↰），那些就是跟你原本順序不一樣的地方。` : '跟你原本的序號順序完全一樣。'}地址相鄰、看起來同一戶的，按序號前面的「＋🔗」就跟上一位拉成同一戶，再按一下拆開。</div>` : S.ksort === 'hh' ? '<div class="note">同一戶的排在一起。沒拉過的，地址一樣也會先放一起，標「待電話確認」。</div>' : ''}
   ${E ? '<div class="note">直接修改模式：改完一格點別的地方就存好。序號不能改，維持名單原本的編號。家戶那格打一樣的名字（例如「王家」），地址不同也會排在一起。</div>' : ''}
   <div class="ktablewrap"><table class="ktable${E ? ' editing' : ''}"><thead><tr>${cols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>${list.length ? '' : '<div class="empty">沒有符合的對象。</div>'}</div>
-  <div class="sub" style="margin-top:8px">三時段：灰色＝還沒打、紅色＝打了沒接、綠色＝接了。點任何一列打開這個人。同事的件不算進上面的進度條。換排序只是換顯示順序，序號不會變。</div>`;
+  <div class="sub" style="margin-top:8px">三時段：灰色＝還沒打、紅色＝打了沒接、綠色＝接了。點任何一列打開這個人。不追蹤的（同事的件、保經…）不算進上面的進度條。換排序只是換顯示順序，序號不會變。</div>`;
 }
 const LEVELS = ['A', 'B', 'C-1', 'C-2', 'C-3'];
 const LEVEL_TIP = { A: 'VIP，高度優先', B: '有預算、有促約機會', 'C-1': '有關鍵人物，預算不夠', 'C-2': '關係好，觀念還沒到', 'C-3': '排斥、忙、沒需求，用寄的' };
@@ -722,8 +724,8 @@ function callDetailHTML() {
    <label class="f">方便聯絡時段<input id="kf_slot" data-kf="slot" value="${esc(k.slot)}" placeholder="例如：平日晚上"></label></div>
    <label class="f">地址<input id="kf_addr" data-kf="addr" value="${esc(k.addr)}"></label>
    <label class="f">家戶<input id="kf_hh" data-kf="hh" value="${esc(k.hh)}" placeholder="同一戶的人打一樣的名字，例如：王家"></label>
-   <div class="tags"><button class="tag${k.line ? ' on' : ''}" data-kchk="line">已加 LINE</button><button class="tag${k.hhOk ? ' on' : ''}" data-kchk="hhOk">${k.hhOk ? '✓ ' : ''}家戶電話確認過</button><button class="tag${k.mailBack ? ' on' : ''}" data-kchk="mailBack">寄信退件</button><button class="tag${k.other ? ' on' : ''}" data-kchk="other">同事的件</button></div>
-   ${k.other ? `<label class="f">哪位同事<input id="kf_otherWho" data-kf="otherWho" value="${esc(k.otherWho)}"></label>` : ''}
+   <div class="tags"><button class="tag${k.line ? ' on' : ''}" data-kchk="line">已加 LINE</button><button class="tag${k.hhOk ? ' on' : ''}" data-kchk="hhOk">${k.hhOk ? '✓ ' : ''}家戶電話確認過</button><button class="tag${k.mailBack ? ' on' : ''}" data-kchk="mailBack">寄信退件</button><button class="tag${k.other ? ' on' : ''}" data-kchk="other">${k.other ? '✓ ' : ''}不追蹤</button></div>
+   ${k.other ? `<div class="grid2"><label class="f">原因<select id="kf_otherWhy" data-kf="otherWhy">${KSKIP.map((x) => `<option${skipWhy(k) === x ? ' selected' : ''}>${x}</option>`).join('')}</select></label><label class="f">${skipWhy(k) === '同事的件' ? '哪位同事' : '補充'}<input id="kf_otherWho" data-kf="otherWho" value="${esc(k.otherWho)}"></label></div>` : ''}
    <label class="f">備註<textarea id="kf_note" class="grow" data-kf="note" rows="2" placeholder="家庭、保單、個性…">${esc(k.note)}</textarea></label></div>
   <div class="sec"><h2>分級 <span class="sub">打完電話再分，之後可以隨時改</span></h2>
    <div class="tags">${LEVELS.map((x) => `<button class="tag lvtag${k.level === x ? ' on' : ''}" data-klv="${x}"><b>${x}</b> ${LEVEL_TIP[x]}</button>`).join('')}</div></div>
