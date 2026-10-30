@@ -8990,3 +8990,82 @@ document.addEventListener('click',e=>{const b=e.target.closest('.doc-btn');if(!b
   document.body.appendChild(pop);show(d.dm?'dm':'terms');pop.querySelector('.pop-x').focus();
 },true);
 </script>
+<!--prs-start--><style>
+.prs-btn{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font:inherit;font-size:14.5px;font-weight:800;border:0;border-radius:999px;padding:7px 18px;background:#E0783C;color:#fff;cursor:pointer;box-shadow:0 3px 10px rgba(224,120,60,.35)}
+.prs{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column}
+.prs[hidden]{display:none}
+.prs-top{display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top,0px)) 16px 8px;border-bottom:1px solid var(--line);background:var(--paper)}
+.prs-top b{font-family:var(--serif);font-size:17px;color:var(--green);white-space:nowrap}
+.prs-dots{flex:1;display:flex;gap:5px;justify-content:center;flex-wrap:wrap}
+.prs-dots button{width:11px;height:11px;border-radius:50%;border:0;background:var(--line);padding:0;cursor:pointer}
+.prs-dots button.on{background:#E0783C;width:26px;border-radius:6px}
+.prs-x{font:inherit;font-size:13.5px;font-weight:700;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:4px 14px;cursor:pointer}
+.prs-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px max(16px,3vw) 24px}
+.prs-slide{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.prs-h{font-family:var(--serif);font-size:30px;font-weight:900;color:var(--green);margin:0;line-height:1.3}
+.prs-sub{font-size:18px;color:var(--ink);margin:0;line-height:1.6}
+.prs-sub mark{background:#FFE6B8}
+.prs-cover{min-height:60vh;justify-content:center;align-items:center;text-align:center}
+.prs-cover .prs-h{font-size:44px}
+.prs-cover .prs-sub{font-size:22px;max-width:760px}
+.prs-end{background:var(--paper);border:2px solid #F2B25C;border-radius:18px;padding:22px 26px;display:flex;flex-direction:column;gap:12px}
+.prs-end li{font-size:20px;line-height:1.7}
+.prs-hide{display:none!important}
+.prs-slide .cv>.cmnote{display:none}
+@media (min-width:900px){.prs-slide .pg-ltc,.prs-slide .pg-pc-car{zoom:1.12}}
+.prs-slide>div>*{display:revert}
+.prs-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--paper)}
+.prs-nav button{font:inherit;font-size:16px;font-weight:800;border:0;border-radius:999px;padding:10px 26px;cursor:pointer}
+.prs-prev{background:#EEE;color:var(--ink)}.prs-next{background:var(--green);color:#fff}
+.prs-nav button:disabled{opacity:.35}
+.prs-n{font-size:13.5px;color:var(--muted);font-weight:700}
+body.prs-on{overflow:hidden}
+body.prs-on .goback,body.prs-on .sopen,body.prs-on .ltcsw{display:none!important}
+</style>
+<div class="prs" id="prs" hidden><div class="prs-top"><b class="prs-t"></b><div class="prs-dots"></div><button type="button" class="prs-x">✕ 結束</button></div><div class="prs-body"></div><div class="prs-nav"><button type="button" class="prs-prev">← 上一步</button><span class="prs-n"></span><button type="button" class="prs-next">下一步 →</button></div></div>
+<script>(function(){
+/* 客戶模式：每一節的投影片；sel 是從原本頁面借過來的區塊（離開時放回原位） */
+var CFG={
+ "pg-ltc":{t:"長照與失能",slides:[
+  {cover:1,h:"老了，誰來照顧？",s:"長照不是會不會發生，是<mark>什麼時候、要多久、每個月多少錢</mark>。"},
+  {h:"先想一件事",sel:[".orig"]},
+  {h:"長照小鎮：選哪一種照顧方式，每個月差很多",sel:[".town:not(.lda):not(.ds)"]},
+  {h:"長照和失能，看的東西不一樣",sel:[".judge"]},
+  {h:"失能分 1～11 級",s:"點身上的部位，看常見的情況是幾級。",sel:[".dsb"]},
+  {h:"猜猜看：長照險賠不賠？",sel:[".road:not(.ldm .road)"],nth:0},
+  {h:"一次中風，照顧費每個月流出去",sel:[".tl"]},
+  {h:"還沒到長照之前：睛智守護先補一筆",s:"中風、失智往往是<mark>慢慢變嚴重</mark>。還能自理生活的前段，長照險還沒開始賠，睛智守護先給。",sel:[".town.lda"]},
+  {h:"猜猜看：睛智守護賠不賠？",sel:[".road"],nth:1},
+  {h:"額度怎麼一路用掉",sel:[".ldm .ldt"]},
+  {h:"三張保單，看的地方不一樣",sel:[".ldm .ldx-wrap"]},
+  {end:1,h:"一句話帶走",li:["<b>長照險</b>：需要人照顧以後，接住<mark>每個月的照顧費</mark>","<b>睛智守護</b>：還沒到長照之前，<mark>開刀、輕度失智先給</mark>","<b>失能險</b>：身體缺損，依等級給","下一步：用建議書算您自己的保費和缺口"]}]},
+ "pg-pc-car":{t:"車險地圖",slides:[
+  {cover:1,h:"一場車禍，要賠幾個地方？",s:"撞到別人賠得起嗎？自己的人和車，誰來顧？"},
+  {h:"先想一件事",sel:[".orig"]},
+  {h:"車禍會賠到五個地方",sel:['.cv[data-v="b"]']},
+  {h:"險種對比：差在哪？",s:"點表頭的「看圖」，上一頁的圖會跟著換。",sel:[".vsx"]},
+  {h:"考考你：猜猜誰來賠",sel:['.cv[data-v="a"]']},
+  {h:"出事了怎麼辦",sel:[".ah"]},
+  {end:1,h:"一句話帶走",li:["<b>強制險</b>只保別人的身體，有上限","撞到人、撞到車：<b>第三人責任</b>，大事故再加<b>超額</b>","自己的車：<b>車體險</b>；自己受傷：<b>駕駛人傷害</b>","出事先報警、拿登記聯單，再打給保險公司和我"]}]}
+};
+var O=document.getElementById("prs"),B=O.querySelector(".prs-body"),D=O.querySelector(".prs-dots"),cur=null,idx=0,moved=[];
+function restore(){moved.forEach(function(m){m.ph.parentNode.insertBefore(m.el,m.ph);m.ph.remove();if(m.hid)m.el.hidden=true;if(m.off)m.el.classList.add("tab-off")});moved=[];B.innerHTML="";}
+function grab(root,sel,nth){var L=[].slice.call(root.querySelectorAll(sel)).filter(function(x){return !x.closest(".prs")});if(nth!=null)L=L[nth]?[L[nth]]:[];else L=L.slice(0,1);return L;}
+function render(){restore();var c=cur.cfg,s=c.slides[idx],w=document.createElement("div");w.className="prs-slide"+(s.cover?" prs-cover":"");
+ w.innerHTML='<h2 class="prs-h">'+s.h+'</h2>'+(s.s?'<p class="prs-sub">'+s.s+'</p>':'');
+ if(s.end){w.innerHTML+='<div class="prs-end"><ul>'+s.li.map(function(x){return"<li>"+x+"</li>"}).join("")+'</ul></div>';}
+ if(s.sel){var box=document.createElement("div");box.className=cur.cls;s.sel.forEach(function(q){grab(cur.root,q,s.nth).forEach(function(el){var ph=document.createComment("prs");el.parentNode.insertBefore(ph,el);moved.push({el:el,ph:ph,hid:el.hidden,off:el.classList.contains("tab-off")});el.hidden=false;el.classList.remove("tab-off");box.appendChild(el);});});w.appendChild(box);}
+ B.appendChild(w);B.scrollTop=0;
+ D.querySelectorAll("button").forEach(function(d,i){d.classList.toggle("on",i==idx)});
+ O.querySelector(".prs-prev").disabled=idx==0;var nx=O.querySelector(".prs-next");nx.textContent=idx==c.slides.length-1?"完成 ✓":"下一步 →";
+ O.querySelector(".prs-n").textContent=(idx+1)+"／"+c.slides.length;}
+function open(root,cls){cur={root:root,cls:cls,cfg:CFG[cls]};idx=0;O.querySelector(".prs-t").textContent=cur.cfg.t;D.innerHTML="";cur.cfg.slides.forEach(function(_,i){var d=document.createElement("button");d.type="button";d.setAttribute("aria-label","第"+(i+1)+"頁");d.onclick=function(){idx=i;render()};D.appendChild(d)});O.hidden=false;document.body.classList.add("prs-on");render();}
+function close(){restore();O.hidden=true;document.body.classList.remove("prs-on");cur=null;}
+function go(d){if(!cur)return;var n=idx+d;if(n<0)return;if(n>=cur.cfg.slides.length){close();return}idx=n;render();}
+O.querySelector(".prs-x").onclick=close;O.querySelector(".prs-prev").onclick=function(){go(-1)};O.querySelector(".prs-next").onclick=function(){go(1)};
+document.addEventListener("keydown",function(e){if(!cur)return;if(e.key=="ArrowRight")go(1);else if(e.key=="ArrowLeft")go(-1);else if(e.key=="Escape")close();});
+var sx=null,sy=0;B.addEventListener("touchstart",function(e){if(e.target.closest("button,a,input,select,.tw-img,.fb-img,.cr-img,.road"))return;sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
+B.addEventListener("touchend",function(e){if(sx==null)return;var dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;sx=null;if(Math.abs(dx)>80&&Math.abs(dx)>Math.abs(dy)*1.5)go(dx<0?1:-1);},{passive:true});
+Object.keys(CFG).forEach(function(cls){document.querySelectorAll("."+cls).forEach(function(root){var pane=root.closest("section");var hero=pane&&pane.querySelector(".hero");if(!hero||hero.querySelector(".prs-btn"))return;var b=document.createElement("button");b.type="button";b.className="prs-btn";b.innerHTML="▶ 客戶模式";b.onclick=function(){open(root,cls)};hero.appendChild(b);});});
+})();</script>
+<!--prs-end-->
