@@ -2492,7 +2492,7 @@ fileIn.onchange = () => { onFiles(fileIn.files); fileIn.value = ''; };
 fileLib.onchange = () => { onFiles(fileLib.files); fileLib.value = ''; };
 async function fileToCanvas(f) {
   const bmp = await createImageBitmap(f).catch(() => null); if (!bmp) return null;
-  const s = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
+  const s = Math.min(1, 3600 / Math.max(bmp.width, bmp.height)); // 原圖保留夠大，掃描後字才清楚
   const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * s); cv.height = Math.round(bmp.height * s); cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
   return cv;
 }
@@ -2586,28 +2586,33 @@ function solveH(dst, src) {
   for (let c = 0; c < 8; c++) { let p = c; for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r; [A[c], A[p]] = [A[p], A[c]]; for (let r = 0; r < 8; r++) { if (r === c) continue; const f = A[r][c] / A[c][c]; for (let k = c; k < 9; k++) A[r][k] -= f * A[c][k]; } }
   return A.map((r, i) => r[8] / r[i]);
 }
-function warp(img, k, filter, level = 50, max = 1800, raw = false) { // level 0–100：越大越黑白分明
+function warp(img, k, filter, level = 50, max = 2800, raw = false) { // level 0–100：越大越黑白分明
   const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
   let W = Math.max(d(k[0], k[1]), d(k[3], k[2])), H = Math.max(d(k[0], k[3]), d(k[1], k[2])); const s = Math.min(1, max / Math.max(W, H)); W = Math.round(W * s); H = Math.round(H * s);
   const h = solveH([[0, 0], [W, 0], [W, H], [0, H]], k); const sd = img.getContext('2d').getImageData(0, 0, img.width, img.height).data, iw = img.width, ih = img.height;
   const out = document.createElement('canvas'); out.width = W; out.height = H; const ox = out.getContext('2d'); const od = ox.createImageData(W, H), o = od.data;
-  let sum = 0;
-  for (let v = 0; v < H; v++) for (let u = 0; u < W; u++) {
+  const gy = new Float32Array(W * H);
+  for (let v = 0; v < H; v++) for (let u = 0; u < W; u++) { // 雙線性取樣，字的邊緣比較平順不會鋸齒
     const z = h[6] * u + h[7] * v + 1; let x = (h[0] * u + h[1] * v + h[2]) / z, y = (h[3] * u + h[4] * v + h[5]) / z;
-    x = Math.min(iw - 1, Math.max(0, x | 0)); y = Math.min(ih - 1, Math.max(0, y | 0));
-    const si = (y * iw + x) * 4, oi = (v * W + u) * 4; o[oi] = sd[si]; o[oi + 1] = sd[si + 1]; o[oi + 2] = sd[si + 2]; o[oi + 3] = 255; sum += 0.3 * sd[si] + 0.59 * sd[si + 1] + 0.11 * sd[si + 2];
+    x = Math.min(iw - 1.001, Math.max(0, x)); y = Math.min(ih - 1.001, Math.max(0, y)); const x0 = x | 0, y0 = y | 0, fx = x - x0, fy = y - y0;
+    const i00 = (y0 * iw + x0) * 4, i10 = i00 + 4, i01 = i00 + iw * 4, i11 = i01 + 4, oi = (v * W + u) * 4;
+    for (let c = 0; c < 3; c++) o[oi + c] = (sd[i00 + c] * (1 - fx) + sd[i10 + c] * fx) * (1 - fy) + (sd[i01 + c] * (1 - fx) + sd[i11 + c] * fx) * fy;
+    o[oi + 3] = 255; gy[v * W + u] = 0.3 * o[oi] + 0.59 * o[oi + 1] + 0.11 * o[oi + 2];
   }
-  if (filter !== 'color') {
-    const mean = sum / (W * H), L = Math.max(0, Math.min(100, level)) / 100, a = 0.75 - L * 0.4, t = 0.62 + L * 0.4;
-    for (let i = 0; i < o.length; i += 4) {
-      let g = 0.3 * o[i] + 0.59 * o[i + 1] + 0.11 * o[i + 2];
-      if (filter === 'gray') { g = (g - mean * a) * (255 / (mean * (1.1 - a) || 1)); g = Math.max(0, Math.min(255, g)); } else { g = g > mean * t ? 255 : Math.max(0, g * 0.35); }
-      o[i] = o[i + 1] = o[i + 2] = g;
-    }
+  if (filter !== 'color') { // 用附近的紙色當背景來比，陰影、角落偏暗也能變白
+    const r = Math.max(8, Math.round(Math.max(W, H) / 24)), I = new Float64Array((W + 1) * (H + 1));
+    for (let v = 0; v < H; v++) { let row = 0; for (let u = 0; u < W; u++) { row += gy[v * W + u]; I[(v + 1) * (W + 1) + u + 1] = I[v * (W + 1) + u + 1] + row; } }
+    const L = Math.max(0, Math.min(100, level)) / 100, t = 0.78 + L * 0.14, soft = 0.28 - L * 0.16, lo = 0.25 + L * 0.35;
+    for (let v = 0; v < H; v++) { const y1 = Math.max(0, v - r), y2 = Math.min(H, v + r + 1);
+      for (let u = 0; u < W; u++) { const x1 = Math.max(0, u - r), x2 = Math.min(W, u + r + 1);
+        const bg = (I[y2 * (W + 1) + x2] - I[y1 * (W + 1) + x2] - I[y2 * (W + 1) + x1] + I[y1 * (W + 1) + x1]) / ((x2 - x1) * (y2 - y1));
+        const ratio = gy[v * W + u] / (bg * 1.06 + 1);
+        let g = filter === 'gray' ? 255 * (ratio - lo) / (0.9 - lo) : 255 * (ratio - (t - soft)) / soft;
+        g = g < 0 ? 0 : g > 255 ? 255 : g; const oi = (v * W + u) * 4; o[oi] = o[oi + 1] = o[oi + 2] = g; } }
   }
   ox.putImageData(od, 0, 0);
   if (raw) return out;
-  return new Promise((ok) => out.toBlob((b) => ok(b), 'image/jpeg', 0.82));
+  return new Promise((ok) => out.toBlob((b) => ok(b), 'image/jpeg', 0.9));
 }
 
 /* ================= 看原圖 ================= */
