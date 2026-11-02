@@ -658,12 +658,35 @@ function kgRec(callId) { // 找這位在目前活動的送禮紀錄，沒有就�
   return g;
 }
 function kgTidy(g) { if (g && !Object.keys(g.items || {}).length && !g.method && g.status !== '已送' && !g.note) Vault.del('gifts', g.id); else if (g) Vault.put('gifts', g); }
+const AREA_ORDER = ['桃園區', '八德區', '龜山區', '蘆竹區', '大園區', '觀音區', '新屋區', '楊梅區', '平鎮區', '中壢區', '龍潭區', '大溪區', '復興區', '林口區', '鶯歌區', '樹林區', '三峽區', '新莊區', '泰山區', '五股區', '板橋區', '土城區', '淡水區']; // 桃園由市區往外繞一圈，再接新北
+const kArea = (k) => k.area || areaOf(k.addr) || '';
+const areaRank = (a) => { const i = AREA_ORDER.indexOf(a); return i < 0 ? (a ? 100 : 999) : i; };
+const areaSort = (a, b) => areaRank(a) - areaRank(b) || a.localeCompare(b, 'zh-Hant');
+const callTags = () => [...new Set(calls().flatMap((k) => k.tags || []))];
+const callRank = (k) => (k.other ? 9 : (k.tags || []).length ? 0 : k.line ? 1 : 2);
+function openCallTagImport() { // 主管給的名單：貼序號或姓名，一次加上標籤
+  const tags = callTags();
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>名單加標籤</h2><button class="btn" id="ktX">取消</button><button class="btn pri" id="ktGo">加上標籤</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:760px;margin:0 auto;width:100%">
+   <div class="note">例如主管推薦的意外險升級名單：把<b>序號或姓名</b>貼進來（一行一個，或用空格、逗號隔開都可以），會找出對應的人加上標籤。只加標籤，不改其他資料。有標籤的人在「撥打順序」會排最前面。</div>
+   <label class="f">標籤名稱<input id="ktName" value="${esc(tags[0] || '意外險升級')}" list="ktList"><datalist id="ktList">${tags.map((t) => `<option value="${esc(t)}">`).join('')}</datalist></label>
+   <label class="f">序號或姓名<textarea id="ktText" rows="8" placeholder="015&#10;032&#10;王小明"></textarea></label><div class="sub" id="ktRes"></div>
+   ${tags.length ? `<div class="sub" style="margin-top:8px">要清掉整個標籤：${tags.map((t) => `<button class="linkbtn" data-ktclear="${esc(t)}">清掉「${esc(t)}」</button>`).join(' ')}</div>` : ''}</div></div>`;
+  const match = () => { const toks = $('ktText').value.split(/[\s,，、]+/).map((x) => x.trim()).filter(Boolean), all = calls(), hit = new Set(), miss = [];
+    toks.forEach((t) => { const f = /^\d+$/.test(t) ? all.filter((k) => parseInt(k.no, 10) === parseInt(t, 10)) : all.filter((k) => k.name === t); f.length ? f.forEach((k) => hit.add(k)) : miss.push(t); }); return { hit: [...hit], miss }; };
+  $('ktText').oninput = () => { const m = match(); $('ktRes').textContent = m.hit.length || m.miss.length ? `找到 ${m.hit.length} 位${m.miss.length ? `，找不到：${m.miss.slice(0, 15).join('、')}${m.miss.length > 15 ? '…' : ''}` : ''}` : ''; };
+  $('ktX').onclick = () => (ov.innerHTML = '');
+  ov.querySelectorAll('[data-ktclear]').forEach((b) => (b.onclick = () => { if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = '再按一次確定清掉'; return; } const t = b.dataset.ktclear; calls().forEach((k) => { if ((k.tags || []).includes(t)) { k.tags = k.tags.filter((x) => x !== t); Vault.put('calls', k); } }); ov.innerHTML = ''; App.render(); toast('已清掉'); }));
+  $('ktGo').onclick = () => { const t = $('ktName').value.trim(), m = match(); if (!t) { toast('先填標籤名稱'); return; } if (!m.hit.length) { toast('沒有找到人'); return; } m.hit.forEach((k) => { k.tags = [...new Set([...(k.tags || []), t])]; Vault.put('calls', k); }); ov.innerHTML = ''; S.ksort = 'call'; S.ktable = true; App.render(); toast(`已加上「${t}」${m.hit.length} 位`); };
+}
 function callTableHTML() {
   const all = calls(), q = S.q.trim(), hhs = callHouseholds(all), grpOf = (k) => hhs.get(hhKey(k));
-  const areas = [...new Set(all.map((k) => k.area).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant')); if (S.kar !== '全部' && !areas.includes(S.kar)) S.kar = '全部';
-  const markOk = (k) => ({ 全部: true, '已加 LINE': !!k.line, '未加 LINE': !k.line, 退件: !!k.mailBack, 不追蹤: !!k.other, 家戶待確認: hhPending(grpOf(k)) })[S.kmark];
-  let list = all.filter((k) => (S.kprog === '全部' || callProg(k) === S.kprog) && (S.kar === '全部' || k.area === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && markOk(k) && (!q || [k.no, k.name, k.phone, k.home, k.addr, k.area, k.note, k.hh, k.otherWho].join(' ').includes(q))).sort(noCmp);
+  const areas = [...new Set(all.map(kArea).filter(Boolean))].sort(areaSort); if (S.kar !== '全部' && !areas.includes(S.kar)) S.kar = '全部';
+  const tags = callTags(); if (!['全部', ...KMARKS, ...tags].includes(S.kmark)) S.kmark = '全部';
+  const markOk = (k) => (k.tags || []).includes(S.kmark) || ({ 全部: true, '已加 LINE': !!k.line, '未加 LINE': !k.line, 退件: !!k.mailBack, 不追蹤: !!k.other, 家戶待確認: hhPending(grpOf(k)) })[S.kmark];
+  let list = all.filter((k) => (S.kprog === '全部' || callProg(k) === S.kprog) && (S.kar === '全部' || kArea(k) === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && markOk(k) && (!q || [k.no, k.name, k.phone, k.home, k.addr, k.area, k.note, k.hh, k.otherWho].join(' ').includes(q))).sort(noCmp);
   if (S.ksort === 'addr') list.sort(addrCmp);
+  if (S.ksort === 'call') list.sort((a, b) => callRank(a) - callRank(b) || areaSort(kArea(a), kArea(b)) || addrCmp(a, b));
   if (S.ksort === 'co') list.sort((a, b) => (a.ord2 ?? 1e9) - (b.ord2 ?? 1e9) || noCmp(a, b));
   if (S.ksort === 'hh') { const first = new Map(); list.forEach((k, i) => { const key = hhKey(k); if (!first.has(key)) first.set(key, i); }); list = list.map((k, i) => [k, i]).sort((x, y) => first.get(hhKey(x[0])) - first.get(hhKey(y[0])) || x[1] - y[1]).map(([k]) => k); }
   const mine = all.filter((k) => !k.other), n = (f) => mine.filter(f).length, na = (f) => all.filter(f).length, prog = (k) => callProg(k);
@@ -678,6 +701,7 @@ function callTableHTML() {
   const rows = list.map((k, ri) => { const nn = parseInt(k.no, 10), jump = (S.ksort === 'addr' || S.ksort === 'co') && !isNaN(nn) && nn < maxNo; if (jump) jumps++; if (!isNaN(nn)) maxNo = Math.max(maxNo, nn);
     const prevK = list[ri - 1], linked = prevK && k.hh && prevK.hh === k.hh, lk = S.ksort !== 'no' && prevK ? `<button class="klink${linked ? ' on' : ''}" data-klink="${k.id}" data-kprev="${prevK.id}" title="${linked ? '已跟上一位同一戶，再按一下拆開' : '跟上一位同一戶'}">${linked ? '🔗' : '＋🔗'}</button>` : ''; const sl = callSlots(k), l = logsOf(k)[0], gf = callGift(k), pg = prog(k), g = grpOf(k), key = hhKey(k);
     let head = '';
+    if (S.ksort === 'call') { const ck = callRank(k) + '|' + kArea(k), pk2 = prevK ? callRank(prevK) + '|' + kArea(prevK) : ''; if (ck !== pk2) { const r = callRank(k), lab = r === 0 ? '① ' + (k.tags || []).join('、') : r === 1 ? '② 已加 LINE' : r === 2 ? '③ 其他' : '不追蹤', cnt = list.filter((x) => callRank(x) + '|' + kArea(x) === ck).length; head = `<tr class="khh"><td colspan="${cols.length}"><b>${esc(lab)}</b>・${esc(kArea(k) || '沒有地區')} <span class="sub">${cnt} 位</span></td></tr>`; } }
     if (S.ksort === 'hh' && key !== prevKey && g.length > 1) { const pend = hhPending(g); head = `<tr class="khh"><td colspan="${cols.length}"><b>家戶・${esc(g.find((x) => x.hh)?.hh || '同地址')}</b> <span class="sub">${g.length} 人・${esc(g[0].addr || '')}</span> ${pend ? `<span class="pill p-wait">待電話確認</span> <button class="btn sm" data-khhok="${esc(key)}">✓ 確認同一戶</button>` : '<span class="pill p-done">已確認</span>'}</td></tr>`; }
     prevKey = key;
     const hhCell = k.hh ? esc(k.hh) : g.length > 1 ? `<span class="sub">同地址 ${g.length} 人</span>` : '';
@@ -687,19 +711,20 @@ function callTableHTML() {
       <td>${cb(k, 'line')}</td><td>${cb(k, 'mailBack')}</td><td>${cb(k, 'other')} ${k.other ? `<select data-kte="${k.id}" data-kfield="otherWhy">${KSKIP.map((x) => `<option${skipWhy(k) === x ? ' selected' : ''}>${x}</option>`).join('')}</select> ${ti(k, 'otherWho', 70, skipWhy(k) === '同事的件' ? '哪位同事' : '補充')}` : ''}</td>
       <td><input type="date" data-kte="${k.id}" data-kfield="visitDate" value="${esc(k.visitDate)}"></td><td>${cb(k, 'met')}</td><td>${ti(k, 'note', 180)}</td><td>${badges}</td></tr>`;
     return head + `<tr data-ksel="${k.id}" class="kp-${pg}${k.other ? ' kother' : ''}${linked ? ' klinked' : ''}">
-     <td class="sub">${lk}${esc(k.no || '')}${jump ? '<span class="kjump" title="序號比上一位小">↰</span>' : ''}</td><td><b>${esc(k.name || '未填')}</b> ${badges}</td><td>${esc(k.area || '')}</td><td>${k.level ? `<b class="lvl lv-${esc(k.level)}">${esc(k.level)}</b>` : ''}</td><td>${hhCell}</td>
+     <td class="sub">${lk}${esc(k.no || '')}${jump ? '<span class="kjump" title="序號比上一位小">↰</span>' : ''}</td><td><b>${esc(k.name || '未填')}</b> ${(k.tags || []).map((t) => `<span class="pill p-go">${esc(t)}</span>`).join('')}${badges}</td><td>${esc(kArea(k))}</td><td>${k.level ? `<b class="lvl lv-${esc(k.level)}">${esc(k.level)}</b>` : ''}</td><td>${hhCell}</td>
      <td><span class="kdots">${dot(sl['上午'], '上午')}${dot(sl['下午'], '下午')}${dot(sl['晚上'], '晚上')}</span></td><td><span class="kprog">${pg}</span></td>
      <td>${l ? `${esc(l.result)}<span class="sub"> ${fmtDay(l.date).slice(5)}</span>` : ''}</td><td>${gf ? `<span class="kg kg-${gf}">${gf}</span>` : ''}</td><td>${k.line ? '✓' : ''}</td>
      <td>${k.visitDate ? fmtDay(k.visitDate).slice(5) : pg === '已排訪' ? '✓' : ''}</td><td>${k.met ? '✓' : ''}</td><td class="knote">${esc((k.note || l?.note || '').slice(0, 40))}</td></tr>`; }).join('');
   const tableHTML = KG ? callGiftSheetHTML(list, gev, gevs) : `<div class="ktablewrap"><table class="ktable${E ? ' editing' : ''}"><thead><tr>${cols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>${list.length ? '' : '<div class="empty">沒有符合的對象。</div>'}</div>`;
-  return `<div class="colhead"><h1>服務件總表 <span style="display:flex;gap:6px;flex-wrap:wrap"><span class="seg2"><button class="btn sm${KG ? '' : ' pri'}" data-kview="prog">進度</button><button class="btn sm${KG ? ' pri' : ''}" data-kview="gift">🎁 送禮</button></span><span class="seg2">${[['no', '序號'], ['addr', '地址'], ...(all.some((k) => k.ord2 != null) ? [['co', '公司順序']] : []), ['hh', '家戶']].map(([v, l]) => `<button class="btn sm${S.ksort === v ? ' pri' : ''}" data-ksort="${v}">${l}</button>`).join('')}</span>${KG ? '' : `<button class="btn${E ? ' pri' : ''}" data-act="kedit">${E ? '✓ 改好了' : '✎ 直接修改'}</button>`}<button class="btn" data-act="cflow">流程</button><button class="btn" data-act="klist">‹ 回到名單</button><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="korder">匯入另一種排序</button></span></h1>
+  return `<div class="colhead"><h1>服務件總表 <span style="display:flex;gap:6px;flex-wrap:wrap"><span class="seg2"><button class="btn sm${KG ? '' : ' pri'}" data-kview="prog">進度</button><button class="btn sm${KG ? ' pri' : ''}" data-kview="gift">🎁 送禮</button></span><span class="seg2">${[['call', '撥打順序'], ['no', '序號'], ['addr', '地址'], ...(all.some((k) => k.ord2 != null) ? [['co', '公司順序']] : []), ['hh', '家戶']].map(([v, l]) => `<button class="btn sm${S.ksort === v ? ' pri' : ''}" data-ksort="${v}">${l}</button>`).join('')}</span>${KG ? '' : `<button class="btn${E ? ' pri' : ''}" data-act="kedit">${E ? '✓ 改好了' : '✎ 直接修改'}</button>`}<button class="btn" data-act="cflow">流程</button><button class="btn" data-act="klist">‹ 回到名單</button><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="korder">匯入另一種排序</button><button class="btn" data-act="ktagimp">名單加標籤</button></span></h1>
    <div class="kfunnel">${funnel.map(([l, v]) => `<div><span>${l}</span><b>${v}</b></div>`).join('<i>›</i>')}</div>
    <input class="search" id="q" placeholder="搜尋序號、姓名、電話、地址、家戶" value="${esc(S.q)}" autocomplete="off">
    <div class="chips"><span class="sub" style="align-self:center">進度</span>${['全部', ...PROGS].map((x) => chip('kprog', x, x === '全部' ? all.length : na((k) => prog(k) === x))).join('')}</div>
    <div class="chips"><span class="sub" style="align-self:center">分級</span>${['全部', ...LEVELS, '未分級'].map((x) => chip('klv', x, x === '全部' ? all.length : x === '未分級' ? na((k) => !k.level) : na((k) => k.level === x))).join('')}</div>
-   <div class="chips"><span class="sub" style="align-self:center">標記</span>${KMARKS.map((x) => chip('kmark', x, all.filter((k) => { const o = S.kmark; S.kmark = x; const r = markOk(k); S.kmark = o; return r; }).length)).join('')}</div>
-   ${areas.length ? `<div class="chips"><span class="sub" style="align-self:center">地區</span>${['全部', ...areas].map((x) => chip('kar', x, x === '全部' ? all.length : na((k) => k.area === x))).join('')}</div>` : ''}</div>
+   <div class="chips"><span class="sub" style="align-self:center">標記</span>${[...KMARKS, ...tags].map((x) => chip('kmark', x, all.filter((k) => { const o = S.kmark; S.kmark = x; const r = markOk(k); S.kmark = o; return r; }).length)).join('')}</div>
+   ${areas.length ? `<div class="chips"><span class="sub" style="align-self:center">地區</span>${['全部', ...areas].map((x) => chip('kar', x, x === '全部' ? all.length : na((k) => kArea(k) === x))).join('')}</div>` : ''}</div>
   ${S.ksort === 'co' ? `<div class="note">照你匯入的公司排序。${jumps ? `有 <b>${jumps}</b> 位的序號比上一位小（標 ↰），就是公司排得跟序號不一樣的地方。` : '跟序號順序完全一樣。'}${all.some((k) => k.ord2 == null) ? `另外有 ${all.filter((k) => k.ord2 == null).length} 位不在那份排序裡，放在最後。` : ''} <button class="linkbtn" data-act="korder">重新匯入排序</button></div>` : ''}
+  ${S.ksort === 'call' ? `<div class="note">撥打順序：① 有標籤的（例如主管推薦的意外險升級）→ ② 已加 LINE → ③ 其他；每一組裡再照地區由近到遠、地址排。不追蹤的放最後。搭配上面「進度：未打」「地區」一起用，一次打完一區。</div>` : ''}
   ${S.ksort === 'addr' ? `<div class="note">照郵遞區號、地址排。${jumps ? `有 <b>${jumps}</b> 位的序號比上一位小（標 ↰），那些就是跟你原本順序不一樣的地方。` : '跟你原本的序號順序完全一樣。'}地址相鄰、看起來同一戶的，按序號前面的「＋🔗」就跟上一位拉成同一戶，再按一下拆開。</div>` : S.ksort === 'hh' ? '<div class="note">同一戶的排在一起。沒拉過的，地址一樣也會先放一起，標「待電話確認」。</div>' : ''}
   ${E ? '<div class="note">直接修改模式：改完一格點別的地方就存好。序號不能改，維持名單原本的編號。家戶那格打一樣的名字（例如「王家」），地址不同也會排在一起。</div>' : ''}
   ${tableHTML}
@@ -723,16 +748,16 @@ const SAMPLE_SCRIPT = '1. 開場、確認服務人員\n您好，請問是○○�
 function callListHTML() {
   const q = S.q.trim(), all = calls(), today = localDay();
   const rank = (k) => ({ 再聯絡: 0, 待撥: 1, 已約訪: 2, 結案: 3 }[k.status] ?? 1);
-  const areas = [...new Set(all.map((k) => k.area).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+  const areas = [...new Set(all.map(kArea).filter(Boolean))].sort(areaSort);
   if (S.kar !== '全部' && !areas.includes(S.kar)) S.kar = '全部';
-  const list = all.filter((k) => (S.kst === '全部' || k.status === S.kst) && (S.kar === '全部' || k.area === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && (!q || [k.name, k.phone, k.source, k.note, k.addr, k.area].join(' ').includes(q)))
+  const list = all.filter((k) => (S.kst === '全部' || k.status === S.kst) && (S.kar === '全部' || kArea(k) === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && (!q || [k.name, k.phone, k.source, k.note, k.addr, k.area].join(' ').includes(q)))
     .sort((a, b) => rank(a) - rank(b) || (a.nextDate || '9999').localeCompare(b.nextDate || '9999') || noCmp(a, b));
   return `<section class="col"><div class="colhead"><h1>服務件 <span style="display:flex;gap:6px"><button class="btn" data-act="cflow">流程</button><button class="btn pri" data-act="ktable">總表</button><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="kphoto">📷 拍照新增</button><button class="btn" data-act="newcall">＋ 新增</button></span></h1>
   <div class="mobsync">${syncHTML()}</div>
   <input class="search" id="q" placeholder="搜尋姓名、電話、地址、來源" value="${esc(S.q)}" autocomplete="off">
   <div class="chips">${['全部', ...CALL_ST].map((x) => `<button class="chip${S.kst === x ? ' on' : ''}" data-kst="${x}">${x} <span class="cnt">${x === '全部' ? all.length : all.filter((k) => k.status === x).length}</span></button>`).join('')}</div>
   <div class="chips subchips"><span class="sub" style="align-self:center">分級</span>${['全部', ...LEVELS, '未分級'].map((x) => `<button class="chip${S.klv === x ? ' on' : ''}" data-klvf="${x}">${x} <span class="cnt">${x === '全部' ? all.length : x === '未分級' ? all.filter((k) => !k.level).length : all.filter((k) => k.level === x).length}</span></button>`).join('')}</div>
-  ${areas.length ? `<div class="chips subchips"><span class="sub" style="align-self:center">地區</span>${['全部', ...areas].map((x) => `<button class="chip${S.kar === x ? ' on' : ''}" data-kar="${esc(x)}">${esc(x)} <span class="cnt">${x === '全部' ? all.length : all.filter((k) => k.area === x).length}</span></button>`).join('')}</div>` : ''}</div>
+  ${areas.length ? `<div class="chips subchips"><span class="sub" style="align-self:center">地區</span>${['全部', ...areas].map((x) => `<button class="chip${S.kar === x ? ' on' : ''}" data-kar="${esc(x)}">${esc(x)} <span class="cnt">${x === '全部' ? all.length : all.filter((k) => kArea(k) === x).length}</span></button>`).join('')}</div>` : ''}</div>
   <div class="list">${list.length ? list.map((k) => { const l = logsOf(k)[0], due = k.nextDate && k.status !== '結案' && k.nextDate <= today; return `<button class="item${k.id === S.ksel ? ' on' : ''}" data-ksel="${k.id}"><span class="t"><span>${k.no ? `<span class="kno">${esc(k.no)}</span>` : ''}${esc(k.name || '未填姓名')}</span><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></span><span class="s">${k.level ? `<b class="lvl lv-${esc(k.level)}">${esc(k.level)}</b> ` : ''}${k.area ? esc(k.area) + ' · ' : ''}${l ? `上次 ${fmtDay(l.date).slice(5)} ${esc(l.result)}` : '還沒打過'}${k.nextDate && k.status !== '結案' ? ` · <span class="${due ? 'due' : ''}">下次 ${fmtDay(k.nextDate).slice(5)}</span>` : ''}${k.source ? ' · ' + esc(k.source) : ''}</span></button>`; }).join('') : `<div class="empty">${all.length ? '沒有符合的對象。' : '還沒有服務件名單。按「匯入名單」一次貼上很多人，或「＋ 新增」一個一個加。'}</div>`}</div></section>`;
 }
 function callDetailHTML() {
@@ -754,6 +779,7 @@ function callDetailHTML() {
    <label class="f">地址<input id="kf_addr" data-kf="addr" value="${esc(k.addr)}"></label>
    <label class="f">家戶<input id="kf_hh" data-kf="hh" value="${esc(k.hh)}" placeholder="同一戶的人打一樣的名字，例如：王家"></label>
    <div class="tags"><button class="tag${k.line ? ' on' : ''}" data-kchk="line">已加 LINE</button><button class="tag${k.hhOk ? ' on' : ''}" data-kchk="hhOk">${k.hhOk ? '✓ ' : ''}家戶電話確認過</button><button class="tag${k.mailBack ? ' on' : ''}" data-kchk="mailBack">寄信退件</button><button class="tag${k.other ? ' on' : ''}" data-kchk="other">${k.other ? '✓ ' : ''}不追蹤</button></div>
+   ${(k.tags || []).length ? `<div class="tags">${k.tags.map((t) => `<span class="tag on" style="cursor:default">${esc(t)} <button class="linkbtn" data-ktagdel="${esc(t)}" aria-label="拿掉標籤">✕</button></span>`).join('')}</div>` : ''}
    ${k.other ? `<div class="grid2"><label class="f">原因<select id="kf_otherWhy" data-kf="otherWhy">${KSKIP.map((x) => `<option${skipWhy(k) === x ? ' selected' : ''}>${x}</option>`).join('')}</select></label><label class="f">${skipWhy(k) === '同事的件' ? '哪位同事' : '補充'}<input id="kf_otherWho" data-kf="otherWho" value="${esc(k.otherWho)}"></label></div>` : ''}
    <label class="f">備註<textarea id="kf_note" class="grow" data-kf="note" rows="2" placeholder="家庭、保單、個性…">${esc(k.note)}</textarea></label></div>
   <div class="sec"><h2>分級 <span class="sub">打完電話再分，之後可以隨時改</span></h2>
@@ -1960,6 +1986,7 @@ app.addEventListener('click', async (e) => {
   if (d.kprog) { S.kprog = d.kprog; App.render(); return; }
   if (d.kmark) { S.kmark = d.kmark; App.render(); return; }
   if (d.ksort) { S.ksort = d.ksort; App.render(); return; }
+  if (d.ktagdel) { const k = curCall(); if (k) { k.tags = (k.tags || []).filter((x) => x !== d.ktagdel); Vault.put('calls', k); App.render(); } return; }
   if (d.kview) { S.kview = d.kview; App.render(); return; }
   if (d.kgev) { S.gev = d.kgev; App.render(); return; }
   if (d.khadd) { const k = curCall(), o = Vault.get('calls', d.khadd); if (k && o) { toast('同一戶：' + linkHH(k, o)); App.render(); } return; }
@@ -2044,6 +2071,7 @@ app.addEventListener('click', async (e) => {
     case 'kedit': S.kedit = !S.kedit; App.render(); break;
     case 'railtog': S.railMini = !S.railMini; try { localStorage.setItem('crm-railmini', S.railMini ? '1' : '0'); } catch (e) { } App.render(); break;
     case 'korder': openCallOrderImport(); break;
+    case 'ktagimp': openCallTagImport(); break;
     case 'kphoto': openCallPhoto(null); break;
     case 'kgiftgo': S.view = 'calls'; S.ktable = true; S.kview = 'gift'; S.showDetail = false; S.q = ''; App.render(); break;
     case 'kphotoin': openCallPhoto(curCall()); break;
