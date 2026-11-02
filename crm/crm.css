@@ -573,3 +573,20 @@ select.linktpl{border:1px solid var(--line);background:var(--surface);border-rad
 .railmini .brand{padding:2px 0 12px;justify-content:center}.railmini .railtog{margin:0}
 .railmini .nav,.railmini .scanbtn{justify-content:center;padding:10px 0}
 .railmini .rail>.nav[data-act="lock"]{font-size:11px}
+.kmore{position:relative;display:inline-block}
+.kmore>summary{list-style:none;cursor:pointer}.kmore>summary::-webkit-details-marker{display:none}
+.kmenu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:6px;min-width:190px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.kmenu .btn{text-align:left;justify-content:flex-start;width:100%}
+.kstartbig{width:100%;margin:6px 0 10px;padding:12px;font-size:16px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.kstartbig span{font-size:12px;font-weight:400;opacity:.85}
+.kcallbar{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;padding:8px 12px;margin-bottom:10px;font-size:14px}
+#printArea{display:none}
+@media print{
+ body.printing>*:not(#printArea){display:none!important}
+ body.printing #printArea{display:block!important;color:#000;font:11.5pt/1.55 "Noto Sans TC","PingFang TC",sans-serif}
+ @page{size:A4;margin:12mm 14mm}
+ #printArea h1{font-size:17pt;margin:0 0 4pt}
+ #printArea .plv{font-size:9.5pt;border:1px solid #999;border-radius:4pt;padding:4pt 6pt;margin-bottom:6pt}
+ #printArea h2{font-size:11.5pt;margin:7pt 0 2pt;border-bottom:1px solid #bbb;padding-bottom:1pt}
+ #printArea ul{margin:0;padding-left:16pt}#printArea li{margin:1pt 0}
+}

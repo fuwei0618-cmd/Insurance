@@ -595,19 +595,28 @@ function callSlots(k) { // 三個時段：上午、下午、晚上，各打過�
 }
 function callGift(k) { const gs = Vault.all('gifts').filter((g) => g.who?.type === 'call' && g.who?.id === k.id); if (gs.length) return gs.every((g) => g.status === '已送') ? '已送' : '預備'; return k.giftSkip ? '不送' : ''; }
 const CALL_FLOW = [
-  ['準備（做一次）', ['匯入名單：選 PDF，檢查前八位欄位對不對，按匯入。', '送禮專區建好「年曆」活動和品項。']],
-  ['每天打電話', ['開「總表」，進度點「未打」，再點一個地區，一次打完一區。', '撥號前看一眼「打電話前的功課」：住址觀察、保單概況。', '照話術六步打：開場、年曆、家戶、職業、聊天、收尾。']],
-  ['掛電話後三十秒內記完', ['記錄結果：未接、已接・聊過、約訪成功…', '分級：A、B、C-1、C-2、C-3。', '勾確認：服務人員、家戶、職業類別。', '年曆：要的按「＋ 預備贈送」選品項和送法；不要的按「不送年曆」。', '有加 LINE 就勾；約好了就填約訪日期。']],
-  ['沒接的人', ['總表點「未接」，看三時段哪個還是灰的，換那個時段再打。', '三個時段都紅了：傳簡訊或 LINE，年曆改成寄送。']],
-  ['排約訪、送年曆', ['年曆到貨後，總表點「已排訪」加地區，同一區排同一天，半天三到四家。', '見到面：「已見面」打勾，送禮那筆按成「已送」。', 'A、B 的人開一個建議書案件，接上準備清單和流程提醒。', '有人跟你買了，再按「轉成客戶」，才進客戶區。']],
-  ['每週看一次', ['總表最上面的進度條：打過、接通、要年曆、加 LINE、排訪、見面、年曆已送，看這週跑到哪。']],
+  ['準備（只做一次）', ['匯入名單：服務件 →「⋯ 更多」→ 匯入名單，選公司的 PDF。', '主管給的意外險升級名單：「⋯ 更多」→ 名單加標籤，選 PDF（用姓名比對，不看別份編號）。', '送禮專區建好「2027 年曆」活動和品項。']],
+  ['每次開始：按「📞 開始打電話」', ['不用想從誰開始，它會照順序一位一位帶你：① 意外險升級 → ② 已加 LINE → ③ 其他；同一組裡照地區由近到遠（桃園 → 八德 → 龜山 → 蘆竹 → 大園 → 觀音 → 新屋 → 楊梅 → 平鎮 → 中壢 → 龍潭 → 大溪 → 新北、台北）。', '一次只打一區，約到的人也在同一區，之後排拜訪比較順。', '已加 LINE 的人：先傳「年底準備了年曆想送您，什麼時間方便打給您？」，回了再打。']],
+  ['電話中：話術六步', ['開場、確認服務人員 → 年曆 → 家戶 → 職業 → 聊天 → 收尾。', '意外險升級的人：在第 4 步「確認職業」順勢帶到「意外險可以升級」。', '打電話前看一眼「打電話前的功課」：住址、保單概況。']],
+  ['掛電話三十秒內記完，按「下一位 ›」', ['結果：未接、已接・聊過、約訪成功…', '分級 A／B／C-1／C-2／C-3；勾服務人員、家戶、職業確認。', '年曆：要的填品項（或到總表「🎁 送禮」填）；不要的按「不送年曆」。有加 LINE 就勾，約好了填約訪日期。']],
+  ['沒接的人', ['換時段再打：看三時段哪個還是灰的（灰＝還沒打、紅＝沒接、綠＝接了）。', '三個時段都紅了：傳簡訊或 LINE，年曆改成寄送。']],
+  ['排拜訪、送年曆', ['年曆到貨後，總表點「已排訪」加地區，同一區排同一天，半天三到四家。', '見到面勾「已見面」，送禮按「已送」；A、B 開建議書案件；有人買了再「轉成客戶」。']],
+  ['每週看一次', ['總表最上面的進度條：打過、接通、要年曆、加 LINE、排訪、見面、年曆已送。']],
 ];
 function openCallFlow() {
-  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>服務件流程</h2><button class="btn pri" id="cfX">關閉</button></div>
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>服務件流程</h2><button class="btn" id="cfP">🖨 印一頁 A4</button><button class="btn pri" id="cfX">關閉</button></div>
   <div class="ovbody" style="flex-direction:column;max-width:760px;margin:0 auto;width:100%">
    <div class="note">分級：<b>A</b> VIP 高度優先・<b>B</b> 有預算有促約機會・<b>C-1</b> 有關鍵人物預算不夠・<b>C-2</b> 關係好觀念還沒到・<b>C-3</b> 排斥忙沒需求，用寄的</div>
    ${CALL_FLOW.map(([h, l], i) => `<div class="sec"><h2>${i + 1}. ${h}</h2><ol class="cflow">${l.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>`).join('')}</div></div>`;
   $('cfX').onclick = () => (ov.innerHTML = '');
+  $('cfP').onclick = printCallFlow;
+}
+function printCallFlow() { // 一頁 A4：只印流程，不印 app 畫面
+  let pa = document.getElementById('printArea'); if (!pa) { pa = document.createElement('div'); pa.id = 'printArea'; document.body.appendChild(pa); }
+  pa.innerHTML = `<h1>服務件流程</h1><div class="plv">分級：<b>A</b> VIP 高度優先　<b>B</b> 有預算有促約機會　<b>C-1</b> 有關鍵人物預算不夠　<b>C-2</b> 關係好觀念還沒到　<b>C-3</b> 排斥忙沒需求，用寄的</div>
+   ${CALL_FLOW.map(([h, l], i) => `<h2>${i + 1}. ${esc(h)}</h2><ul>${l.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`).join('')}`;
+  document.body.classList.add('printing'); const done = () => { document.body.classList.remove('printing'); window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done); setTimeout(() => window.print(), 50); setTimeout(done, 60000);
 }
 const normAddr = (x) => (x || '').replace(/\s+/g, '').replace(/台/g, '臺').replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
 const hhKey = (k) => (k.hh ? 'h:' + k.hh : normAddr(k.addr) ? 'a:' + normAddr(k.addr) : 'n:' + k.id);
@@ -686,6 +695,18 @@ function openCallTagImport() { // 主管給的名單：貼序號或姓名，一�
   ov.querySelectorAll('[data-ktclear]').forEach((b) => (b.onclick = () => { if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = '再按一次確定清掉'; return; } const t = b.dataset.ktclear; calls().forEach((k) => { if ((k.tags || []).includes(t)) { k.tags = k.tags.filter((x) => x !== t); Vault.put('calls', k); } }); ov.innerHTML = ''; App.render(); toast('已清掉'); }));
   $('ktGo').onclick = () => { const t = $('ktName').value.trim(), m = match(); if (!t) { toast('先填標籤名稱'); return; } if (!m.hit.length) { toast('沒有找到人'); return; } m.hit.forEach((k) => { k.tags = [...new Set([...(k.tags || []), t])]; Vault.put('calls', k); }); ov.innerHTML = ''; S.ksort = 'call'; S.ktable = true; App.render(); toast(`已加上「${t}」${m.hit.length} 位`); };
 }
+const kQueue = () => calls().filter((k) => !k.other && ['未打', '未接'].includes(callProg(k))).sort((a, b) => callRank(a) - callRank(b) || areaSort(kArea(a), kArea(b)) || addrCmp(a, b));
+function kStartCalling(fromId) { // 照撥打順序找下一位：今天打過的先跳過
+  const q = kQueue(), today = localDay(), fresh = (k) => !(k.logs || []).some((l) => l.date === today);
+  let i = fromId ? q.findIndex((k) => k.id === fromId) : -1; let nx = q.slice(i + 1).find(fresh) || (fromId ? null : q.find(fresh));
+  if (!nx) { toast(q.length ? '今天這輪打完了，沒接的明天換時段再打' : '都打過了'); S.kcalling = false; App.render(); return; }
+  S.kcalling = true; S.view = 'calls'; S.ktable = false; S.kfromTable = false; S.ksel = nx.id; S.kres = ''; S.showDetail = true; App.render(); window.scrollTo(0, 0);
+}
+function kCallBarHTML(k) {
+  if (!S.kcalling) return ''; const q = kQueue(), r = callRank(k), lab = r === 0 ? '① ' + (k.tags || []).join('、') : r === 1 ? '② 已加 LINE' : r === 2 ? '③ 其他' : '';
+  const same = q.filter((x) => callRank(x) === r && kArea(x) === kArea(k)), pos = same.findIndex((x) => x.id === k.id);
+  return `<div class="kcallbar"><span><b>📞 撥打中</b>　${esc(lab)}・${esc(kArea(k) || '沒有地區')}${pos >= 0 ? `　第 ${pos + 1}／${same.length} 位` : ''}<span class="sub">　整份還有 ${q.length} 位沒接通</span></span><span style="display:flex;gap:6px"><button class="btn sm" data-act="kstop">結束</button><button class="btn sm pri" data-act="knext">下一位 ›</button></span></div>`;
+}
 function callTableHTML() {
   const all = calls(), q = S.q.trim(), hhs = callHouseholds(all), grpOf = (k) => hhs.get(hhKey(k));
   const areas = [...new Set(all.map(kArea).filter(Boolean))].sort(areaSort); if (S.kar !== '全部' && !areas.includes(S.kar)) S.kar = '全部';
@@ -723,7 +744,7 @@ function callTableHTML() {
      <td>${l ? `${esc(l.result)}<span class="sub"> ${fmtDay(l.date).slice(5)}</span>` : ''}</td><td>${gf ? `<span class="kg kg-${gf}">${gf}</span>` : ''}</td><td>${k.line ? '✓' : ''}</td>
      <td>${k.visitDate ? fmtDay(k.visitDate).slice(5) : pg === '已排訪' ? '✓' : ''}</td><td>${k.met ? '✓' : ''}</td><td class="knote">${esc((k.note || l?.note || '').slice(0, 40))}</td></tr>`; }).join('');
   const tableHTML = KG ? callGiftSheetHTML(list, gev, gevs) : `<div class="ktablewrap"><table class="ktable${E ? ' editing' : ''}"><thead><tr>${cols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>${list.length ? '' : '<div class="empty">沒有符合的對象。</div>'}</div>`;
-  return `<div class="colhead"><h1>服務件總表 <span style="display:flex;gap:6px;flex-wrap:wrap"><span class="seg2"><button class="btn sm${KG ? '' : ' pri'}" data-kview="prog">進度</button><button class="btn sm${KG ? ' pri' : ''}" data-kview="gift">🎁 送禮</button></span><span class="seg2">${[['call', '撥打順序'], ['no', '序號'], ['addr', '地址'], ...(all.some((k) => k.ord2 != null) ? [['co', '公司順序']] : []), ['hh', '家戶']].map(([v, l]) => `<button class="btn sm${S.ksort === v ? ' pri' : ''}" data-ksort="${v}">${l}</button>`).join('')}</span>${KG ? '' : `<button class="btn${E ? ' pri' : ''}" data-act="kedit">${E ? '✓ 改好了' : '✎ 直接修改'}</button>`}<button class="btn" data-act="cflow">流程</button><button class="btn" data-act="klist">‹ 回到名單</button><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="korder">匯入另一種排序</button><button class="btn" data-act="ktagimp">名單加標籤</button></span></h1>
+  return `<div class="colhead"><h1>服務件總表 <span style="display:flex;gap:6px;flex-wrap:wrap"><span class="seg2"><button class="btn sm${KG ? '' : ' pri'}" data-kview="prog">進度</button><button class="btn sm${KG ? ' pri' : ''}" data-kview="gift">🎁 送禮</button></span><span class="seg2">${[['call', '撥打順序'], ['no', '序號'], ['addr', '地址'], ...(all.some((k) => k.ord2 != null) ? [['co', '公司順序']] : []), ['hh', '家戶']].map(([v, l]) => `<button class="btn sm${S.ksort === v ? ' pri' : ''}" data-ksort="${v}">${l}</button>`).join('')}</span>${KG ? '' : `<button class="btn${E ? ' pri' : ''}" data-act="kedit">${E ? '✓ 改好了' : '✎ 直接修改'}</button>`}<button class="btn" data-act="klist">‹ 名單</button><details class="kmore"><summary class="btn">⋯ 更多</summary><div class="kmenu"><button class="btn" data-act="cflow">流程（可印 A4）</button><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="kphoto">📷 拍照新增</button><button class="btn" data-act="newcall">＋ 新增一位</button><button class="btn" data-act="ktagimp">名單加標籤</button><button class="btn" data-act="korder">匯入另一種排序</button></div></details><button class="btn pri" data-act="kstart">📞 開始打電話</button></span></h1>
    <div class="kfunnel">${funnel.map(([l, v]) => `<div><span>${l}</span><b>${v}</b></div>`).join('<i>›</i>')}</div>
    <input class="search" id="q" placeholder="搜尋序號、姓名、電話、地址、家戶" value="${esc(S.q)}" autocomplete="off">
    <div class="chips"><span class="sub" style="align-self:center">進度</span>${['全部', ...PROGS].map((x) => chip('kprog', x, x === '全部' ? all.length : na((k) => prog(k) === x))).join('')}</div>
@@ -759,7 +780,8 @@ function callListHTML() {
   if (S.kar !== '全部' && !areas.includes(S.kar)) S.kar = '全部';
   const list = all.filter((k) => (S.kst === '全部' || k.status === S.kst) && (S.kar === '全部' || kArea(k) === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && (!q || [k.name, k.phone, k.source, k.note, k.addr, k.area].join(' ').includes(q)))
     .sort((a, b) => rank(a) - rank(b) || (a.nextDate || '9999').localeCompare(b.nextDate || '9999') || noCmp(a, b));
-  return `<section class="col"><div class="colhead"><h1>服務件 <span style="display:flex;gap:6px"><button class="btn" data-act="cflow">流程</button><button class="btn pri" data-act="ktable">總表</button><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="kphoto">📷 拍照新增</button><button class="btn" data-act="newcall">＋ 新增</button></span></h1>
+  return `<section class="col"><div class="colhead"><h1>服務件 <span style="display:flex;gap:6px"><button class="btn" data-act="ktable">總表</button><details class="kmore"><summary class="btn">⋯ 更多</summary><div class="kmenu"><button class="btn" data-act="cflow">流程（可印 A4）</button><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="kphoto">📷 拍照新增</button><button class="btn" data-act="newcall">＋ 新增一位</button><button class="btn" data-act="ktagimp">名單加標籤</button><button class="btn" data-act="korder">匯入另一種排序</button></div></details></span></h1>
+  <button class="btn pri kstartbig" data-act="kstart">📞 開始打電話<span>照順序一位一位帶你打</span></button>
   <div class="mobsync">${syncHTML()}</div>
   <input class="search" id="q" placeholder="搜尋姓名、電話、地址、來源" value="${esc(S.q)}" autocomplete="off">
   <div class="chips">${['全部', ...CALL_ST].map((x) => `<button class="chip${S.kst === x ? ' on' : ''}" data-kst="${x}">${x} <span class="cnt">${x === '全部' ? all.length : all.filter((k) => k.status === x).length}</span></button>`).join('')}</div>
@@ -772,7 +794,7 @@ function callDetailHTML() {
   if (!k) return '<div class="empty">從左邊選一位要撥打的對象。</div>';
   const scs = scripts(); if (!scs.some((x) => x.id === S.script)) S.script = scs[0]?.id || null; const sc = Vault.get('notes', S.script);
   const cl = k.clientId && Vault.get('clients', k.clientId), logs = logsOf(k);
-  return `<button class="back" data-act="back">‹ 服務件名單</button>${S.kfromTable ? '<button class="btn sm" data-act="ktable" style="margin-bottom:8px">‹ 回總表</button>' : ''}
+  return `${kCallBarHTML(k)}<button class="back" data-act="back">‹ 服務件名單</button>${S.kfromTable ? '<button class="btn sm" data-act="ktable" style="margin-bottom:8px">‹ 回總表</button>' : ''}
   <div class="dhead"><input class="title" id="kf_name" data-kf="name" value="${esc(k.name)}" placeholder="姓名" aria-label="姓名"><button class="btn sm" data-act="kphotoin">📷 拍照帶入</button><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></div>
   <div class="sec"><h2>聯絡資料</h2><div class="grid2">
    <label class="f"><span style="display:flex;justify-content:space-between">電話${k.phone ? `<a class="linkbtn" href="tel:${esc(k.phone.replace(/[^0-9+#*]/g, ''))}">撥打</a>` : ''}</span><input id="kf_phone" data-kf="phone" inputmode="tel" value="${esc(k.phone)}"></label>
@@ -2078,6 +2100,9 @@ app.addEventListener('click', async (e) => {
     case 'kedit': S.kedit = !S.kedit; App.render(); break;
     case 'railtog': S.railMini = !S.railMini; try { localStorage.setItem('crm-railmini', S.railMini ? '1' : '0'); } catch (e) { } App.render(); break;
     case 'korder': openCallOrderImport(); break;
+    case 'kstart': kStartCalling(null); break;
+    case 'knext': kStartCalling(S.ksel); break;
+    case 'kstop': S.kcalling = false; App.render(); break;
     case 'ktagimp': openCallTagImport(); break;
     case 'kphoto': openCallPhoto(null); break;
     case 'kgiftgo': S.view = 'calls'; S.ktable = true; S.kview = 'gift'; S.showDetail = false; S.q = ''; App.render(); break;
@@ -2101,7 +2126,7 @@ app.addEventListener('click', async (e) => {
       const res = RESULTS.find(([r]) => r === S.kres);
       k.logs = [...(k.logs || []), { id: uid(), date: localDay(), at: new Date().toISOString(), result: S.kres || '通話', note }];
       if (res) k.status = res[1]; if (next) k.nextDate = next; else if (res && res[1] === '結案') k.nextDate = '';
-      Vault.put('calls', k); S.kres = ''; App.render(); toast('已記錄'); break;
+      Vault.put('calls', k); S.kres = ''; App.render(); toast(S.kcalling ? '已記錄，按上面「下一位 ›」繼續' : '已記錄'); break;
     }
     case 'tocliient': { const k = curCall(); if (!k) break; let cl = clients().find((x) => x.name === k.name && k.name); if (!cl) cl = Vault.put('clients', { name: k.name, phone: k.phone, note: [k.source, k.note].filter(Boolean).join('\n'), docs: [] }); k.clientId = cl.id; Vault.put('calls', k); App.render(); toast(`已轉成客戶「${cl.name || '未填姓名'}」`); break; }
     case 'delcall': if (armConfirm(b, '再按一次確定刪除')) { Vault.del('calls', S.ksel); S.ksel = null; S.showDetail = false; App.render(); } break;
