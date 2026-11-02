@@ -582,8 +582,10 @@ select.linktpl{border:1px solid var(--line);background:var(--surface);border-rad
 .kcallbar{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;padding:8px 12px;margin-bottom:10px;font-size:14px}
 #printArea{display:none}
 @media print{
- body.printing>*:not(#printArea){display:none!important}
- body.printing #printArea{display:block!important;color:#000;font:11.5pt/1.55 "Noto Sans TC","PingFang TC",sans-serif}
+ body.printing>*:not(#printArea),body:has(#printArea.on)>*:not(#printArea){display:none!important}
+ html:has(#printArea.on){height:auto!important}
+ body.printing,body:has(#printArea.on){background:#fff!important;height:auto!important;overflow:visible!important}
+ #printArea.on{display:block!important;color:#000;font:11.5pt/1.55 "Noto Sans TC","PingFang TC",sans-serif}
  @page{size:A4;margin:12mm 14mm}
  #printArea h1{font-size:17pt;margin:0 0 4pt}
  #printArea .plv{font-size:9.5pt;border:1px solid #999;border-radius:4pt;padding:4pt 6pt;margin-bottom:6pt}

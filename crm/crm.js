@@ -608,15 +608,15 @@ function openCallFlow() {
   <div class="ovbody" style="flex-direction:column;max-width:760px;margin:0 auto;width:100%">
    <div class="note">分級：<b>A</b> VIP 高度優先・<b>B</b> 有預算有促約機會・<b>C-1</b> 有關鍵人物預算不夠・<b>C-2</b> 關係好觀念還沒到・<b>C-3</b> 排斥忙沒需求，用寄的</div>
    ${CALL_FLOW.map(([h, l], i) => `<div class="sec"><h2>${i + 1}. ${h}</h2><ol class="cflow">${l.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>`).join('')}</div></div>`;
-  $('cfX').onclick = () => (ov.innerHTML = '');
+  $('cfX').onclick = () => { ov.innerHTML = ''; document.body.classList.remove('printing'); const pa = document.getElementById('printArea'); if (pa) pa.className = ''; };
   $('cfP').onclick = printCallFlow;
 }
 function printCallFlow() { // 一頁 A4：只印流程，不印 app 畫面
   let pa = document.getElementById('printArea'); if (!pa) { pa = document.createElement('div'); pa.id = 'printArea'; document.body.appendChild(pa); }
   pa.innerHTML = `<h1>服務件流程</h1><div class="plv">分級：<b>A</b> VIP 高度優先　<b>B</b> 有預算有促約機會　<b>C-1</b> 有關鍵人物預算不夠　<b>C-2</b> 關係好觀念還沒到　<b>C-3</b> 排斥忙沒需求，用寄的</div>
    ${CALL_FLOW.map(([h, l], i) => `<h2>${i + 1}. ${esc(h)}</h2><ul>${l.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`).join('')}`;
-  document.body.classList.add('printing'); const done = () => { document.body.classList.remove('printing'); window.removeEventListener('afterprint', done); };
-  window.addEventListener('afterprint', done); setTimeout(() => window.print(), 50); setTimeout(done, 60000);
+  pa.className = 'on'; document.body.classList.add('printing'); // iPad 會提早觸發列印結束，所以等關掉流程視窗才收回
+  setTimeout(() => window.print(), 80);
 }
 const normAddr = (x) => (x || '').replace(/\s+/g, '').replace(/台/g, '臺').replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
 const hhKey = (k) => (k.hh ? 'h:' + k.hh : normAddr(k.addr) ? 'a:' + normAddr(k.addr) : 'n:' + k.id);
