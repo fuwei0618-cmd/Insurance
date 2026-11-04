@@ -466,6 +466,7 @@ const App = {
     else if (v === 'quick') h += '<section class="wide">' + quickHTML() + '</section>';
     else if (v === 'tpl') h += '<section class="wide">' + notesHTML('tpl') + '</section>';
     else if (v === 'gifts') h += '<section class="wide">' + giftsHTML() + '</section>';
+    else if (v === 'binder') h += '<section class="wide">' + binderHTML() + '</section>';
     h += tabsHTML();
     const ae = document.activeElement, keep = ae?.id, pos = ae?.selectionStart, pos2 = ae?.selectionEnd; // 重畫後把游標放回原本那格，鍵盤才不會收起來
     const typing = ae && app.contains(ae) && (ae.tagName === 'TEXTAREA' || (ae.tagName === 'INPUT' && !['checkbox', 'radio', 'file', 'button'].includes(ae.type)));
@@ -477,6 +478,7 @@ const App = {
     if (keepSel && (same || keep === 'q')) { const el = app.querySelector(keepSel); if (el) { el.focus({ preventScroll: true }); try { el.setSelectionRange(pos, pos2 ?? pos); } catch (e) { } } }
     drawThumbs(); fitNotes();
     if (v === 'gifts' && S.gedit) giftSortWire();
+    if (v === 'binder') binderWire();
     if (v === 'clients' && curClient()) drawEgo(curClient());
   },
 };
@@ -1864,12 +1866,61 @@ function quickHTML() {
   <div class="card"><h3>常用電話</h3>${phones.map((p) => `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span>${esc(p.title)}</span><span style="font-family:var(--f-num)">${esc(p.body)} <button class="btn" style="padding:2px 8px;font-size:12px" data-editnote="${p.id}">改</button></span></div>`).join('') || '<div class="sub">還沒有電話。</div>'}
    <div class="mini"><button data-act="addphone">＋ 新增電話</button></div></div>
   ${(() => { const t = localDay(), due = calls().filter((k) => k.nextDate && k.nextDate <= t && k.status !== '結案').sort((a, b) => a.nextDate.localeCompare(b.nextDate)); return due.length ? `<div class="card"><h3>今天要回撥 <span class="sub">${due.length} 位</span></h3>${due.slice(0, 6).map((k) => `<button class="item" data-gocall="${k.id}"><span class="t"><span>${esc(k.name)}</span><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></span><span class="s">${k.nextDate < t ? '<span class="due">已過 ' + fmtDay(k.nextDate).slice(5) + '</span>' : '今天'}${k.source ? ' · ' + esc(k.source) : ''}</span></button>`).join('')}</div>` : ''; })()}
-  <div class="card"><h3>常用連結</h3><a class="item" href="https://claude.ai/artifact/8N7S3bcL3dBF1WaZr9nirm" target="_blank" rel="noopener"><span class="t"><span>📒 活頁簿目錄</span><span class="sub">開新分頁 ›</span></span><span class="s">保障本、儲蓄投資本要放的 DM，放好就打勾</span></a></div>
+  <div class="card"><h3>常用</h3><button class="item" data-nav="binder"><span class="t"><span>📒 活頁簿目錄</span><span class="sub">${(() => { const d = binderData(), m = d.rows.filter((r) => r.book === d.books[0]); return `已放 ${m.filter((r) => (d.done || []).includes(r.id)).length}/${m.length}`; })()} ›</span></span><span class="s">保障本、儲蓄投資本要放的 DM，放好就打勾</span></button></div>
   <div class="card"><h3>待辦案件 <span class="sub">${waiting.length} 件</span></h3>${waiting.slice(0, 6).map((c) => `<button class="item${itemCls(c.status)}" data-gocase="${c.id}"><span class="t"><span>${esc(c.client)} · ${esc(c.title)}</span><span class="pill ${pillCls(c.status)}">${c.status}</span></span><span class="s">${esc(c.next || '未填下一步')}</span></button>`).join('') || '<div class="sub">沒有待辦。</div>'}</div>
   <div class="card"><h3>同步</h3>${syncHTML()}<div class="sub">資料加密後存在 OneDrive › 應用程式 › Work › ${esc(FOLDER)}。iPad 和手機登入同一個帳號就會自動同步。每天第一次打開會自動備份一份，保留 30 天。</div>
    <div class="actions"><button class="btn" data-act="backups">備份與還原</button><button class="btn" data-act="trash">最近刪除${Files.trashed().filter((f) => f.trashCtx).length ? ' ' + Files.trashed().filter((f) => f.trashCtx).length : ''}</button></div>
    <div class="actions"><button class="btn" data-act="import">批次匯入</button><button class="btn" data-act="exportnotes">複製新契約備註（去掉姓名）</button><button class="btn" data-act="lock">鎖定</button><button class="btn" data-act="signout">登出</button></div></div>
   </div>`;
+}
+
+/* ================= 活頁簿目錄：DM 活頁簿要放什麼、放好打勾（存在 settings 'binder'） ================= */
+const BINDER_SEED = {"cats": {"idea": ["觀念", "--c-idea", 1], "low1": ["底層・實支", "--c-low", 2], "low2": ["底層・日額、手術", "--c-low", 2], "low3": ["底層・意外", "--c-low", 2], "mid1": ["中層・重疾", "--c-mid", 3], "mid2": ["中層・癌症", "--c-mid", 3], "top": ["頂層・長照", "--c-top", 4], "life": ["壽險", "--c-life", 4], "old": ["55 歲起・樂系列", "--c-old", 5], "back": ["封底", "--c-back", 5], "save": ["儲蓄", "--c-save"], "inv": ["投資型", "--c-save"]}, "books": ["保障本", "儲蓄投資本"], "rows": [{"id": "r30", "book": "儲蓄投資本", "cat": "idea", "name": "先保障、後理財", "sub": "用公司 DM", "q": null}, {"id": "r31", "book": "儲蓄投資本", "cat": "idea", "name": "儲蓄型和投資型差在哪", "sub": "用公司 DM", "q": null}, {"id": "r32", "book": "儲蓄投資本", "cat": "idea", "name": "投資型保單重點", "sub": "用公司 DM", "q": null}, {"id": "r33", "book": "儲蓄投資本", "cat": "save", "name": "繽利101", "sub": "台幣利變終身壽險", "q": 1}, {"id": "r34", "book": "儲蓄投資本", "cat": "save", "name": "豪美利101", "sub": "美元利變終身壽險", "q": 1}, {"id": "r35", "book": "儲蓄投資本", "cat": "inv", "name": "你常賣的投資型 DM", "sub": "", "q": null}, {"id": "r5", "book": "保障本", "cat": "idea", "name": "🌳保障金三角", "sub": "用公司金三角 DM", "q": null}, {"id": "r0", "book": "保障本", "cat": "idea", "name": "人生城堡：想守什麼", "sub": "用公司 DM", "q": null}, {"id": "r1", "book": "保障本", "cat": "idea", "name": "守不住會怎樣", "sub": "用公司 DM", "q": null}, {"id": "r2", "book": "保障本", "cat": "idea", "name": "保險是什麼", "sub": "用公司 DM", "q": null}, {"id": "r3", "book": "保障本", "cat": "idea", "name": "四大投保金律", "sub": "用公司 DM", "q": null}, {"id": "r4", "book": "保障本", "cat": "idea", "name": "需要買多少", "sub": "用公司 DM", "q": null}, {"id": "r36", "book": "保障本", "cat": "idea", "name": "🌳健保協同商保", "sub": "", "q": null}, {"id": "r37", "book": "保障本", "cat": "idea", "name": "🌳退休", "sub": "", "q": null}, {"id": "r38", "book": "保障本", "cat": "idea", "name": "🌳醫療補給站", "sub": "", "q": null}, {"id": "r39", "book": "保障本", "cat": "idea", "name": "🌳長照觀念", "sub": "", "q": null}, {"id": "r6", "book": "保障本", "cat": "low1", "name": "新實全心意PLUS", "sub": "實支、日額擇優", "q": 2}, {"id": "r7", "book": "保障本", "cat": "low1", "name": "超實在", "sub": "自負額實支", "q": 2}, {"id": "r8", "book": "保障本", "cat": "low1", "name": "倍愛醫靠 A 型", "sub": "繳費期內日額、期滿轉實支", "q": 3}, {"id": "r9", "book": "保障本", "cat": "low1", "name": "倍愛醫靠 B 型", "sub": "70 歲起轉實支", "q": 3}, {"id": "r11", "book": "保障本", "cat": "low3", "name": "超全方位傷害", "sub": "", "q": 1}, {"id": "r12", "book": "保障本", "cat": "low3", "name": "新金骨力", "sub": "骨折、脫臼", "q": 1}, {"id": "r10", "book": "保障本", "cat": "low2", "name": "新真大心PLUS", "sub": "日額 × 手術倍數", "q": 2}, {"id": "r13", "book": "保障本", "cat": "mid1", "name": "新鍾心滿福", "sub": "見卡理賠", "q": 2}, {"id": "r16", "book": "保障本", "cat": "mid2", "name": "IN康愛", "sub": "胸腔癌加倍", "q": 1}, {"id": "r17", "book": "保障本", "cat": "mid2", "name": "好豪康愛", "sub": "", "q": 2}, {"id": "r14", "book": "保障本", "cat": "mid2", "name": "醫護康愛", "sub": "一次金＋療程", "q": 2}, {"id": "r22", "book": "保障本", "cat": "top", "name": "睛智守護", "sub": "療程＋分期", "q": 1}, {"id": "r19", "book": "保障本", "cat": "top", "name": "安心守護 A 型", "sub": "", "q": 3}, {"id": "r20", "book": "保障本", "cat": "top", "name": "安心守護 B 型", "sub": "", "q": 3}, {"id": "r23", "book": "保障本", "cat": "life", "name": "IN享愛", "sub": "定期壽險", "q": 1}, {"id": "r26", "book": "保障本", "cat": "old", "name": "樂享平安", "sub": "意外", "q": 2}, {"id": "r25", "book": "保障本", "cat": "old", "name": "樂順心", "sub": "手術", "q": 2}, {"id": "r24", "book": "保障本", "cat": "old", "name": "樂心安", "sub": "住院", "q": 3}, {"id": "r15", "book": "保障本", "cat": "old", "name": "樂康愛", "sub": "", "q": 2}, {"id": "r21", "book": "保障本", "cat": "old", "name": "樂齡守護", "sub": "", "q": 3}, {"id": "r27", "book": "保障本", "cat": "old", "name": "樂鍾心", "sub": "特定傷病", "q": 1}, {"id": "r28", "book": "保障本", "cat": "back", "name": "理賠文件清單", "sub": "", "q": 1}, {"id": "r29", "book": "保障本", "cat": "back", "name": "T 字帳空白頁", "sub": "", "q": 1}], "done": ["r6", "r10", "r26", "r15", "r13", "r16", "r17"]};
+const BD_COLORS = { '--c-idea': '#B07A1E', '--c-low': '#3E7CB1', '--c-mid': '#C0662B', '--c-top': '#7A5BA6', '--c-life': '#2F7D5B', '--c-old': '#8A6A3A', '--c-back': '#6B6B6B', '--c-save': '#1E6F8E', '--c-other': '#7D7D7D' };
+const BD_DEFCOL = { idea: 1, low1: 2, low2: 2, low3: 2, mid1: 3, mid2: 3, top: 4, life: 4, old: 5, back: 5, save: 2, inv: 3 };
+let BD = { book: null, hide: false, edit: false, draft: null };
+function binderData() { const b = Vault.get('settings', 'binder'); if (b && b.rows) return b; return { id: 'binder', ...JSON.parse(JSON.stringify(BINDER_SEED)) }; }
+const bdCat = (k, d) => d.cats[k] || ['未分類', '--c-other'];
+const bdCol = (k, d) => bdCat(k, d)[2] || BD_DEFCOL[k] || 5;
+const bdSheets = (a) => a.reduce((t, r) => t + (r.q || 0), 0);
+function binderHTML() {
+  const base = binderData(), d = BD.edit ? BD.draft : base, done = new Set(d.done || []);
+  if (!BD.book || !d.books.includes(BD.book)) BD.book = d.books[0];
+  const mine = d.rows.filter((r) => r.book === BD.book), cats = []; mine.forEach((r) => { if (!cats.includes(r.cat)) cats.push(r.cat); });
+  const card = (c) => { const all = mine.filter((r) => r.cat === c), rs = BD.edit ? all : all.filter((r) => !BD.hide || !done.has(r.id)); if (!BD.edit && !rs.length) return ''; const [cl, cv] = bdCat(c, d);
+    return `<div class="bdcard" data-bcat="${c}"><div class="bdch">${BD.edit ? '<span class="bdcg" aria-label="按住拖曳整張卡">⠿</span>' : ''}<i style="background:${BD_COLORS[cv] || '#7D7D7D'}"></i>${BD.edit ? `<input type="text" id="bdcat-${c}" data-bdcat="${c}" value="${esc(cl)}" aria-label="分類名稱">` : esc(cl)}<small>${all.filter((r) => done.has(r.id)).length}/${all.length}・${bdSheets(all)} 張</small></div><div class="bdits">
+     ${rs.map((r) => BD.edit
+      ? `<div class="bdit ed" data-bid="${r.id}"><span class="bdg" aria-label="按住拖曳">⠿</span><span class="bdtwo"><input type="text" id="bdn-${r.id}" data-bf="name" value="${esc(r.name)}" placeholder="名稱" aria-label="名稱"><input class="sb" type="text" id="bds-${r.id}" data-bf="sub" value="${esc(r.sub)}" placeholder="小字（可空白）" aria-label="說明"></span><input class="qq" type="text" inputmode="numeric" id="bdq-${r.id}" data-bf="q" value="${r.q ?? ''}" placeholder="—" aria-label="張數"><button type="button" class="bdx" data-bdel="${r.id}" aria-label="刪除">✕</button></div>`
+      : `<label class="bdit${done.has(r.id) ? ' got' : ''}" for="bdc-${r.id}"><input type="checkbox" id="bdc-${r.id}" data-bdone="${r.id}"${done.has(r.id) ? ' checked' : ''}><span class="bdnm" title="${esc(r.name + (r.sub ? '・' + r.sub : ''))}">${esc(r.name)}${r.sub ? `<small>${esc(r.sub)}</small>` : ''}</span><span class="bdq">${r.q ?? '—'}</span></label>`).join('')}</div>
+     ${BD.edit ? `<button type="button" class="bdadd" data-badd="${c}">＋ 加一項</button>` : ''}</div>`; };
+  const n = Math.max(1, ...cats.map((c) => bdCol(c, d))); let cols = '';
+  for (let i = 1; i <= n; i++) cols += `<div class="bdcol" data-bcol="${i}">${cats.filter((c) => bdCol(c, d) === i).map(card).join('')}${BD.edit && i === n ? '<button type="button" class="bdcard bdnew bdadd" data-badd="__new">＋ 新增一個分類</button>' : ''}</div>`;
+  return `<div class="colhead"><h1>活頁簿目錄 <span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" data-nav="quick">‹ 快查</button>${BD.edit ? '' : `<button class="btn${BD.hide ? ' pri' : ''}" data-act="bdhide">只看還沒放的</button>`}<button class="btn${BD.edit ? ' pri' : ''}" data-act="bdedit">${BD.edit ? '✓ 改好了' : '✎ 增減項目'}</button></span></h1>
+   <div class="chips">${d.books.map((b) => `<button class="chip${BD.book === b ? ' on' : ''}" data-bbook="${esc(b)}">${esc(b)}</button>`).join('')}<span class="sub" style="align-self:center">${mine.length} 項・約 <b>${bdSheets(mine)}</b> 張・已放 <b>${mine.filter((r) => done.has(r.id)).length}/${mine.length}</b>・還要放約 <b>${bdSheets(mine.filter((r) => !done.has(r.id)))}</b> 張</span></div>
+   ${BD.edit ? '<div class="note">點字直接改；按住項目左邊 ⠿ 拖曳換順序，拖到別張卡就換分類；按住卡片標題的 ⠿ 整張卡換位置、也可以拖到別欄；✕ 按兩次刪除；改完按「✓ 改好了」。</div>' : ''}</div>
+  <div class="bdgrid${BD.edit ? ' editing' : ''}" style="--n:${n}">${cols || '<div class="empty">這一本都放好了。</div>'}</div>
+  <div class="sub" style="margin-top:6px">由左到右：觀念 → 底層 → 中層 → 頂層・壽險 → 其他，欄內由上往下，就是活頁簿翻頁的順序。張數是官網 PDF 雙面印刷估算。</div>`;
+}
+function binderSave(d) { Vault.put('settings', { ...d, id: 'binder' }); }
+function binderAddCat(name) { const d = BD.draft, k = 'c' + Date.now().toString(36), n = Math.max(1, ...Object.keys(d.cats).map((c) => bdCol(c, d))); d.cats[k] = [name, '--c-other', n]; return k; }
+function binderWire() { // 拖曳：項目、整張卡
+  const g = app.querySelector('.bdgrid'); if (!g || !BD.edit) return;
+  g.onpointerdown = (e) => {
+    const ih = e.target.closest('.bdg'), ch = e.target.closest('.bdcg'); if (!ih && !ch) return; e.preventDefault();
+    const el = ih ? ih.closest('.bdit') : ch.closest('.bdcard'); el.classList.add('dragging');
+    const mv = (ev) => { const u = document.elementFromPoint(ev.clientX, ev.clientY); if (!u) return;
+      if (ih) { const t = u.closest('.bdit'); if (t && t !== el && g.contains(t)) { const r = t.getBoundingClientRect(); ev.clientY > r.top + r.height / 2 ? t.after(el) : t.before(el); return; }
+        const cd = u.closest('.bdcard[data-bcat]'); if (cd && !t) { const box = cd.querySelector('.bdits'); u.closest('.bdch') ? box.prepend(el) : (!box.contains(el) && box.append(el)); } return; }
+      const t = u.closest('.bdcard[data-bcat]'); if (t && t !== el && g.contains(t)) { const r = t.getBoundingClientRect(); ev.clientY > r.top + r.height / 2 ? t.after(el) : t.before(el); return; }
+      const col = u.closest('.bdcol'); if (col && !t && !col.contains(el)) { const nb = col.querySelector('.bdnew'); nb ? col.insertBefore(el, nb) : col.appendChild(el); } };
+    const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); el.classList.remove('dragging');
+      const d = BD.draft, order = [];
+      g.querySelectorAll('.bdcol').forEach((col) => { const i = +col.dataset.bcol; col.querySelectorAll('.bdcard[data-bcat]').forEach((cd) => { const k = cd.dataset.bcat, c = bdCat(k, d); d.cats[k] = [c[0], c[1], i];
+        if (ih) cd.querySelectorAll('.bdit[data-bid]').forEach((it) => { const r = d.rows.find((x) => x.id === it.dataset.bid); if (r) { r.cat = k; order.push(r); } });
+        else d.rows.filter((r) => r.book === BD.book && r.cat === k).forEach((r) => order.push(r)); }); });
+      d.rows = [...d.rows.filter((r) => r.book !== BD.book), ...order]; App.render(); };
+    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+  };
 }
 
 /* ---------- 縮圖 ---------- */
@@ -2016,6 +2067,9 @@ app.addEventListener('click', async (e) => {
   if (d.kprog) { S.kprog = d.kprog; App.render(); return; }
   if (d.kmark) { S.kmark = d.kmark; App.render(); return; }
   if (d.ksort) { S.ksort = d.ksort; App.render(); return; }
+  if (d.bbook) { BD.book = d.bbook; App.render(); return; }
+  if (d.bdel && BD.edit) { if (!b.classList.contains('sure')) { b.classList.add('sure'); b.textContent = '刪除'; setTimeout(() => { if (b.isConnected) { b.classList.remove('sure'); b.textContent = '✕'; } }, 3000); return; } BD.draft.rows = BD.draft.rows.filter((x) => x.id !== d.bdel); BD.draft.done = (BD.draft.done || []).filter((x) => x !== d.bdel); App.render(); return; }
+  if (d.badd && BD.edit) { let c = d.badd, fc = false; if (c === '__new') { c = binderAddCat('新分類'); fc = true; } const rows = BD.draft.rows, nr = { id: 'r' + Date.now().toString(36), book: BD.book, cat: c, name: '', sub: '', q: null }; let last = -1; rows.forEach((x, j) => { if (x.book === BD.book && x.cat === c) last = j; }); if (last < 0) rows.push(nr); else rows.splice(last + 1, 0, nr); App.render(); setTimeout(() => { const el = $(fc ? 'bdcat-' + c : 'bdn-' + nr.id); if (el) { el.focus(); if (fc) el.select(); } }, 30); return; }
   if (d.ktagdel) { const k = curCall(); if (k) { k.tags = (k.tags || []).filter((x) => x !== d.ktagdel); Vault.put('calls', k); App.render(); } return; }
   if (d.kview) { S.kview = d.kview; App.render(); return; }
   if (d.kgev) { S.gev = d.kgev; App.render(); return; }
@@ -2104,6 +2158,10 @@ app.addEventListener('click', async (e) => {
     case 'kstart': kStartCalling(null); break;
     case 'knext': kStartCalling(S.ksel); break;
     case 'kstop': S.kcalling = false; App.render(); break;
+    case 'bdhide': BD.hide = !BD.hide; App.render(); break;
+    case 'bdedit': { if (!BD.edit) { BD.draft = JSON.parse(JSON.stringify(binderData())); BD.edit = true; App.render(); break; }
+      const dd = BD.draft; dd.rows = dd.rows.filter((r) => (r.name || '').trim()); const used = new Set(dd.rows.map((r) => r.cat)); Object.keys(dd.cats).forEach((k) => { if (!used.has(k) && !BINDER_SEED.cats[k]) delete dd.cats[k]; }); dd.done = (dd.done || []).filter((x) => dd.rows.some((r) => r.id === x));
+      binderSave(dd); BD.edit = false; BD.draft = null; App.render(); toast('已儲存'); break; }
     case 'ktagimp': openCallTagImport(); break;
     case 'kphoto': openCallPhoto(null); break;
     case 'kgiftgo': S.view = 'calls'; S.ktable = true; S.kview = 'gift'; S.showDetail = false; S.q = ''; App.render(); break;
@@ -2206,6 +2264,9 @@ function linkClient(c) { // 案件填了客戶名字：找到同名客戶就連�
 app.addEventListener('change', () => { App._defer = true; setTimeout(() => (App._defer = false), 0); }, true);
 app.addEventListener('change', (e) => {
   if (e.target.id === 'kScript') { S.script = e.target.value; App.render(); return; }
+  const bdn = e.target.dataset?.bdone; if (bdn) { const dd = binderData(), set = new Set(dd.done || []); e.target.checked ? set.add(bdn) : set.delete(bdn); dd.done = [...set]; binderSave(dd); App.render(); return; }
+  if (BD.edit && e.target.dataset?.bdcat) { const v = e.target.value.trim(), k = e.target.dataset.bdcat, c = bdCat(k, BD.draft); if (v) BD.draft.cats[k] = [v, c[1], bdCol(k, BD.draft)]; return; }
+  const bf = e.target.dataset?.bf; if (bf && BD.edit) { const it = e.target.closest('[data-bid]'), r = it && BD.draft.rows.find((x) => x.id === it.dataset.bid); if (!r) return; if (bf === 'q') { const n = parseInt(e.target.value, 10); r.q = isNaN(n) ? null : Math.max(0, n); } else r[bf] = e.target.value.trim(); return; }
   const kgq = e.target.dataset?.kgq; if (kgq) { const [cid, iid] = kgq.split(':'), n = Math.max(0, parseInt(e.target.value, 10) || 0), g = kgRec(cid); if (!g) return; g.items = { ...(g.items || {}) }; if (n) g.items[iid] = n; else delete g.items[iid]; kgTidy(g); if (n) { const k = Vault.get('calls', cid); if (k?.giftSkip) { k.giftSkip = false; Vault.put('calls', k); } } App.render(); return; }
   const kgm = e.target.dataset?.kgm; if (kgm) { const g = kgRec(kgm); if (!g) return; g.method = e.target.value; kgTidy(g); App.render(); return; }
   const kgd = e.target.dataset?.kgd; if (kgd) { const g = kgRec(kgd); if (!g) return; g.status = e.target.checked ? '已送' : '預備'; g.doneDate = e.target.checked ? localDay() : ''; kgTidy(g); App.render(); return; }
