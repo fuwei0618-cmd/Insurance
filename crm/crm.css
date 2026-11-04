@@ -592,3 +592,4 @@ select.linktpl{border:1px solid var(--line);background:var(--surface);border-rad
  #printArea h2{font-size:11.5pt;margin:7pt 0 2pt;border-bottom:1px solid #bbb;padding-bottom:1pt}
  #printArea ul{margin:0;padding-left:16pt}#printArea li{margin:1pt 0}
 }
+a.item{color:inherit;text-decoration:none;box-sizing:border-box}
