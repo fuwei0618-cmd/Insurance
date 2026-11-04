@@ -1879,7 +1879,16 @@ const BINDER_SEED = {"cats": {"idea": ["觀念", "--c-idea", 1], "low1": ["底�
 const BD_COLORS = { '--c-idea': '#B07A1E', '--c-low': '#3E7CB1', '--c-mid': '#C0662B', '--c-top': '#7A5BA6', '--c-life': '#2F7D5B', '--c-old': '#8A6A3A', '--c-back': '#6B6B6B', '--c-save': '#1E6F8E', '--c-other': '#7D7D7D' };
 const BD_DEFCOL = { idea: 1, low1: 2, low2: 2, low3: 2, mid1: 3, mid2: 3, top: 4, life: 4, old: 5, back: 5, save: 2, inv: 3 };
 let BD = { book: null, hide: false, edit: false, draft: null };
-function binderData() { const b = Vault.get('settings', 'binder'); if (b && b.rows) return b; return { id: 'binder', ...JSON.parse(JSON.stringify(BINDER_SEED)) }; }
+function binderMigrate(b) { // 第 1 步：觀念欄照手冊第一章排，每節配一份紙本（2026/11/4）
+  if (b.mig >= 1) return b;
+  const IDEA = [['r0', '人生城堡：想守什麼', '🌳 公司 DM：28000'], ['r1', '守不住會怎樣', '手冊印一頁'], ['r2', '保險是什麼', '🌳 公司 DM：健保協同商保'], ['r3', '四大投保金律', '手冊印一頁'], ['r4', '需要買多少', '🌳 公司 DM：321+1'], ['r5', '🌳保障金三角', '🌳 公司 DM']];
+  const done = new Set(b.done || []); if (done.has('r36')) done.add('r2');
+  const keep = b.rows.filter((r) => !(r.book === '保障本' && (IDEA.some(([id]) => id === r.id) || r.id === 'r36')));
+  const firstIdx = keep.findIndex((r) => r.book === '保障本'); const head = IDEA.map(([id, name, sub]) => ({ id, book: '保障本', cat: 'idea', name, sub, q: null }));
+  const rest = keep.filter((r) => r.book === '保障本'), others = keep.filter((r) => r.book !== '保障本');
+  b.rows = [...others, ...head, ...rest]; b.done = [...done].filter((x) => x !== 'r36'); b.mig = 1; Vault.put('settings', b); return b;
+}
+function binderData() { const b = Vault.get('settings', 'binder'); if (b && b.rows) return binderMigrate(b); return binderMigrate({ id: 'binder', ...JSON.parse(JSON.stringify(BINDER_SEED)) }); }
 const bdCat = (k, d) => d.cats[k] || ['未分類', '--c-other'];
 const bdCol = (k, d) => bdCat(k, d)[2] || BD_DEFCOL[k] || 5;
 const bdSheets = (a) => a.reduce((t, r) => t + (r.q || 0), 0);
