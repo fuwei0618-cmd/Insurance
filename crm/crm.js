@@ -1888,7 +1888,18 @@ function binderMigrate(b) { // 第 1 步：觀念欄照手冊第一章排，每�
   const rest = keep.filter((r) => r.book === '保障本'), others = keep.filter((r) => r.book !== '保障本');
   b.rows = [...others, ...head, ...rest]; b.done = [...done].filter((x) => x !== 'r36'); b.mig = 1; Vault.put('settings', b); return b;
 }
-function binderData() { const b = Vault.get('settings', 'binder'); if (b && b.rows) return binderMigrate(b); return binderMigrate({ id: 'binder', ...JSON.parse(JSON.stringify(BINDER_SEED)) }); }
+function binderMigrate2(b) { // 第 2 步：公司觀念 DM 放到它那一層最前面（2026/11/4）
+  if (b.mig >= 2) return b;
+  b.cats.lowi = b.cats.lowi || ['底層・觀念', '--c-low', 2]; b.cats.topi = b.cats.topi || ['頂層・觀念', '--c-top', 4];
+  const take = (id) => { const i = b.rows.findIndex((r) => r.id === id); return i < 0 ? null : b.rows.splice(i, 1)[0]; };
+  const put = (row, before) => { const i = b.rows.findIndex(before); i < 0 ? b.rows.push(row) : b.rows.splice(i, 0, row); };
+  const med = take('r38'), ltc = take('r39'), ret = take('r37');
+  if (med) put({ ...med, cat: 'lowi', sub: med.sub || '🌳 公司 DM' }, (r) => r.book === '保障本' && /^low/.test(r.cat));
+  if (ltc) put({ ...ltc, cat: 'topi', sub: ltc.sub || '🌳 公司 DM' }, (r) => r.book === '保障本' && (r.cat === 'top' || r.cat === 'life'));
+  if (ret) put({ ...ret, book: '儲蓄投資本', cat: 'idea', sub: ret.sub || '🌳 公司 DM' }, (r) => r.book === '儲蓄投資本');
+  b.mig = 2; Vault.put('settings', b); return b;
+}
+function binderData() { const b = Vault.get('settings', 'binder'); if (b && b.rows) return binderMigrate2(binderMigrate(b)); return binderMigrate2(binderMigrate({ id: 'binder', ...JSON.parse(JSON.stringify(BINDER_SEED)) })); }
 const bdCat = (k, d) => d.cats[k] || ['未分類', '--c-other'];
 const bdCol = (k, d) => bdCat(k, d)[2] || BD_DEFCOL[k] || 5;
 const bdSheets = (a) => a.reduce((t, r) => t + (r.q || 0), 0);
