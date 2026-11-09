@@ -498,10 +498,14 @@ mark{background:linear-gradient(transparent 55%,rgba(224,177,99,.55) 55%);color:
 <section class="pane" data-i="32" hidden>
 <div class="hero" style="--c:var(--gold)"><span class="loss">入口　見面前先翻這頁</span><h2>需求地圖：聽到什麼，翻哪一頁</h2><p class="truth">客戶說的那一句 → 背後的需要 → 手冊哪一頁。電話裡只提一樣，見面前翻到那一頁準備。</p></div>
 <style>
-.pg-nm{display:flex;flex-direction:column;gap:18px;min-width:0;margin-top:16px}
+.pg-nm{display:flex;flex-direction:column;gap:16px;min-width:0;margin-top:16px}
 .pg-nm .how{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .pg-nm .how div{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:14.5px;line-height:1.6}
 .pg-nm .how b{display:block;font-size:16px}
+.pg-nm .tabs{display:flex;gap:6px;flex-wrap:wrap;position:sticky;top:0;z-index:3;background:var(--bg,#fff);padding:6px 0}
+.pg-nm .tabs button{font:inherit;font-size:15px;font-weight:700;border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:6px 16px;cursor:pointer;color:inherit}
+.pg-nm .tabs button.on{background:#2B2B2B;color:#fff;border-color:#2B2B2B}
+.pg-nm .mode[hidden]{display:none}
 .pg-nm .zone{border-radius:16px;padding:14px;border:1px solid var(--line);background:var(--paper)}
 .pg-nm .zh{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 10px}
 .pg-nm .zh h3{margin:0;font-family:var(--serif);font-size:22px;font-weight:900}
@@ -512,156 +516,102 @@ mark{background:linear-gradient(transparent 55%,rgba(224,177,99,.55) 55%);color:
 .pg-nm .nc header b{font-size:20px;font-weight:900}
 .pg-nm .nc header small{font-size:12.5px;opacity:.9}
 .pg-nm .nc .bd{padding:10px 14px 12px;display:flex;flex-direction:column;gap:7px;flex:1}
-.pg-nm .nc h4{margin:0;font-size:12.5px;color:var(--muted);font-weight:700}
-.pg-nm .nc p{margin:0;font-size:14.5px;line-height:1.6}
-.pg-nm .nc .say{background:color-mix(in srgb,var(--k) 9%,transparent);border-left:4px solid var(--k);border-radius:6px;padding:6px 10px}
+.pg-nm h4{margin:0;font-size:12.5px;color:var(--muted);font-weight:700}
+.pg-nm .nc p,.pg-nm .tcard p{margin:0;font-size:14.5px;line-height:1.6}
+.pg-nm .say{background:color-mix(in srgb,var(--k) 9%,transparent);border-left:4px solid var(--k);border-radius:6px;padding:6px 10px}
 .pg-nm .go{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:4px}
 .pg-nm .go button{font:inherit;font-size:13.5px;border:1px solid var(--k);color:var(--k);background:transparent;border-radius:999px;padding:3px 10px;cursor:pointer}
 .pg-nm .go button:hover{background:var(--k);color:#fff}
 .pg-nm .go em{font-style:normal;font-size:13px;color:var(--muted);align-self:center}
-.pg-nm table{width:100%;border-collapse:collapse;font-size:14.5px}
-.pg-nm th,.pg-nm td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;line-height:1.6}
-.pg-nm th{font-size:13px;color:var(--muted)}
+/* 小鎮 */
+.pg-nm .town{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:12px;align-items:start}
+.pg-nm .tmap{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#EAF3E6}
+.pg-nm .tmap img,.pg-nm .tmap svg{width:100%;display:block}
+.pg-nm .pin{position:absolute;transform:translate(-50%,-50%);border:3px solid #fff;border-radius:999px;padding:3px 12px 3px 4px;display:flex;align-items:center;gap:6px;font:inherit;font-size:14px;font-weight:900;color:#fff;background:var(--k);cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25);white-space:nowrap;transition:transform .2s}
+.pg-nm .pin i{font-style:normal;width:26px;height:26px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px}
+.pg-nm .pin:hover,.pg-nm .pin.on{transform:translate(-50%,-50%) scale(1.12)}
+.pg-nm .pin.on{outline:3px solid #F2B25C}
+.pg-nm .tside{display:flex;flex-direction:column;gap:10px}
+.pg-nm .tcard{background:var(--card,#fff);border:1px solid var(--line);border-top:5px solid var(--k);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.pg-nm .tcard>b{font-size:18px}
+.pg-nm .tcard .sub{border-top:1px dashed var(--line);padding-top:8px;display:flex;flex-direction:column;gap:5px}
+.pg-nm .tcard .sub b{font-size:15.5px;color:var(--k)}
+.pg-nm .tip{font-size:13.5px;color:var(--muted);margin:0}
+/* 人生路線 */
+.pg-nm .nmroad{display:flex;gap:0;overflow-x:auto;padding:10px 4px 6px;scroll-snap-type:x proximity}
+.pg-nm .nmst{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:96px;position:relative;scroll-snap-align:start;background:none;border:0;font:inherit;color:inherit;cursor:pointer;padding:0 4px}
+.pg-nm .nmst::before{content:"";position:absolute;top:22px;left:0;right:0;height:6px;background:#D9D2C3;z-index:0}
+.pg-nm .nmst:first-child::before{left:50%}.pg-nm .nmst:last-child::before{right:50%}
+.pg-nm .nmst .nmdot{width:44px;height:44px;border-radius:50%;background:#fff;border:3px solid #B9AF9C;display:flex;align-items:center;justify-content:center;font-size:21px;z-index:1}
+.pg-nm .nmst.done::before{background:#E3B65C}.pg-nm .nmst.done .dot{border-color:#E3B65C}
+.pg-nm .nmst.on .dot{background:#2B2B2B;border-color:#2B2B2B;transform:scale(1.15)}
+.pg-nm .nmst span{font-size:13.5px;font-weight:700;text-align:center;line-height:1.3}
+.pg-nm .stcard{background:var(--card,#fff);border:1px solid var(--line);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.pg-nm .stcard h3{margin:0;font-family:var(--serif);font-size:24px;font-weight:900}
+.pg-nm .stcard .scene{margin:0;font-size:15px;line-height:1.7}
+.pg-nm .stneeds{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.pg-nm .stneeds>div{border:1px solid var(--line);border-left:5px solid var(--k);border-radius:10px;padding:8px 12px;display:flex;flex-direction:column;gap:5px}
+.pg-nm .stneeds b{font-size:16px}
+.pg-nm .tag{display:inline-block;font-size:12px;font-weight:700;border-radius:6px;padding:0 6px;margin-left:6px;vertical-align:2px;color:#fff;background:var(--k)}
+.pg-nm .stnav{display:flex;justify-content:space-between;gap:8px}
+.pg-nm .stnav button{font:inherit;font-size:14.5px;border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:6px 14px;cursor:pointer;color:inherit}
+.pg-nm .stnav button:disabled{opacity:.35}
+/* 縝密表 */
+.pg-nm .tfilter{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pg-nm .tfilter button{font:inherit;font-size:13.5px;border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:3px 12px;cursor:pointer;color:inherit}
+.pg-nm .tfilter button.on{background:var(--k,#2B2B2B);color:#fff;border-color:transparent}
+.pg-nm .twrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card,#fff);overscroll-behavior-x:contain}
+.pg-nm table.big{border-collapse:separate;border-spacing:0;font-size:14px;min-width:1500px;width:100%}
+.pg-nm table.big td{min-width:130px}
+.pg-nm table.big th,.pg-nm table.big td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;line-height:1.6}
+.pg-nm table.big thead th{position:sticky;top:0;background:var(--paper);font-size:12.5px;color:var(--muted);z-index:1}
+.pg-nm table.big td:first-child,.pg-nm table.big th:first-child{position:sticky;left:0;background:var(--card,#fff);z-index:2;min-width:118px;box-shadow:1px 0 0 var(--line)}
+.pg-nm table.big thead th:first-child{background:var(--paper);z-index:3}
+.pg-nm table.big td:first-child b{display:block;font-size:15.5px;color:var(--k)}
+.pg-nm table.big td:first-child small{color:var(--muted)}
+.pg-nm table.big tr.zrow td{background:var(--paper);font-weight:900;font-size:15px;position:static}
+.pg-nm table.big td .go{margin:0;padding:0}
+.pg-nm table.small{width:100%;border-collapse:collapse;font-size:14.5px}
+.pg-nm table.small th,.pg-nm table.small td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;line-height:1.6}
+.pg-nm table.small th{font-size:13px;color:var(--muted)}
 .pg-nm .rule{font-size:18px;font-weight:900;font-family:var(--serif);margin:10px 0 4px}
-@media (max-width:760px){.pg-nm .how{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:820px){.pg-nm .tabs button{font-size:13.5px;padding:5px 11px}.pg-nm .nmst{min-width:84px}.pg-nm .how{grid-template-columns:minmax(0,1fr)}.pg-nm .town{grid-template-columns:minmax(0,1fr)}.pg-nm .pin{font-size:11.5px;padding:2px 7px 2px 3px;border-width:2px}.pg-nm .pin i{width:19px;height:19px;font-size:11px}}
 </style>
-<div class="pg-nm">
+<div class="pg-nm" id="nmRoot">
 
 <div class="how">
 <div><b>① 聽</b>客戶說到生活上的變化，就是線索。不打斷，不急著接商品。</div>
-<div><b>② 對</b>在下面找到那一句，看背後是「怕失去」還是「想得到」。</div>
+<div><b>② 對</b>找到那一句，看背後是「怕失去」還是「想得到」。</div>
 <div><b>③ 提一樣，再翻頁</b>電話裡只說「接一句」，說完就停。約到了，見面前按按鈕翻到那一頁準備。</div>
 </div>
 
-<div class="zone" style="border-top:6px solid var(--gold)">
-<div class="zh"><h3>萬用：什麼線索都沒聽到</h3><span>每一通都可以用</span></div>
-<div class="grid"><div class="nc" style="--k:var(--gold)"><header><b>保單整理</b><small>不講缺口，先幫忙</small></header><div class="bd">
-<h4>客戶常說</h4><p>「都好啊」「沒什麼變化」「保險之前都買了」</p>
-<h4>背後的需要</h4><p>自己有哪些保單、哪裡重複、哪裡不夠，其實不清楚。</p>
-<h4>接一句</h4><p class="say">「您保單也好幾年了，我可以免費幫您整理成一張表，以後要理賠一看就知道找哪一張。」</p>
-<div class="go"><button data-goto="c3-check">保單健檢 ›</button><button data-goto="map">保障地圖 ›</button></div>
-</div></div></div>
+<div class="tabs" role="tablist">
+<button data-nmt="town" class="on">🏘 生活小鎮</button><button data-nmt="road">🛤 人生路線</button><button data-nmt="table">📋 縝密表</button><button data-nmt="cards">🗂 卡片</button>
 </div>
 
-<div class="zone" style="border-top:6px solid var(--med)">
-<div class="zh"><h3>怕失去</h3><span>走第二章：保障與工具</span></div>
-<div class="grid">
+<div class="mode" data-nmm="town">
+<div class="town">
+ <div class="tmap" id="nmMap"></div>
+ <div class="tside" id="nmSide"><div class="tcard" style="--k:var(--gold)"><b>點小鎮上的地方</b><p>客戶說到哪個地方的事，就點哪裡，看會聽到什麼、背後的需要、怎麼接一句。</p><div class="sub" style="--k:var(--gold)"><b>什麼線索都沒聽到？</b><p class="say">「您保單也好幾年了，我可以免費幫您整理成一張表，以後要理賠一看就知道找哪一張。」</p><div class="go" style="--k:var(--gold)"><button data-goto="c3-check">保單健檢 ›</button><button data-goto="map">保障地圖 ›</button></div></div></div></div>
+</div>
+</div>
 
-<div class="nc" style="--k:var(--med)"><header><b>醫療費</b><small>住院、手術、自費</small></header><div class="bd">
-<h4>客戶常說</h4><p>「朋友住院，自費好貴」「最近要開刀、做檢查」「健保很多不給付」</p>
-<h4>背後的需要</h4><p>怕住院、手術、自費藥材的帳單，一次付不出來。</p>
-<h4>接一句</h4><p class="say">「您現在的醫療險是定額的還是實支的？我幫您整理一下就知道夠不夠。」</p>
-<div class="go"><button data-goto="medexp">實支實付 ›</button><button data-goto="hosp">疾病住院 ›</button><button data-goto="surgery">手術 ›</button><button data-goto="accident">意外險 ›</button></div>
-</div></div>
+<div class="mode" data-nmm="road" hidden>
+<div class="nmroad" id="nmRoad"></div>
+<div class="stcard" id="nmSt"></div>
+</div>
 
-<div class="nc" style="--k:var(--inc)"><header><b>收入中斷</b><small>生大病不能工作</small></header><div class="bd">
-<h4>客戶常說</h4><p>「朋友得癌症，好久沒辦法上班」「我是家裡經濟支柱」「聽說標靶藥很貴」</p>
-<h4>背後的需要</h4><p>治療那幾年，醫藥費加上生活費，從哪裡來。</p>
-<h4>接一句</h4><p class="say">「萬一要休養一兩年，那段時間的生活費，您有想過從哪裡來嗎？」</p>
-<div class="go"><button data-goto="cancer">癌症險 ›</button><button data-goto="ci">重大傷病 ›</button><button data-goto="ci-compare">重疾比一比 ›</button><button data-goto="save-cards">存錢＋保一種病 ›</button></div>
-</div></div>
+<div class="mode" data-nmm="table" hidden>
+<div class="tfilter" id="nmTf"></div>
+<div class="twrap"><table class="big" id="nmTable"></table></div>
+<p class="tip">商品欄只列手冊已經整理過的國泰商品；給付條件、等待期、除外責任一律以條款與建議書為準。「—」＝手冊還沒收或沒有可靠來源。</p>
+</div>
 
-<div class="nc" style="--k:var(--care)"><header><b>照護費</b><small>長照(失能)、失智</small></header><div class="bd">
-<h4>客戶常說</h4><p>「爸媽年紀大了」「在照顧長輩，好累」「怕老了拖累孩子」</p>
-<h4>背後的需要</h4><p>長期要人照顧，每個月固定的花費，一付就是好幾年。</p>
-<h4>接一句</h4><p class="say">「照顧長輩真的很辛苦。您自己以後這一塊，有先準備了嗎？」</p>
-<div class="go"><button data-goto="ltc">長照與失能 ›</button><button data-goto="save-cards">失智：存錢＋保一種病 ›</button></div>
-</div></div>
-
-<div class="nc" style="--k:var(--fam)"><header><b>家庭責任</b><small>結婚、小孩、房貸</small></header><div class="bd">
-<h4>客戶常說</h4><p>「結婚了」「生小孩了」「買房子，背了房貸」</p>
-<h4>背後的需要</h4><p>自己萬一不在，家人的房貸、教育費、生活費。</p>
-<h4>接一句</h4><p class="say">「家裡多了新成員，保額要不要跟著調整？我幫您整理一下。」</p>
-<div class="go"><button data-goto="life">壽險 ›</button><button data-goto="c1-howmuch">需要買多少 ›</button><button data-goto="c3-stages">人生階段怎麼配 ›</button></div>
-</div></div>
-
-</div></div>
-
-<div class="zone" style="border-top:6px solid var(--care)">
-<div class="zh"><h3>想得到</h3><span>走第四章：理財工具</span></div>
-<div class="grid">
-
-<div class="nc" style="--k:#B07A1E"><header><b>錢變大</b><small>定存、年終、閒錢</small></header><div class="bd">
-<h4>客戶常說</h4><p>「定存快到期了」「剛領年終」「放銀行利息好低」</p>
-<h4>背後的需要</h4><p>一筆錢幾年用不到，想放得比定存好，又不想冒太大風險。</p>
-<h4>接一句</h4><p class="say">「那筆錢有打算什麼時候用嗎？幾年用不到的話，有別的放法可以參考。」</p>
-<div class="go"><button data-goto="save-shelf">儲蓄貨架 ›</button></div>
-</div></div>
-
-<div class="nc" style="--k:#B07A1E"><header><b>每年有錢領</b><small>退休、固定現金流</small></header><div class="bd">
-<h4>客戶常說</h4><p>「再幾年就退休了」「希望以後每年固定有一筆錢」</p>
-<h4>背後的需要</h4><p>不上班以後，每個月的生活費從哪裡來。</p>
-<h4>接一句</h4><p class="say">「您希望退休以後，每個月大概有多少可以用？」</p>
-<div class="go"><button data-goto="save-shelf">儲蓄貨架 ›</button></div>
-</div></div>
-
-<div class="nc" style="--k:#B07A1E"><header><b>留給家人</b><small>傳承、指定給誰</small></header><div class="bd">
-<h4>客戶常說</h4><p>「想留一筆給孩子」「以後財產怎麼分比較好」</p>
-<h4>背後的需要</h4><p>想確定錢給到想給的人，不要讓家人為了錢起爭執。</p>
-<h4>接一句</h4><p class="say">「您想留給誰、什麼時候給？保險可以直接指定給誰。」</p>
-<div class="go"><button data-goto="life">壽險 ›</button><button data-goto="save-shelf">儲蓄貨架 ›</button></div>
-</div></div>
-
-<div class="nc" style="--k:var(--care)"><header><b>存錢又怕生病</b><small>兩個都想顧</small></header><div class="bd">
-<h4>客戶常說</h4><p>「想存錢，可是又怕生病」「保障型的錢都拿不回來」</p>
-<h4>背後的需要</h4><p>錢要留得住，生病時又能多拿一筆。</p>
-<h4>接一句</h4><p class="say">「有一種是存錢的，生了某一種病會另外多給一筆。您最擔心哪一種病？」</p>
-<div class="go"><button data-goto="save-cards">存錢＋保一種病 ›</button></div>
-</div></div>
-
-<div class="nc" style="--k:var(--care)"><header><b>投資</b><small>股票、基金</small></header><div class="bd">
-<h4>客戶常說</h4><p>「最近在玩股票」「想學投資」</p>
-<h4>背後的需要</h4><p>想讓錢長得更快，願意承擔漲跌。</p>
-<h4>接一句</h4><p class="say">「您平常用哪一家下單？我們國泰也有證券，有需要我可以介紹。」</p>
-<div class="go"><button data-goto="inv">投資型保單 ›</button><em>證券：手冊沒有這頁，見面再介紹</em></div>
-</div></div>
-
-</div></div>
-
-<div class="zone" style="border-top:6px solid var(--inc)">
-<div class="zh"><h3>產險與生活</h3><span>走國泰產險那一區</span></div>
-<div class="grid">
-
-<div class="nc" style="--k:var(--inc)"><header><b>車</b><small>換車、騎車、到期</small></header><div class="bd">
-<h4>客戶常說</h4><p>「剛換車」「每天騎車上班」「強制險好像快到期」</p>
-<h4>背後的需要</h4><p>撞到人要賠多少、自己的車修理費、強制險不能斷。</p>
-<h4>接一句</h4><p class="say">「強制險到期我可以幫您續，順便看一下撞到別人賠得夠不夠。」</p>
-<div class="go"><button data-goto="pc-car">車險地圖 ›</button><button data-goto="pc-compulsory">強制險 ›</button><button data-goto="pc-liab">第三人責任 ›</button><button data-goto="pc-pd">車體與竊盜 ›</button></div>
-</div></div>
-
-<div class="nc" style="--k:var(--inc)"><header><b>出國</b><small>旅遊、出差</small></header><div class="bd">
-<h4>客戶常說</h4><p>「下個月要出國」「最近常出差」</p>
-<h4>背後的需要</h4><p>國外看病很貴，班機延誤、行李遺失也麻煩。</p>
-<h4>接一句</h4><p class="say">「出發前跟我說一聲，旅綜險我幫您保好。」</p>
-<div class="go"><button data-goto="pc-travel">旅綜險 ›</button></div>
-</div></div>
-
-<div class="nc" style="--k:var(--inc)"><header><b>房子</b><small>買房、颱風、地震</small></header><div class="bd">
-<h4>客戶常說</h4><p>「剛買房子」「上次颱風家裡淹水」</p>
-<h4>背後的需要</h4><p>房子和家裡的東西壞了，修復要花一大筆。</p>
-<h4>接一句</h4><p class="say">「房貸附的保險通常只保房子本身，家裡的東西要另外看，我幫您看一下。」</p>
-<div class="go"><button data-goto="pc-house">住宅險 ›</button><button data-goto="pc-town">保險小鎮 ›</button></div>
-</div></div>
-
-<div class="nc" style="--k:var(--inc)"><header><b>開店</b><small>老闆、店面</small></header><div class="bd">
-<h4>客戶常說</h4><p>「我自己開店」「店裡客人很多」</p>
-<h4>背後的需要</h4><p>店面火災、客人在店裡受傷，要負責任。</p>
-<h4>接一句</h4><p class="say">「店裡客人萬一跌倒受傷，有保到嗎？」</p>
-<div class="go"><button data-goto="pc-biz">頭家壓箱保 ›</button></div>
-</div></div>
-
-<div class="nc" style="--k:var(--muted)"><header><b>刷卡</b><small>繳保費、日常消費</small></header><div class="bd">
-<h4>客戶常說</h4><p>「保費都刷卡繳」「在找回饋好的卡」</p>
-<h4>背後的需要</h4><p>同樣要花的錢，想多拿一點回饋。</p>
-<h4>接一句</h4><p class="say">「國泰世華的卡可以參考看看，有需要我幫您問。」</p>
-<div class="go"><em>信用卡：手冊沒有這頁，見面再介紹</em></div>
-</div></div>
-
-</div></div>
+<div class="mode" data-nmm="cards" hidden><div id="nmCards" style="display:flex;flex-direction:column;gap:16px"></div></div>
 
 <div class="zone" style="border-top:6px solid var(--muted)">
 <div class="zh"><h3>觀念很極端的客戶</h3><span>感受先認同，結論不爭辯，商品要適合</span></div>
-<table><thead><tr><th style="width:30%">客戶說</th><th>怎麼接</th></tr></thead><tbody>
+<table class="small"><thead><tr><th style="width:30%">客戶說</th><th>怎麼接</th></tr></thead><tbody>
 <tr><td>「保險都是騙人的」</td><td>不辯論。「沒關係，您現有的保單，有理賠需要隨時找我。」只當理賠窗口。</td></tr>
 <tr><td>「我保很多了」</td><td>先同意。「那更需要整理，看有沒有重複繳的。」→ 萬用：保單整理</td></tr>
 <tr><td>「我只想存錢」</td><td>不談保障，直接走「想得到」→ 第四章</td></tr>
@@ -672,6 +622,113 @@ mark{background:linear-gradient(transparent 55%,rgba(224,177,99,.55) 55%);color:
 </div>
 
 </div>
+<script>
+(function(){
+const R=document.getElementById('nmRoot'); if(!R) return;
+const ZONES=[['all','萬用','什麼線索都沒聽到','var(--gold)'],['lose','怕失去','走第二章：保障與工具','var(--med)'],['gain','想得到','走第四章：理財工具','var(--care)'],['pc','產險與生活','走國泰產險那一區','var(--inc)']];
+const G='#B07A1E';
+const N=[
+{id:'tidy',z:'all',k:'var(--gold)',n:'保單整理',sub:'不講缺口，先幫忙',says:'「都好啊」「沒什麼變化」「保險之前都買了」',need:'自己有哪些保單、哪裡重複、哪裡不夠，其實不清楚。',line:'「您保單也好幾年了，我可以免費幫您整理成一張表，以後要理賠一看就知道找哪一張。」',go:[['c3-check','保單健檢'],['map','保障地圖']],
+ kind:'全部險種',pay:'—',ask:'請客戶準備保單或繳費通知；家人的保單要不要一起整理',watch:'不主動講缺口；客戶自己問「這樣夠嗎？」再談',prods:'—'},
+{id:'med',z:'lose',k:'var(--med)',n:'醫療費',sub:'住院、手術、自費',says:'「朋友住院，自費好貴」「最近要開刀、做檢查」「健保很多不給付」',need:'怕住院、手術、自費藥材的帳單，一次付不出來。',line:'「您現在的醫療險是定額的還是實支的？我幫您整理一下就知道夠不夠。」',go:[['medexp','實支實付'],['hosp','疾病住院'],['surgery','手術']],
+ kind:'實支實付、住院日額、手術',pay:'實支：花多少報多少／日額：住一天給一天／倍數：開一刀按倍數給',ask:'現有醫療險是定額還是實支；保額多少；有沒有自費需求（病房、醫材）',watch:'實支要看收據；有自負額的商品超過才賠',prods:'新實全心意PLUS（實支、日額擇優）・超實在（有自負額，保費低）・倍愛醫靠 A／B（繳費期內日額、期滿轉實支）・新真大心PLUS；55 歲起：樂心安、樂順心'},
+{id:'acc',z:'lose',k:'var(--med)',n:'意外',sub:'騎車、跌倒、骨折',says:'「每天騎車上班」「工作要常跑外面」「上次跌倒骨折」',need:'意外受傷的醫療費、骨折、萬一失能。',line:'「您工作有沒有換？職業類別不一樣，意外險的理賠可能會受影響，我幫您確認一下。」',go:[['accident','意外險']],
+ kind:'傷害險、骨折',pay:'實支、日額、骨折按比例給',ask:'現在的職業和工作內容；有沒有在騎車',watch:'職業類別改變要通知保險公司',prods:'超全方位傷害（可加附）・新金骨力（骨折、脫臼按比例）；55 歲起：樂享平安'},
+{id:'cancer',z:'lose',k:'var(--inc)',n:'收入中斷・癌症',sub:'生大病不能工作',says:'「朋友得癌症，好久沒辦法上班」「我是家裡經濟支柱」「聽說標靶藥很貴」',need:'治療那幾年，醫藥費加上生活費，從哪裡來。',line:'「萬一要休養一兩年，那段時間的生活費，您有想過從哪裡來嗎？」',go:[['cancer','癌症險'],['ci-compare','重疾比一比'],['data-cost','自費花費表']],
+ kind:'癌症險',pay:'一次金：確診先給一整筆／療程：做了哪種治療就給',ask:'家族病史；現有癌症險是一次金還是住院型；月收入、家裡靠他多少',watch:'有等待期；初期與重度給付不同，看條款',prods:'樂康愛・IN康愛（胸腔癌 ×2）・好康愛・豪康愛（含骨折、特定手術）・醫護康愛（重度後每年照護金、標靶、營養補助）'},
+{id:'ci',z:'lose',k:'var(--inc)',n:'收入中斷・重大傷病',sub:'中風、心臟、洗腎',says:'「爸爸中風」「朋友心肌梗塞」「家族有心血管病」',need:'中風、心臟病這類大病，要長時間治療復健。',line:'「現在有一種是拿到重大傷病卡就給一筆，您之前的保單有這一塊嗎？」',go:[['ci','重大傷病'],['ci-compare','重疾比一比']],
+ kind:'重大傷病險、特定傷病',pay:'一次金：拿到重大傷病卡就給',ask:'現有重疾是舊式定義還是看重大傷病卡；家族病史',watch:'給付條件看條款定義',prods:'新鍾心滿福・樂鍾心'},
+{id:'care',z:'lose',k:'var(--care)',n:'照護費',sub:'長照(失能)、失智',says:'「爸媽年紀大了」「在照顧長輩，好累」「怕老了拖累孩子」',need:'長期要人照顧，每個月固定的花費，一付就是好幾年。',line:'「照顧長輩真的很辛苦。您自己以後這一塊，有先準備了嗎？」',go:[['ltc','長照與失能'],['save-cards','失智：存錢＋保一種病']],
+ kind:'長照險、失能險、類長照',pay:'分期：需要照顧的每一年都給／一次金',ask:'家裡誰在照顧；請看護或住機構；現有的是長照型還是失能型',watch:'長照與失能的認定標準不同，看條款',prods:'安心守護 A／B・樂齡守護・睛智守護（眼睛：手術給一筆、重度退化每年給）；失智：美滿雙寶'},
+{id:'fam',z:'lose',k:'var(--fam)',n:'家庭責任',sub:'結婚、小孩、房貸',says:'「結婚了」「生小孩了」「買房子，背了房貸」',need:'自己萬一不在，家人的房貸、教育費、生活費。',line:'「家裡多了新成員，保額要不要跟著調整？我幫您整理一下。」',go:[['life','壽險'],['c1-howmuch','需要買多少'],['c3-stages','人生階段怎麼配']],
+ kind:'壽險（定期、終身、投資型）',pay:'身故、完全失能給家人一筆',ask:'房貸還多少；孩子幾歲；誰是家裡主要收入；現有壽險保額',watch:'保額看責任（房貸＋教育＋生活費），不是看保費',prods:'IN享愛・繽利101・豪美利101'},
+{id:'grow',z:'gain',k:G,n:'錢變大',sub:'定存、年終、閒錢',says:'「定存快到期了」「剛領年終」「放銀行利息好低」',need:'一筆錢幾年用不到，想放得比定存好，又不想冒太大風險。',line:'「那筆錢有打算什麼時候用嗎？幾年用不到的話，有別的放法可以參考。」',go:[['save-shelf','儲蓄貨架']],
+ kind:'利率變動型壽險、儲蓄型',pay:'解約金逐年累積；宣告利率每月公告、非保證',ask:'這筆錢幾年用不到；要台幣還是美元；每年能放多少',watch:'前幾年解約會拿不回本；美元有匯率風險',prods:'看儲蓄貨架五層'},
+{id:'pension',z:'gain',k:G,n:'每年有錢領',sub:'退休、固定現金流',says:'「再幾年就退休了」「希望以後每年固定有一筆錢」',need:'不上班以後，每個月的生活費從哪裡來。',line:'「您希望退休以後，每個月大概有多少可以用？」',go:[['save-shelf','儲蓄貨架']],
+ kind:'年金、還本型',pay:'每年（或每月）給一筆',ask:'幾歲退休；每月想要多少；勞保、勞退大概有多少',watch:'領得早、領得多，總累積就少；看建議書',prods:'看儲蓄貨架'},
+{id:'legacy',z:'gain',k:G,n:'留給家人',sub:'傳承、指定給誰',says:'「想留一筆給孩子」「以後財產怎麼分比較好」',need:'想確定錢給到想給的人，不要讓家人為了錢起爭執。',line:'「您想留給誰、什麼時候給？保險可以直接指定給誰。」',go:[['life','壽險'],['save-shelf','儲蓄貨架']],
+ kind:'壽險、利變壽險',pay:'身故給指定的受益人',ask:'想留給誰、留多少；受益人寫好了沒',watch:'稅的規定要另外查最新版本，不要憑印象講數字',prods:'繽利101・豪美利101'},
+{id:'savesick',z:'gain',k:'var(--care)',n:'存錢又怕生病',sub:'兩個都想顧',says:'「想存錢，可是又怕生病」「保障型的錢都拿不回來」',need:'錢要留得住，生病時又能多拿一筆。',line:'「有一種是存錢的，生了某一種病會另外多給一筆。您最擔心哪一種病？」',go:[['save-cards','存錢＋保一種病']],
+ kind:'利變型＋特定傷病',pay:'生病另給一筆（美愛、美智、甘心）／整筆提前給（雙寶、滿福寶）',ask:'最擔心哪一種病；要不要換美元',watch:'特定傷病只給一次；美元有匯率風險',prods:'美愛康泰（癌症）・美智守護（中風）・美利甘心（心・肝）・美滿雙寶（失智、巴金森）・滿福寶（台幣）'},
+{id:'inv',z:'gain',k:'var(--care)',n:'投資',sub:'股票、基金',says:'「最近在玩股票」「想學投資」',need:'想讓錢長得更快，願意承擔漲跌。',line:'「您平常用哪一家下單？我們國泰也有證券，有需要我可以介紹。」',go:[['inv','投資型保單']],
+ kind:'投資型保單、證券',pay:'帳戶價值隨市場漲跌',ask:'能接受虧多少；投資經驗',watch:'不保本；要做風險屬性評估',prods:'投資型：看手冊那一頁；證券：手冊沒有這頁'},
+{id:'car',z:'pc',k:'var(--inc)',n:'車',sub:'換車、騎車、到期',says:'「剛換車」「每天騎車上班」「強制險好像快到期」',need:'撞到人要賠多少、自己的車修理費、強制險不能斷。',line:'「強制險到期我可以幫您續，順便看一下撞到別人賠得夠不夠。」',go:[['pc-car','車險地圖'],['pc-compulsory','強制險'],['pc-liab','第三人責任'],['pc-pd','車體與竊盜']],
+ kind:'強制險、第三人責任、超額責任、車體、竊盜',pay:'強制險：死亡、失能、醫療有上限；其他看投保金額',ask:'有幾台車、機車還是汽車；強制險到期日；第三人責任保多少',watch:'強制險只賠人，不賠車；車子要另外保',prods:'國泰產險（看車險那幾頁）'},
+{id:'travel',z:'pc',k:'var(--inc)',n:'出國',sub:'旅遊、出差',says:'「下個月要出國」「最近常出差」',need:'國外看病很貴，班機延誤、行李遺失也麻煩。',line:'「出發前跟我說一聲，旅綜險我幫您保好。」',go:[['pc-travel','旅綜險']],
+ kind:'旅綜險（旅平險＋不便險）',pay:'海外醫療、延誤、行李',ask:'去哪、幾天；有沒有刷卡附贈的保險',watch:'刷卡附贈的通常有條件，要看清楚',prods:'國泰產險旅綜險'},
+{id:'house',z:'pc',k:'var(--inc)',n:'房子',sub:'買房、颱風、地震',says:'「剛買房子」「上次颱風家裡淹水」',need:'房子和家裡的東西壞了，修復要花一大筆。',line:'「房貸附的保險通常只保房子本身，家裡的東西要另外看，我幫您看一下。」',go:[['pc-house','住宅險'],['pc-town','保險小鎮']],
+ kind:'住宅火災及地震、動產、颱風洪水',pay:'看投保金額',ask:'房貸附的保了什麼；家裡貴重的東西',watch:'颱風洪水通常要另外加保',prods:'國泰產險住宅險'},
+{id:'shop',z:'pc',k:'var(--inc)',n:'開店',sub:'老闆、店面',says:'「我自己開店」「店裡客人很多」',need:'店面火災、客人在店裡受傷，要負責任。',line:'「店裡客人萬一跌倒受傷，有保到嗎？」',go:[['pc-biz','頭家壓箱保']],
+ kind:'商業火險、公共意外責任',pay:'看投保金額',ask:'店面大小、營業項目、一天幾位客人',watch:'—',prods:'頭家壓箱保'},
+{id:'card',z:'pc',k:'var(--muted)',n:'刷卡',sub:'繳保費、日常消費',says:'「保費都刷卡繳」「在找回饋好的卡」',need:'同樣要花的錢，想多拿一點回饋。',line:'「國泰世華的卡可以參考看看，有需要我幫您問。」',go:[],
+ kind:'信用卡',pay:'—',ask:'平常刷哪裡最多',watch:'—',prods:'國泰世華信用卡（手冊沒有這頁）'}
+];
+const BY=Object.fromEntries(N.map(x=>[x.id,x]));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const goHTML=x=>`<div class="go" style="--k:${x.k}">${x.go.map(([g,l])=>`<button data-goto="${g}">${esc(l)} ›</button>`).join('')}${x.go.length?'':'<em>手冊沒有這頁，見面再介紹</em>'}</div>`;
+const zoneOf=z=>ZONES.find(a=>a[0]===z);
+
+/* 卡片 */
+document.getElementById('nmCards').innerHTML=ZONES.map(([z,t,s,c])=>`<div class="zone" style="border-top:6px solid ${c}"><div class="zh"><h3>${t}</h3><span>${s}</span></div><div class="grid">${N.filter(x=>x.z===z).map(x=>`<div class="nc" style="--k:${x.k}"><header><b>${x.n}</b><small>${x.sub}</small></header><div class="bd"><h4>客戶常說</h4><p>${x.says}</p><h4>背後的需要</h4><p>${x.need}</p><h4>接一句</h4><p class="say">${x.line}</p>${goHTML(x)}</div></div>`).join('')}</div></div>`).join('');
+
+/* 小鎮 */
+const SPOTS=[
+ {x:20,y:30,ic:'🏠',t:'家',k:'var(--fam)',ids:['fam','house'],s:'結婚、生小孩、買房子，都從家開始。'},
+ {x:47,y:22,ic:'🏥',t:'醫院',k:'var(--med)',ids:['med','cancer','ci'],s:'客戶說到誰住院、誰生病，就是這裡。'},
+ {x:76,y:24,ic:'🏦',t:'銀行',k:G,ids:['grow','legacy','savesick'],s:'定存到期、領年終、想留錢給孩子。'},
+ {x:14,y:68,ic:'👵',t:'爸媽家',k:'var(--care)',ids:['care'],s:'爸媽年紀大、在照顧長輩。'},
+ {x:40,y:56,ic:'🏢',t:'公司',k:'var(--inc)',ids:['acc','inv','card'],s:'工作、通勤、投資、刷卡，都在上班日常裡。'},
+ {x:64,y:62,ic:'⛽',t:'車',k:'var(--inc)',ids:['car'],s:'換車、每天騎車、強制險到期。'},
+ {x:88,y:56,ic:'✈️',t:'機場',k:'var(--inc)',ids:['travel'],s:'要出國、常出差。'},
+ {x:36,y:86,ic:'🏪',t:'店面',k:'var(--inc)',ids:['shop'],s:'自己開店、當老闆。'},
+ {x:72,y:86,ic:'🌳',t:'退休公園',k:G,ids:['pension'],s:'快退休、想要每年有錢領。'}
+];
+const TOWN_IMG=''; // 之後放 Canva 小鎮圖（data:image/jpeg;base64,...），標記位置再對齊
+const map=document.getElementById('nmMap');
+map.innerHTML=(TOWN_IMG?`<img src="${TOWN_IMG}" alt="生活小鎮">`:`<svg viewBox="0 0 160 90" aria-hidden="true"><rect width="160" height="90" fill="#EAF3E6"/><path d="M0 45 H160 M80 0 V90 M0 76 H160" stroke="#D8D2C2" stroke-width="7" fill="none"/><path d="M0 45 H160 M80 0 V90 M0 76 H160" stroke="#fff" stroke-width=".6" stroke-dasharray="3 3" fill="none"/><g fill="#CFE3C6"><circle cx="118" cy="86" r="9"/><circle cx="132" cy="84" r="7"/><circle cx="8" cy="10" r="6"/><circle cx="150" cy="8" r="6"/></g><g fill="#F6EEDB" stroke="#E2D6BC" stroke-width=".6"><rect x="22" y="14" width="22" height="18" rx="2"/><rect x="64" y="8" width="26" height="22" rx="2"/><rect x="112" y="10" width="24" height="22" rx="2"/><rect x="12" y="52" width="20" height="16" rx="2"/><rect x="52" y="50" width="22" height="20" rx="2"/><rect x="96" y="52" width="16" height="14" rx="2"/><rect x="138" y="50" width="18" height="12" rx="2"/><rect x="50" y="80" width="18" height="10" rx="2"/></g></svg>`)+SPOTS.map((p,i)=>`<button class="pin" style="left:${p.x}%;top:${p.y}%;--k:${p.k}" data-spot="${i}"><i>${p.ic}</i>${p.t}</button>`).join('');
+const side=document.getElementById('nmSide');
+function showSpot(i){const p=SPOTS[i];map.querySelectorAll('.pin').forEach(b=>b.classList.toggle('on',+b.dataset.spot===i));
+ side.innerHTML=`<div class="tcard" style="--k:${p.k}"><b>${p.ic} ${p.t}</b><p class="tip">${p.s}</p>${p.ids.map(id=>{const x=BY[id];return `<div class="sub" style="--k:${x.k}"><b>${x.n}<span class="tag" style="--k:${zoneOf(x.z)[3]}">${zoneOf(x.z)[1]}</span></b><h4>客戶常說</h4><p>${x.says}</p><h4>背後的需要</h4><p>${x.need}</p><h4>接一句</h4><p class="say">${x.line}</p>${goHTML(x)}</div>`}).join('')}</div>`;
+ if(window.innerWidth<820)side.scrollIntoView({behavior:'smooth',block:'start'});}
+map.addEventListener('click',e=>{const b=e.target.closest('.pin');if(b)showSpot(+b.dataset.spot);});
+
+/* 人生路線 */
+const ST=[
+ {ic:'🎓',t:'出社會',scene:'第一份工作，開始自己賺錢、自己繳保費。爸媽以前幫忙保的保單，可能還在爸媽名下繳。',ids:['tidy','med','acc'],line:'「以前爸媽幫您保的，要不要一起整理一下，看哪些要接過來自己繳？」'},
+ {ic:'💍',t:'結婚',scene:'兩個人變成一個家，各自的保單、受益人、保額要重新看。',ids:['fam','tidy'],line:'「恭喜！受益人要不要改成另一半？我幫您兩位的保單一起整理。」'},
+ {ic:'👶',t:'生小孩',scene:'家裡多一張嘴，責任變大；小孩的醫療也開始要準備。',ids:['fam','med'],line:'「寶寶出生了，您的保額要不要跟著調整？寶寶的醫療也可以一起看。」'},
+ {ic:'🏠',t:'買房',scene:'背上房貸，房子本身和家裡的東西都要顧。',ids:['fam','house'],line:'「房貸還多少年？萬一您不在，家人繳得起嗎？房子的保險我也幫您看一下。」'},
+ {ic:'🚗',t:'換車・通勤',scene:'每天騎車開車，撞到人的責任、自己的車都是風險。',ids:['car','acc'],line:'「強制險到期我可以幫您續，順便看一下撞到別人賠得夠不夠。」'},
+ {ic:'✈️',t:'出國・出差',scene:'工作或旅遊常出國，國外看病很貴。',ids:['travel'],line:'「出發前跟我說一聲，旅綜險我幫您保好。」'},
+ {ic:'🏥',t:'身邊有人生病',scene:'朋友、同事、家人住院或得大病，客戶最有感的時候。',ids:['med','cancer','ci','savesick'],line:'「有您這樣的朋友真好。您自己這一塊，要不要我幫您看一下夠不夠？」'},
+ {ic:'💰',t:'手上有一筆錢',scene:'定存到期、領年終、加薪，想讓錢放得更好。',ids:['grow','savesick','inv'],line:'「那筆錢有打算什麼時候用嗎？幾年用不到的話，有別的放法可以參考。」'},
+ {ic:'🏪',t:'自己開店',scene:'當老闆，店面、員工、客人都是責任。',ids:['shop'],line:'「店裡客人萬一跌倒受傷，有保到嗎？」'},
+ {ic:'👵',t:'爸媽變老',scene:'開始照顧長輩，才知道長期照顧多辛苦、多花錢。',ids:['care','ci'],line:'「照顧長輩真的很辛苦。您自己以後這一塊，有先準備了嗎？」'},
+ {ic:'🌳',t:'快退休',scene:'不上班以後，每個月的生活費從哪裡來。',ids:['pension','care'],line:'「您希望退休以後，每個月大概有多少可以用？」'},
+ {ic:'🎁',t:'想留給家人',scene:'開始想財產要給誰、怎麼給，不想讓家人起爭執。',ids:['legacy'],line:'「您想留給誰、什麼時候給？保險可以直接指定給誰。」'}
+];
+const road=document.getElementById('nmRoad'),stc=document.getElementById('nmSt');let cur=0;
+road.innerHTML=ST.map((s,i)=>`<button class="nmst" data-st="${i}"><span class="nmdot">${s.ic}</span><span>${s.t}</span></button>`).join('');
+function showSt(i){cur=i;road.querySelectorAll('.nmst').forEach((b,j)=>{b.classList.toggle('on',j===i);b.classList.toggle('done',j<i);});
+ const s=ST[i];stc.innerHTML=`<h3>${s.ic} 第 ${i+1} 站　${s.t}</h3><p class="scene">${s.scene}</p><div class="say" style="--k:#2B2B2B"><h4>這一站最自然的一句</h4>${s.line}</div><h4>這一站會碰到的需要</h4><div class="stneeds">${s.ids.map(id=>{const x=BY[id];return `<div style="--k:${x.k}"><b>${x.n}<span class="tag" style="--k:${zoneOf(x.z)[3]}">${zoneOf(x.z)[1]}</span></b><p>${x.need}</p>${goHTML(x)}</div>`}).join('')}</div><div class="stnav"><button data-stm="-1" ${i?'':'disabled'}>‹ 上一站</button><button data-stm="1" ${i<ST.length-1?'':'disabled'}>下一站 ›</button></div>`;
+ road.querySelector(`[data-st="${i}"]`).scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});}
+road.addEventListener('click',e=>{const b=e.target.closest('.nmst');if(b)showSt(+b.dataset.st);});
+stc.addEventListener('click',e=>{const b=e.target.closest('[data-stm]');if(b)showSt(cur+ +b.dataset.stm);});
+showSt(0);
+
+/* 縝密表 */
+const tf=document.getElementById('nmTf'),tb=document.getElementById('nmTable');let fz='';
+const COLS=[['says','客戶常說（線索）'],['need','背後的需要'],['kind','對應險種'],['pay','怎麼給'],['ask','見面先問'],['watch','要注意'],['prods','國泰商品（手冊已整理）'],['line','接一句']];
+tf.innerHTML='<b style="font-size:13.5px">看：</b>'+[['','全部','#2B2B2B'],...ZONES.map(a=>[a[0],a[1],a[3]])].map(([z,t,c])=>`<button data-tz="${z}" style="--k:${c}" class="${z===''?'on':''}">${t}</button>`).join('');
+function drawT(){tb.innerHTML=`<thead><tr><th>需要</th>${COLS.map(c=>`<th>${c[1]}</th>`).join('')}<th>手冊頁</th></tr></thead><tbody>${ZONES.filter(a=>!fz||a[0]===fz).map(([z,t,s])=>`<tr class="zrow"><td colspan="${COLS.length+2}">${t}　<small style="font-weight:400;color:var(--muted)">${s}</small></td></tr>`+N.filter(x=>x.z===z).map(x=>`<tr style="--k:${x.k}"><td><b>${x.n}</b><small>${x.sub}</small></td>${COLS.map(c=>`<td>${x[c[0]]}</td>`).join('')}<td>${goHTML(x)}</td></tr>`).join('')).join('')}</tbody>`;}
+tf.addEventListener('click',e=>{const b=e.target.closest('[data-tz]');if(!b)return;fz=b.dataset.tz;tf.querySelectorAll('[data-tz]').forEach(x=>x.classList.toggle('on',x===b));drawT();});
+drawT();
+
+/* 分頁 */
+R.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('[data-nmt]');if(!b)return;R.querySelectorAll('[data-nmt]').forEach(x=>x.classList.toggle('on',x===b));R.querySelectorAll('[data-nmm]').forEach(m=>m.hidden=m.dataset.nmm!==b.dataset.nmt);try{localStorage.setItem('nmTab',b.dataset.nmt)}catch(e){}});
+try{const t=localStorage.getItem('nmTab');if(t){const b=R.querySelector(`[data-nmt="${t}"]`);b&&b.click();}}catch(e){}
+})();
+</script>
 </section>
 
 <section class="pane" data-i="0" hidden>
