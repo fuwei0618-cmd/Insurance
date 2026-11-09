@@ -125,12 +125,13 @@ function savePill(s) {
 const SYNC_LABEL = { synced: '已同步 OneDrive', saving: '同步中…', pending: '待同步…', offline: '離線中，連上網路會自動同步', idle: '—' };
 const Vault = {
   key: null, salt: null, db: null, eTag: null, dirty: false, saving: false, state: 'idle',
-  async load(pw) { // 'ok'，密碼錯誤時丟出錯誤
+  async load(pw, saved) { // 'ok'，密碼錯誤時丟出錯誤；saved＝這台裝置記住的鑰匙
     let raw = null, fromCache = false;
     try { raw = await Drive.download('data.enc'); } catch (e) { const c = await Cache.get('data'); if (c) { raw = c; fromCache = true; } else throw e; }
     if (!raw) { const c = await Cache.get('data'); if (c) { raw = c; fromCache = true; } else return 'new'; }
     const env = JSON.parse(dec.decode(raw.bytes));
-    const salt = unb64(env.salt), key = await deriveKey(pw, salt);
+    const salt = unb64(env.salt); if (saved && saved.salt !== env.salt) { const err = new Error('密碼換過了'); err.badPassword = true; throw err; }
+    const key = saved ? saved.key : await deriveKey(pw, salt);
     let plain;
     try { plain = await unseal(key, unb64(env.data)); } catch (e) { const err = new Error('密碼不正確'); err.badPassword = true; throw err; }
     this.key = key; this.salt = salt; this.db = { ...emptyDb(), ...JSON.parse(dec.decode(plain)) }; this.eTag = raw.eTag;
@@ -3313,8 +3314,14 @@ async function boot() {
   let exists = false, offline = false;
   try { exists = !!(await Drive.getMeta('data.enc')); } catch (e) { offline = true; exists = !!(await Cache.get('data')); }
   if (!exists && offline) { showGate(`<p>連不上 OneDrive，請確認網路後再試一次。</p><button class="btn pri" id="gRetry">重試</button>`); $('gRetry').onclick = boot; return; }
+  if (exists) { // 這台裝置記住過鑰匙：直接進去，不用再打密碼
+    const saved = await Cache.get('remember');
+    if (saved && saved.key) { try { gateLoading('解鎖中…'); const r = await Vault.load('', saved); if (r === 'ok') { enter(); return; } } catch (e) { if (e.badPassword) await Cache.del('remember'); } }
+  }
   exists ? askUnlock() : askCreate();
 }
+// 記住這台裝置：存的是不能匯出的加密鑰匙（不是密碼），只放在這台裝置；OneDrive 上的資料照樣加密
+async function rememberKey() { if (Vault.key && Vault.salt) await Cache.set('remember', { key: Vault.key, salt: b64(Vault.salt) }); }
 function askCreate() {
   showGate(`<p>第一次使用，請設定一組密碼。所有資料（包含照片）都會用這組密碼加密後才存到 OneDrive。</p>
   <div class="warnbox">忘記密碼，資料就救不回來。請把它記在安全的地方。</div>
@@ -3327,17 +3334,17 @@ function askCreate() {
     if (a.length < 6) { $('gErr').textContent = '密碼至少要 6 個字'; return; }
     if (a !== b) { $('gErr').textContent = '兩次輸入的密碼不一樣'; return; }
     $('gGo').disabled = true; $('gErr').textContent = '';
-    try { await Vault.create(a); enter(); } catch (e) { $('gGo').disabled = false; $('gErr').textContent = '建立失敗：' + (e.message || e); }
+    try { await Vault.create(a); await rememberKey(); enter(); } catch (e) { $('gGo').disabled = false; $('gErr').textContent = '建立失敗：' + (e.message || e); }
   };
 }
 function askUnlock() {
-  showGate(`<p>輸入密碼解鎖。</p>
+  showGate(`<p>輸入密碼解鎖。這台裝置會記住，之後打開就不用再輸入；按左下「鎖定」才會再問。</p>
   <label class="f">密碼<input type="password" id="gP" autocomplete="current-password"></label>
   <div class="err" id="gErr"></div><button class="btn pri" id="gGo">解鎖</button>
   <p style="font-size:12px">登入帳號：${esc(Drive.account.username)}　<button class="btn" id="gOut" style="padding:2px 8px;font-size:12px">換帳號</button></p>`);
   const go = async () => {
     $('gGo').disabled = true; $('gErr').textContent = '';
-    try { const r = await Vault.load($('gP').value); if (r === 'new') { askCreate(); return; } enter(); }
+    try { const r = await Vault.load($('gP').value); if (r === 'new') { askCreate(); return; } await rememberKey(); enter(); }
     catch (e) { $('gGo').disabled = false; $('gErr').textContent = e.badPassword ? '密碼不正確' : '讀取失敗：' + (e.message || e); }
   };
   $('gGo').onclick = go; $('gP').onkeydown = (e) => { if (e.key === 'Enter') go(); };
@@ -3387,14 +3394,16 @@ function enter() {
   lastAct = Date.now(); App.render(); Files.retryUploads();
   Backup.daily().then(() => Files.purge());
 }
-async function lock() {
+async function lock(auto) {
+  if (auto && (await Cache.get('remember'))) return; // 記住這台裝置時，閒置不自動鎖
   if (Vault.dirty) await Vault.save();
+  await Cache.del('remember'); // 手動按「鎖定」＝這台裝置忘記鑰匙，下次要打密碼
   S.showIds = false; S.showHealth = false; Vault.lock(); Files.clear(); imgCache.clear(); ov.innerHTML = ''; app.innerHTML = '';
   askUnlock();
 }
 ['pointerdown', 'keydown'].forEach((t) => document.addEventListener(t, () => (lastAct = Date.now()), true));
-setInterval(() => { if (Vault.key && Date.now() - lastAct > (CFG.AUTO_LOCK_MINUTES || 30) * 60000) lock(); }, 30000);
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Vault.key) { if (Date.now() - lastAct > (CFG.AUTO_LOCK_MINUTES || 30) * 60000) lock(); else Vault.pull(); } else if (Vault.dirty) Vault.save(); });
+setInterval(() => { if (Vault.key && Date.now() - lastAct > (CFG.AUTO_LOCK_MINUTES || 30) * 60000) lock(true); }, 30000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Vault.key) { if (Date.now() - lastAct > (CFG.AUTO_LOCK_MINUTES || 30) * 60000) { lastAct = Date.now(); lock(true); Vault.pull(); } else Vault.pull(); } else if (Vault.dirty) Vault.save(); });
 window.addEventListener('online', () => { if (Vault.key) { Vault.save(); Files.retryUploads(); } });
 window.addEventListener('beforeunload', (e) => { if (Vault.dirty) { Vault.save(); e.preventDefault(); e.returnValue = ''; } });
 
