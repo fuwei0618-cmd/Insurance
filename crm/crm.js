@@ -601,14 +601,17 @@ const CALL_FLOW = [
   ['準備（只做一次）', ['匯入名單：服務件 →「⋯ 更多」→ 匯入名單，選公司的 PDF。', '主管給的意外險升級名單：「⋯ 更多」→ 名單加標籤，選 PDF（用姓名比對，不看別份編號）。', '送禮專區建好「2027 年曆」活動和品項。']],
   ['每次開始：按「📞 開始打電話」', ['不用想從誰開始，它會照順序一位一位帶你：① 意外險升級 → ② 已加 LINE → ③ 其他；同一組裡照地區由近到遠（桃園 → 八德 → 龜山 → 蘆竹 → 大園 → 觀音 → 新屋 → 楊梅 → 平鎮 → 中壢 → 龍潭 → 大溪 → 新北、台北）。', '一次只打一區，約到的人也在同一區，之後排拜訪比較順。', '已加 LINE 的人：先傳「年底準備了年曆想送您，什麼時間方便打給您？」，回了再打。']],
   ['電話中：話術六步', ['開場、確認服務人員 → 年曆 → 家戶 → 職業 → 聊天 → 收尾。', '意外險升級的人：在第 4 步「確認職業」順勢帶到「意外險可以升級」。', '打電話前看一眼「打電話前的功課」：住址、保單概況。']],
+  ['聊天時：聽線索，只順口提一樣', ['一通電話最多提一樣，而且要客戶先說出線索才提；說完就停，不追。', '換車、買車、常騎車 → 車險、強制險到期；要出國 → 旅綜險；結婚、生小孩、買房 → 保單整理（看保額夠不夠）。', '家人朋友住院、生病 → 實支實付、癌症、重大傷病；爸媽年紀大、在照顧長輩 → 長照。', '定存到期、領年終、嫌利息低 → 存錢；在玩股票、想投資 → 證券；繳保費、刷卡 → CUBE 卡。', '什麼線索都沒聽到 → 保單整理：「我幫您把保單整理成一張表，以後要理賠一看就知道找哪一張。」', '缺口不主動講，客戶自己問「這樣夠嗎？」再談。觀念極端的不辯論：「保險都騙人」→ 只當理賠窗口；「保很多了」→ 幫忙整理重複的；「只想存錢」→ 直接談儲蓄。', '掛電話時把聽到的線索記在備註，見面前翻手冊對應的那一頁準備。']],
   ['掛電話三十秒內記完，按「下一位 ›」', ['結果：未接、已接・聊過、約訪成功…', '分級 A／B／C-1／C-2／C-3；勾服務人員、家戶、職業確認。', '年曆：要的填品項（或到總表「🎁 送禮」填）；不要的按「不送年曆」。有加 LINE 就勾，約好了填約訪日期。']],
   ['沒接的人', ['換時段再打：看三時段哪個還是灰的（灰＝還沒打、紅＝沒接、綠＝接了）。', '三個時段都紅了：傳簡訊或 LINE，年曆改成寄送。']],
   ['排拜訪、送年曆', ['年曆到貨後，總表點「已排訪」加地區，同一區排同一天，半天三到四家。', '見到面勾「已見面」，送禮按「已送」；A、B 開建議書案件；有人買了再「轉成客戶」。']],
   ['每週看一次', ['總表最上面的進度條：打過、接通、要年曆、加 LINE、排訪、見面、年曆已送。']],
 ];
+const CALL_HEART = { goal: '今天的目標：約到 2 個願意見面聊的人', prayer: '請讓我今天打的每一通電話，都遇到願意好好說話的人。讓我聽得到他們真正需要的東西，說出口的話剛剛好，不多也不少。結果交給祢，我只負責把每一通打好。' };
 function openCallFlow() {
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>服務件流程</h2><button class="btn" id="cfP">🖨 印一頁 A4</button><button class="btn pri" id="cfX">關閉</button></div>
   <div class="ovbody" style="flex-direction:column;max-width:760px;margin:0 auto;width:100%">
+   <div class="sec" style="background:var(--soft,#f3efe4);border-radius:12px;padding:12px 16px"><h2 style="margin:0 0 4px">🎯 ${esc(CALL_HEART.goal)}</h2><p style="margin:0;line-height:1.7">🙏 ${esc(CALL_HEART.prayer)}</p></div>
    <div class="note">分級：<b>A</b> VIP 高度優先・<b>B</b> 有預算有促約機會・<b>C-1</b> 有關鍵人物預算不夠・<b>C-2</b> 關係好觀念還沒到・<b>C-3</b> 排斥忙沒需求，用寄的</div>
    ${CALL_FLOW.map(([h, l], i) => `<div class="sec"><h2>${i + 1}. ${h}</h2><ol class="cflow">${l.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>`).join('')}</div></div>`;
   $('cfX').onclick = () => { ov.innerHTML = ''; document.body.classList.remove('printing'); const pa = document.getElementById('printArea'); if (pa) pa.className = ''; };
@@ -616,7 +619,7 @@ function openCallFlow() {
 }
 function printCallFlow() { // 一頁 A4：只印流程，不印 app 畫面
   let pa = document.getElementById('printArea'); if (!pa) { pa = document.createElement('div'); pa.id = 'printArea'; document.body.appendChild(pa); }
-  pa.innerHTML = `<h1>服務件流程</h1><div class="plv">分級：<b>A</b> VIP 高度優先　<b>B</b> 有預算有促約機會　<b>C-1</b> 有關鍵人物預算不夠　<b>C-2</b> 關係好觀念還沒到　<b>C-3</b> 排斥忙沒需求，用寄的</div>
+  pa.innerHTML = `<h1>服務件流程</h1><p style="margin:0 0 4px"><b>🎯 ${esc(CALL_HEART.goal)}</b></p><p style="margin:0 0 8px">🙏 ${esc(CALL_HEART.prayer)}</p><div class="plv">分級：<b>A</b> VIP 高度優先　<b>B</b> 有預算有促約機會　<b>C-1</b> 有關鍵人物預算不夠　<b>C-2</b> 關係好觀念還沒到　<b>C-3</b> 排斥忙沒需求，用寄的</div>
    ${CALL_FLOW.map(([h, l], i) => `<h2>${i + 1}. ${esc(h)}</h2><ul>${l.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`).join('')}`;
   pa.className = 'on'; document.body.classList.add('printing'); // iPad 會提早觸發列印結束，所以等關掉流程視窗才收回
   setTimeout(() => window.print(), 80);
@@ -708,7 +711,8 @@ function kStartCalling(fromId) { // 照撥打順序找下一位：今天打過�
 function kCallBarHTML(k) {
   if (!S.kcalling) return ''; const q = kQueue(), r = callRank(k), lab = r === 0 ? '① ' + (k.tags || []).join('、') : r === 1 ? '② 已加 LINE' : r === 2 ? '③ 其他' : '';
   const same = q.filter((x) => callRank(x) === r && kArea(x) === kArea(k)), pos = same.findIndex((x) => x.id === k.id);
-  return `<div class="kcallbar"><span><b>📞 撥打中</b>　${esc(lab)}・${esc(kArea(k) || '沒有地區')}${pos >= 0 ? `　第 ${pos + 1}／${same.length} 位` : ''}<span class="sub">　整份還有 ${q.length} 位沒接通</span></span><span style="display:flex;gap:6px"><button class="btn sm" data-act="kstop">結束</button><button class="btn sm pri" data-act="knext">下一位 ›</button></span></div>`;
+  const td = new Date().toDateString(), met = calls().filter((x) => (x.logs || []).some((l) => l.result === '約訪成功' && l.at && new Date(l.at).toDateString() === td)).length;
+  return `<div class="kcallbar" style="flex-wrap:wrap"><span style="flex-basis:100%;font-size:13px">🎯 今天約到 <b>${met}</b>／2 位願意見面聊的人${met >= 2 ? '　達成了 🎉' : ''}　<span class="sub">🙏 每一通好好打，結果交出去。</span></span><span><b>📞 撥打中</b>　${esc(lab)}・${esc(kArea(k) || '沒有地區')}${pos >= 0 ? `　第 ${pos + 1}／${same.length} 位` : ''}<span class="sub">　整份還有 ${q.length} 位沒接通</span></span><span style="display:flex;gap:6px"><button class="btn sm" data-act="kstop">結束</button><button class="btn sm pri" data-act="knext">下一位 ›</button></span></div>`;
 }
 function callTableHTML() {
   const all = calls(), q = S.q.trim(), hhs = callHouseholds(all), grpOf = (k) => hhs.get(hhKey(k));
