@@ -9326,4 +9326,74 @@ var sx=null,sy=0;B.addEventListener("touchstart",function(e){if(e.target.closest
 B.addEventListener("touchend",function(e){if(sx==null)return;var dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;sx=null;if(Math.abs(dx)>80&&Math.abs(dx)>Math.abs(dy)*1.5)go(dx<0?1:-1);},{passive:true});
 Object.keys(CFG).forEach(function(cls){document.querySelectorAll("."+cls).forEach(function(root){var pane=root.closest("section");var hero=pane&&pane.querySelector(".hero");if(!hero||hero.querySelector(".prs-btn"))return;var b=document.createElement("button");b.type="button";b.className="prs-btn";b.innerHTML="▶ 客戶模式";b.onclick=function(){open(root,cls)};hero.appendChild(b);});});
 })();</script>
-<!--prs-end-->
+<!--prs-end--><!--hbsearch-start-->
+<style>
+.hbs-fab{position:fixed;right:18px;bottom:18px;z-index:60;border:none;border-radius:999px;background:var(--brand,#0F3B34);color:#fff;font:inherit;font-size:16px;font-weight:700;padding:12px 18px;box-shadow:0 4px 14px rgba(0,0,0,.18);cursor:pointer}
+.hbs-side{display:block;width:100%;margin:6px 0 10px;border:1px solid var(--line,#d8d3c4);background:var(--card,#fff);color:var(--muted,#5e6866);border-radius:10px;padding:9px 12px;font:inherit;font-size:14px;text-align:left;cursor:pointer}
+.hbs-ov{position:fixed;inset:0;z-index:80;background:rgba(15,25,23,.45);display:flex;justify-content:center;align-items:flex-start;padding:6vh 16px 16px}
+.hbs-ov[hidden]{display:none}
+.hbs-box{width:min(680px,100%);max-height:84vh;display:flex;flex-direction:column;background:var(--bg,#fbf8f1);color:var(--ink,#1f2a28);border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.25);overflow:hidden}
+.hbs-top{display:flex;gap:8px;padding:14px;border-bottom:1px solid var(--line,#d8d3c4)}
+.hbs-top input{flex:1;min-width:0;font:inherit;font-size:18px;padding:10px 12px;border:2px solid var(--line,#d8d3c4);border-radius:10px;background:var(--card,#fff);color:inherit}
+.hbs-top button{font:inherit;border:none;background:transparent;color:inherit;font-size:15px;cursor:pointer;padding:0 8px}
+.hbs-tags{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px 0}
+.hbs-tags button{font:inherit;font-size:13px;border:1px solid var(--line,#d8d3c4);background:var(--card,#fff);color:inherit;border-radius:999px;padding:3px 10px;cursor:pointer}
+.hbs-res{overflow:auto;padding:8px 8px 14px}
+.hbs-res button{display:block;width:100%;text-align:left;font:inherit;color:inherit;background:transparent;border:none;border-radius:10px;padding:9px 10px;cursor:pointer}
+.hbs-res button:hover,.hbs-res button:focus-visible{background:var(--card,#fff)}
+.hbs-res .t{display:block;font-size:12px;color:var(--muted,#5e6866)}
+.hbs-res .h{display:block;font-weight:700;font-size:15px}
+.hbs-res .s{display:block;font-size:13px;color:var(--muted,#5e6866);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hbs-res mark{background:#ffe27a;color:inherit;border-radius:3px;padding:0 1px}
+.hbs-empty{padding:18px;color:var(--muted,#5e6866);font-size:14px}
+.hbs-hit{outline:3px solid #f0b429;outline-offset:4px;border-radius:6px;transition:outline-color 1.5s}
+@media print{.hbs-fab{display:none}}
+</style>
+<button type="button" class="hbs-fab" id="hbsFab" aria-label="搜尋手冊">🔍 搜尋</button>
+<div class="hbs-ov" id="hbsOv" hidden><div class="hbs-box" role="dialog" aria-label="搜尋手冊">
+<div class="hbs-top"><input id="hbsQ" type="search" placeholder="打關鍵字，例如：失能、實支、車禍" aria-label="搜尋關鍵字" autocomplete="off"><button type="button" id="hbsX">關閉</button></div>
+<div class="hbs-tags" id="hbsTags"></div>
+<div class="hbs-res" id="hbsR"></div>
+</div></div>
+<script>(function(){
+var ov=document.getElementById('hbsOv'),q=document.getElementById('hbsQ'),R=document.getElementById('hbsR'),T=document.getElementById('hbsTags');
+var QUICK=['失能','長照','實支','癌症','意外','車險','醫療','保費','稅','美元','儲蓄','理賠'];
+T.innerHTML=QUICK.map(function(k){return '<button type="button">'+k+'</button>'}).join('');
+var idx=null;
+function navName(i){var n=document.querySelector('.nv[data-i="'+i+'"] b');return n?n.textContent.trim():''}
+function build(){idx=[];document.querySelectorAll('section.pane').forEach(function(p){var i=p.dataset.i,name=navName(i);var head='';
+ p.querySelectorAll('h1,h2,h3,h4,h5,summary,p,li,td,th,figcaption,dt,dd,caption,label,.tip,.box').forEach(function(el){
+  if(el.closest('script,style,.hbs-ov'))return;var t=(el.textContent||'').replace(/\s+/g,' ').trim();if(t.length<2)return;
+  var isH=/^H[1-5]$/.test(el.tagName)||el.tagName=='SUMMARY';if(isH)head=t.slice(0,40);
+  if(t.length>240)t=t.slice(0,240);idx.push({i:+i,name:name,head:isH?'':head,t:t,el:el,h:isH})})})}
+function esc(s){return s.replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function run(){var k=q.value.trim();if(!k){R.innerHTML='<div class="hbs-empty">打字或按上面的常用字</div>';return}
+ if(!idx)build();var ks=k.toLowerCase().split(/\s+/);
+ var hits=idx.filter(function(x){var s=x.t.toLowerCase()+' '+x.name.toLowerCase();return ks.every(function(w){return s.indexOf(w)>=0})});
+ hits.sort(function(a,b){return (b.h-a.h)||(a.i-b.i)});
+ var seen={},out=[];hits.forEach(function(x){var key=x.i+'|'+x.t.slice(0,60);if(seen[key])return;seen[key]=1;out.push(x)});out=out.slice(0,50);
+ if(!out.length){R.innerHTML='<div class="hbs-empty">找不到「'+esc(k)+'」，換個說法試試</div>';return}
+ R.innerHTML='';out.forEach(function(x){var b=document.createElement('button');b.type='button';
+  var s=x.t,p=s.toLowerCase().indexOf(ks[0]);if(p>30)s='…'+s.slice(p-20);
+  var hl=esc(s);ks.forEach(function(w){if(w)hl=hl.replace(new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),function(m){return '<mark>'+m+'</mark>'})});
+  b.innerHTML='<span class="t">'+esc(x.name)+(x.head?'・'+esc(x.head):'')+'</span>'+(x.h?'<span class="h">'+hl+'</span>':'<span class="s">'+hl+'</span>');
+  b.onclick=function(){go(x)};R.appendChild(b)})}
+function hiddenUp(el,pane){var a=[],n=el;while(n&&n!==pane){if(n.hidden||(n.nodeType==1&&getComputedStyle(n).display=='none')||(n.tagName=='DETAILS'&&!n.open&&n!==el))a.push(n);n=n.parentElement}return a.reverse()}
+function reveal(el,pane){for(var t=0;t<4;t++){var hs=hiddenUp(el,pane);if(!hs.length)return;var A=hs[0];
+  if(A.tagName=='DETAILS'){A.open=true;continue}
+  var done=false;for(var k in A.dataset){var v=A.dataset[k];var attr='data-'+k.replace(/[A-Z]/g,function(m){return '-'+m.toLowerCase()});
+   var btn=[].find.call(pane.querySelectorAll('button['+attr+'="'+v+'"],[role=tab]['+attr+'="'+v+'"]'),function(b){return !A.contains(b)});
+   if(btn){btn.click();done=true;break}}
+  if(!done){A.hidden=false;if(getComputedStyle(A).display=='none')A.style.display='block'}}}
+function go(x){close();var nv=document.querySelector('.nv[data-i="'+x.i+'"]');if(nv)nv.click();
+ var pane=document.querySelector('section.pane[data-i="'+x.i+'"]');setTimeout(function(){reveal(x.el,pane);setTimeout(function(){x.el.scrollIntoView({behavior:'smooth',block:'center'});x.el.classList.add('hbs-hit');setTimeout(function(){x.el.classList.remove('hbs-hit')},2600)},120)},60)}
+function open(){ov.hidden=false;run();setTimeout(function(){q.focus();q.select()},30)}
+function close(){ov.hidden=true}
+document.getElementById('hbsFab').onclick=open;document.getElementById('hbsX').onclick=close;
+ov.addEventListener('click',function(e){if(e.target===ov)close()});
+q.addEventListener('input',run);q.addEventListener('keydown',function(e){if(e.key=='Escape')close();if(e.key=='Enter'){var f=R.querySelector('button');f&&f.click()}});
+T.addEventListener('click',function(e){var b=e.target.closest('button');if(b){q.value=b.textContent;run()}});
+var sh=document.querySelector('.sidehead');if(sh){var sb=document.createElement('button');sb.type='button';sb.className='hbs-side';sb.textContent='🔍 搜尋手冊（例如：失能）';sb.onclick=open;sh.insertAdjacentElement('afterend',sb)}
+})();</script>
+<!--hbsearch-end-->
+
