@@ -627,3 +627,10 @@ label.bdit{cursor:pointer}
 .bdx.sure{color:#fff;background:var(--danger);font-size:11px;padding:2px 6px}
 .bdadd{border:0;background:none;color:var(--accent);font:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:4px 8px;text-align:left}
 .bdnew{border-style:dashed;min-height:44px;text-align:center}
+
+/* 防止滑到背後的頁面卡住：外框不捲，只讓裡面的清單、內容、彈出頁自己捲 */
+@media screen{
+  body{box-sizing:border-box}
+  html:has(.app),html:has(.app) body,html:has(.ov) body{overflow:hidden;overscroll-behavior:none}
+  .list,.detail,.wide,.rail,.ovbody,.ktablewrap{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+}
