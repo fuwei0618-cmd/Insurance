@@ -444,6 +444,9 @@ mark{background:linear-gradient(transparent 55%,rgba(224,177,99,.55) 55%);color:
 <div class="wrap">
   <nav class="side" aria-label="專題清單">
     <div class="sidehead"><h1>保險手冊專題</h1><button class="sbtn" id="sideClose" type="button" aria-label="收起清單">‹ 收起</button></div>
+<details class="nvg"><summary class="nvh">入口</summary><div class="nvb">
+<button class="nv" data-i="32" style="--c:var(--gold)"><span class="dot"></span><span><b>需求地圖：聽到什麼翻哪頁</b><small>電話、見面前先看</small></span></button>
+</div></details>
 <details class="nvg"><summary class="nvh">第一章　人生願景與風險觀念</summary><div class="nvb">
 <button class="nv" data-i="0" style="--c:var(--gold)"><span class="dot"></span><span><b>人生城堡與生老病死</b><small>第 1-1 節</small></span></button>
 <button class="nv" data-i="1" style="--c:var(--gold)"><span class="dot"></span><span><b>為什麼要買</b><small>第 1-2 節</small></span></button>
@@ -471,9 +474,9 @@ mark{background:linear-gradient(transparent 55%,rgba(224,177,99,.55) 55%);color:
 <button class="nv" data-i="18" style="--c:var(--green)"><span class="dot"></span><span><b>第三步　預算與商品型態</b><small>第 3-4 節</small></span></button>
 <button class="nv" data-i="19" style="--c:var(--green)"><span class="dot"></span><span><b>簽約到理賠</b><small>第 3-5 節</small></span></button>
 </div></details><details class="nvg"><summary class="nvh">第四章　理財工具</summary><div class="nvb">
-<button class="nv" data-i="30" style="--c:var(--care)"><span class="dot"></span><span><b>儲蓄貨架：五層怎麼挑</b><small>第 1 節</small></span></button>
-<button class="nv" data-i="31" style="--c:var(--care)"><span class="dot"></span><span><b>存錢＋保一種病：客戶資訊卡</b><small>第 2 節</small></span></button>
-<button class="nv" data-i="14" style="--c:var(--care)"><span class="dot"></span><span><b>投資型保單</b><small>第 3 節</small></span></button>
+<button class="nv" data-i="30" style="--c:var(--care)"><span class="dot"></span><span><b>儲蓄貨架：五層怎麼挑</b><small>第 4-1 節</small></span></button>
+<button class="nv" data-i="31" style="--c:var(--care)"><span class="dot"></span><span><b>存錢＋保一種病：客戶資訊卡</b><small>第 4-2 節</small></span></button>
+<button class="nv" data-i="14" style="--c:var(--care)"><span class="dot"></span><span><b>投資型保單</b><small>第 4-3 節</small></span></button>
 </div></details>
 <details class="nvg"><summary class="nvh">資料庫</summary><div class="nvb">
 <button class="nv" data-i="20" style="--c:var(--muted)"><span class="dot"></span><span><b>疾病排名與花費</b><small>第 1 節</small></span></button>
@@ -492,6 +495,185 @@ mark{background:linear-gradient(transparent 55%,rgba(224,177,99,.55) 55%);color:
   </nav>
   <button class="sopen" id="sideOpen" type="button" aria-label="打開清單">☰ 專題清單</button><div class="sback" id="sideBack"></div><button class="goback" id="goBack" type="button" hidden>← 回到 <b></b></button>
   <main>
+<section class="pane" data-i="32" hidden>
+<div class="hero" style="--c:var(--gold)"><span class="loss">入口　見面前先翻這頁</span><h2>需求地圖：聽到什麼，翻哪一頁</h2><p class="truth">客戶說的那一句 → 背後的需要 → 手冊哪一頁。電話裡只提一樣，見面前翻到那一頁準備。</p></div>
+<style>
+.pg-nm{display:flex;flex-direction:column;gap:18px;min-width:0;margin-top:16px}
+.pg-nm .how{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.pg-nm .how div{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:14.5px;line-height:1.6}
+.pg-nm .how b{display:block;font-size:16px}
+.pg-nm .zone{border-radius:16px;padding:14px;border:1px solid var(--line);background:var(--paper)}
+.pg-nm .zh{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 10px}
+.pg-nm .zh h3{margin:0;font-family:var(--serif);font-size:22px;font-weight:900}
+.pg-nm .zh span{font-size:13.5px;color:var(--muted)}
+.pg-nm .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.pg-nm .nc{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card,#fff);display:flex;flex-direction:column}
+.pg-nm .nc header{background:var(--k);color:#fff;padding:10px 14px;display:flex;align-items:baseline;gap:8px}
+.pg-nm .nc header b{font-size:20px;font-weight:900}
+.pg-nm .nc header small{font-size:12.5px;opacity:.9}
+.pg-nm .nc .bd{padding:10px 14px 12px;display:flex;flex-direction:column;gap:7px;flex:1}
+.pg-nm .nc h4{margin:0;font-size:12.5px;color:var(--muted);font-weight:700}
+.pg-nm .nc p{margin:0;font-size:14.5px;line-height:1.6}
+.pg-nm .nc .say{background:color-mix(in srgb,var(--k) 9%,transparent);border-left:4px solid var(--k);border-radius:6px;padding:6px 10px}
+.pg-nm .go{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:4px}
+.pg-nm .go button{font:inherit;font-size:13.5px;border:1px solid var(--k);color:var(--k);background:transparent;border-radius:999px;padding:3px 10px;cursor:pointer}
+.pg-nm .go button:hover{background:var(--k);color:#fff}
+.pg-nm .go em{font-style:normal;font-size:13px;color:var(--muted);align-self:center}
+.pg-nm table{width:100%;border-collapse:collapse;font-size:14.5px}
+.pg-nm th,.pg-nm td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;line-height:1.6}
+.pg-nm th{font-size:13px;color:var(--muted)}
+.pg-nm .rule{font-size:18px;font-weight:900;font-family:var(--serif);margin:10px 0 4px}
+@media (max-width:760px){.pg-nm .how{grid-template-columns:minmax(0,1fr)}}
+</style>
+<div class="pg-nm">
+
+<div class="how">
+<div><b>① 聽</b>客戶說到生活上的變化，就是線索。不打斷，不急著接商品。</div>
+<div><b>② 對</b>在下面找到那一句，看背後是「怕失去」還是「想得到」。</div>
+<div><b>③ 提一樣，再翻頁</b>電話裡只說「接一句」，說完就停。約到了，見面前按按鈕翻到那一頁準備。</div>
+</div>
+
+<div class="zone" style="border-top:6px solid var(--gold)">
+<div class="zh"><h3>萬用：什麼線索都沒聽到</h3><span>每一通都可以用</span></div>
+<div class="grid"><div class="nc" style="--k:var(--gold)"><header><b>保單整理</b><small>不講缺口，先幫忙</small></header><div class="bd">
+<h4>客戶常說</h4><p>「都好啊」「沒什麼變化」「保險之前都買了」</p>
+<h4>背後的需要</h4><p>自己有哪些保單、哪裡重複、哪裡不夠，其實不清楚。</p>
+<h4>接一句</h4><p class="say">「您保單也好幾年了，我可以免費幫您整理成一張表，以後要理賠一看就知道找哪一張。」</p>
+<div class="go"><button data-goto="c3-check">保單健檢 ›</button><button data-goto="map">保障地圖 ›</button></div>
+</div></div></div>
+</div>
+
+<div class="zone" style="border-top:6px solid var(--med)">
+<div class="zh"><h3>怕失去</h3><span>走第二章：保障與工具</span></div>
+<div class="grid">
+
+<div class="nc" style="--k:var(--med)"><header><b>醫療費</b><small>住院、手術、自費</small></header><div class="bd">
+<h4>客戶常說</h4><p>「朋友住院，自費好貴」「最近要開刀、做檢查」「健保很多不給付」</p>
+<h4>背後的需要</h4><p>怕住院、手術、自費藥材的帳單，一次付不出來。</p>
+<h4>接一句</h4><p class="say">「您現在的醫療險是定額的還是實支的？我幫您整理一下就知道夠不夠。」</p>
+<div class="go"><button data-goto="medexp">實支實付 ›</button><button data-goto="hosp">疾病住院 ›</button><button data-goto="surgery">手術 ›</button><button data-goto="accident">意外險 ›</button></div>
+</div></div>
+
+<div class="nc" style="--k:var(--inc)"><header><b>收入中斷</b><small>生大病不能工作</small></header><div class="bd">
+<h4>客戶常說</h4><p>「朋友得癌症，好久沒辦法上班」「我是家裡經濟支柱」「聽說標靶藥很貴」</p>
+<h4>背後的需要</h4><p>治療那幾年，醫藥費加上生活費，從哪裡來。</p>
+<h4>接一句</h4><p class="say">「萬一要休養一兩年，那段時間的生活費，您有想過從哪裡來嗎？」</p>
+<div class="go"><button data-goto="cancer">癌症險 ›</button><button data-goto="ci">重大傷病 ›</button><button data-goto="ci-compare">重疾比一比 ›</button><button data-goto="save-cards">存錢＋保一種病 ›</button></div>
+</div></div>
+
+<div class="nc" style="--k:var(--care)"><header><b>照護費</b><small>長照(失能)、失智</small></header><div class="bd">
+<h4>客戶常說</h4><p>「爸媽年紀大了」「在照顧長輩，好累」「怕老了拖累孩子」</p>
+<h4>背後的需要</h4><p>長期要人照顧，每個月固定的花費，一付就是好幾年。</p>
+<h4>接一句</h4><p class="say">「照顧長輩真的很辛苦。您自己以後這一塊，有先準備了嗎？」</p>
+<div class="go"><button data-goto="ltc">長照與失能 ›</button><button data-goto="save-cards">失智：存錢＋保一種病 ›</button></div>
+</div></div>
+
+<div class="nc" style="--k:var(--fam)"><header><b>家庭責任</b><small>結婚、小孩、房貸</small></header><div class="bd">
+<h4>客戶常說</h4><p>「結婚了」「生小孩了」「買房子，背了房貸」</p>
+<h4>背後的需要</h4><p>自己萬一不在，家人的房貸、教育費、生活費。</p>
+<h4>接一句</h4><p class="say">「家裡多了新成員，保額要不要跟著調整？我幫您整理一下。」</p>
+<div class="go"><button data-goto="life">壽險 ›</button><button data-goto="c1-howmuch">需要買多少 ›</button><button data-goto="c3-stages">人生階段怎麼配 ›</button></div>
+</div></div>
+
+</div></div>
+
+<div class="zone" style="border-top:6px solid var(--care)">
+<div class="zh"><h3>想得到</h3><span>走第四章：理財工具</span></div>
+<div class="grid">
+
+<div class="nc" style="--k:#B07A1E"><header><b>錢變大</b><small>定存、年終、閒錢</small></header><div class="bd">
+<h4>客戶常說</h4><p>「定存快到期了」「剛領年終」「放銀行利息好低」</p>
+<h4>背後的需要</h4><p>一筆錢幾年用不到，想放得比定存好，又不想冒太大風險。</p>
+<h4>接一句</h4><p class="say">「那筆錢有打算什麼時候用嗎？幾年用不到的話，有別的放法可以參考。」</p>
+<div class="go"><button data-goto="save-shelf">儲蓄貨架 ›</button></div>
+</div></div>
+
+<div class="nc" style="--k:#B07A1E"><header><b>每年有錢領</b><small>退休、固定現金流</small></header><div class="bd">
+<h4>客戶常說</h4><p>「再幾年就退休了」「希望以後每年固定有一筆錢」</p>
+<h4>背後的需要</h4><p>不上班以後，每個月的生活費從哪裡來。</p>
+<h4>接一句</h4><p class="say">「您希望退休以後，每個月大概有多少可以用？」</p>
+<div class="go"><button data-goto="save-shelf">儲蓄貨架 ›</button></div>
+</div></div>
+
+<div class="nc" style="--k:#B07A1E"><header><b>留給家人</b><small>傳承、指定給誰</small></header><div class="bd">
+<h4>客戶常說</h4><p>「想留一筆給孩子」「以後財產怎麼分比較好」</p>
+<h4>背後的需要</h4><p>想確定錢給到想給的人，不要讓家人為了錢起爭執。</p>
+<h4>接一句</h4><p class="say">「您想留給誰、什麼時候給？保險可以直接指定給誰。」</p>
+<div class="go"><button data-goto="life">壽險 ›</button><button data-goto="save-shelf">儲蓄貨架 ›</button></div>
+</div></div>
+
+<div class="nc" style="--k:var(--care)"><header><b>存錢又怕生病</b><small>兩個都想顧</small></header><div class="bd">
+<h4>客戶常說</h4><p>「想存錢，可是又怕生病」「保障型的錢都拿不回來」</p>
+<h4>背後的需要</h4><p>錢要留得住，生病時又能多拿一筆。</p>
+<h4>接一句</h4><p class="say">「有一種是存錢的，生了某一種病會另外多給一筆。您最擔心哪一種病？」</p>
+<div class="go"><button data-goto="save-cards">存錢＋保一種病 ›</button></div>
+</div></div>
+
+<div class="nc" style="--k:var(--care)"><header><b>投資</b><small>股票、基金</small></header><div class="bd">
+<h4>客戶常說</h4><p>「最近在玩股票」「想學投資」</p>
+<h4>背後的需要</h4><p>想讓錢長得更快，願意承擔漲跌。</p>
+<h4>接一句</h4><p class="say">「您平常用哪一家下單？我們國泰也有證券，有需要我可以介紹。」</p>
+<div class="go"><button data-goto="inv">投資型保單 ›</button><em>證券：手冊沒有這頁，見面再介紹</em></div>
+</div></div>
+
+</div></div>
+
+<div class="zone" style="border-top:6px solid var(--inc)">
+<div class="zh"><h3>產險與生活</h3><span>走國泰產險那一區</span></div>
+<div class="grid">
+
+<div class="nc" style="--k:var(--inc)"><header><b>車</b><small>換車、騎車、到期</small></header><div class="bd">
+<h4>客戶常說</h4><p>「剛換車」「每天騎車上班」「強制險好像快到期」</p>
+<h4>背後的需要</h4><p>撞到人要賠多少、自己的車修理費、強制險不能斷。</p>
+<h4>接一句</h4><p class="say">「強制險到期我可以幫您續，順便看一下撞到別人賠得夠不夠。」</p>
+<div class="go"><button data-goto="pc-car">車險地圖 ›</button><button data-goto="pc-compulsory">強制險 ›</button><button data-goto="pc-liab">第三人責任 ›</button><button data-goto="pc-pd">車體與竊盜 ›</button></div>
+</div></div>
+
+<div class="nc" style="--k:var(--inc)"><header><b>出國</b><small>旅遊、出差</small></header><div class="bd">
+<h4>客戶常說</h4><p>「下個月要出國」「最近常出差」</p>
+<h4>背後的需要</h4><p>國外看病很貴，班機延誤、行李遺失也麻煩。</p>
+<h4>接一句</h4><p class="say">「出發前跟我說一聲，旅綜險我幫您保好。」</p>
+<div class="go"><button data-goto="pc-travel">旅綜險 ›</button></div>
+</div></div>
+
+<div class="nc" style="--k:var(--inc)"><header><b>房子</b><small>買房、颱風、地震</small></header><div class="bd">
+<h4>客戶常說</h4><p>「剛買房子」「上次颱風家裡淹水」</p>
+<h4>背後的需要</h4><p>房子和家裡的東西壞了，修復要花一大筆。</p>
+<h4>接一句</h4><p class="say">「房貸附的保險通常只保房子本身，家裡的東西要另外看，我幫您看一下。」</p>
+<div class="go"><button data-goto="pc-house">住宅險 ›</button><button data-goto="pc-town">保險小鎮 ›</button></div>
+</div></div>
+
+<div class="nc" style="--k:var(--inc)"><header><b>開店</b><small>老闆、店面</small></header><div class="bd">
+<h4>客戶常說</h4><p>「我自己開店」「店裡客人很多」</p>
+<h4>背後的需要</h4><p>店面火災、客人在店裡受傷，要負責任。</p>
+<h4>接一句</h4><p class="say">「店裡客人萬一跌倒受傷，有保到嗎？」</p>
+<div class="go"><button data-goto="pc-biz">頭家壓箱保 ›</button></div>
+</div></div>
+
+<div class="nc" style="--k:var(--muted)"><header><b>刷卡</b><small>繳保費、日常消費</small></header><div class="bd">
+<h4>客戶常說</h4><p>「保費都刷卡繳」「在找回饋好的卡」</p>
+<h4>背後的需要</h4><p>同樣要花的錢，想多拿一點回饋。</p>
+<h4>接一句</h4><p class="say">「國泰世華的卡可以參考看看，有需要我幫您問。」</p>
+<div class="go"><em>信用卡：手冊沒有這頁，見面再介紹</em></div>
+</div></div>
+
+</div></div>
+
+<div class="zone" style="border-top:6px solid var(--muted)">
+<div class="zh"><h3>觀念很極端的客戶</h3><span>感受先認同，結論不爭辯，商品要適合</span></div>
+<table><thead><tr><th style="width:30%">客戶說</th><th>怎麼接</th></tr></thead><tbody>
+<tr><td>「保險都是騙人的」</td><td>不辯論。「沒關係，您現有的保單，有理賠需要隨時找我。」只當理賠窗口。</td></tr>
+<tr><td>「我保很多了」</td><td>先同意。「那更需要整理，看有沒有重複繳的。」→ 萬用：保單整理</td></tr>
+<tr><td>「我只想存錢」</td><td>不談保障，直接走「想得到」→ 第四章</td></tr>
+<tr><td>「我只做投資」</td><td>順著談，不硬轉成保險。有需要再介紹證券。</td></tr>
+</tbody></table>
+<p class="rule">感受先認同，結論不爭辯，商品要適合。</p>
+<p style="margin:0;font-size:14px;line-height:1.7;color:var(--muted)">認同他的感受，不一定要認同他的結論。順著他重視的那一塊走，關係建立了，他自己會問。不是能成交就好：簽約前要先了解客戶，確認商品適合他（金融消費者保護法第 9 條，適合度）。</p>
+</div>
+
+</div>
+</section>
+
 <section class="pane" data-i="0" hidden>
 <div class="hero" style="--c:var(--gold)"><span class="loss">第一章　觀念</span><h2>人生城堡與生老病死</h2><p class="truth">人要守護的是想過的生活；生老病死一定會來，只是不知道哪天。</p><p class="asof">資料整理於 2026 年 10 月 16 日　・　每月 1、8、15、22 日自動檢查官網是否更新</p><div class="cdm"><small>公司 DM</small><button type="button" class="doc-btn cdm-btn" data-doc="CK28">📄 28000</button></div></div>
 <div class="smap"><div class="sm-top"><b>第一章主線</b><span>她想守什麼 → 守不住會怎樣 → 用什麼守 → 先守哪裡 → 守多少</span></div><div class="sm-chips"><button type="button" class="sm-chip on" data-go="0"><small>第 1-1 節</small>想守什麼</button><button type="button" class="sm-chip" data-go="1"><small>第 1-2 節</small>守不住會怎樣</button><button type="button" class="sm-chip" data-go="2"><small>第 1-3 節</small>用什麼守</button><button type="button" class="sm-chip" data-go="3"><small>第 1-4 節</small>先守哪裡</button><button type="button" class="sm-chip" data-go="4"><small>第 1-5 節</small>守多少</button></div><div class="sm-card"><div><small>這一節回答</small><b>我想守住什麼？</b></div><div><small>一句話重點</small><b>保險是人生城堡的地基</b></div><div><small>客戶聽完會說</small><b>「原來我在乎的是這些。」</b></div></div><div class="sm-flow"><small>這一節怎麼走（點一下跳過去）</small><ol><li><button type="button" data-h="0">開場</button></li><li><button type="button" data-h="1">小明的人生城堡</button></li><li><button type="button" data-h="2">互動時間</button></li><li><button type="button" data-h="3">您的人生城堡</button></li><li><button type="button" data-h="4">生、老、病、死</button></li><li><button type="button" data-h="5">時間線</button></li><li><button type="button" data-h="6">客戶常問</button></li></ol></div></div>
@@ -9195,7 +9377,7 @@ P.querySelectorAll(".fbl [data-c]").forEach(function(x){x.style.cursor="pointer"
 
 
 
-</section><script>window.DOCS={"B94": {"dm": 4, "terms": 24, "name": "新真大心", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-surgery/B94_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-surgery/B94%E6%A2%9D%E6%AC%BE.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-surgery/b94.html"}}, "CV4": {"dm": 4, "terms": 9, "name": "新實全心意", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-reimbursement-benefits/CV4_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-reimbursement-benefits/CV4.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-reimbursement-benefits/cv4.html"}}, "DQ1": {"dm": 2, "terms": 5, "name": "IN康愛", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/DQ1_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/DQ1.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-illness/dq1.html"}}, "DQB": {"dm": 4, "terms": 5, "name": "樂康愛", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/DQB_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/DQB.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-illness/dqb.html"}}, "FG3": {"dm": 6, "terms": 11, "name": "倍愛醫靠 A 型", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-reimbursement-benefits/FG3_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-reimbursement-benefits/FG3.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-reimbursement-benefits/fg3.html"}}, "FG4": {"dm": 6, "terms": 11, "name": "倍愛醫靠 B 型", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-reimbursement-benefits/FG4_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-reimbursement-benefits/FG4.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-reimbursement-benefits/fg4.html"}}, "FMC": {"dm": 4, "terms": 12, "name": "好康愛", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/FMC_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/FMC.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-illness/fmc.html"}}, "LCC": {"dm": 6, "terms": 10, "name": "樂齡守護", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-long-term-care/LCCLCD_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-long-term-care/LCCLCD.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-long-term-care/lcc.html"}}, "LDALDB": {"dm": 2, "terms": 13, "name": "睛智守護", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/LDALDB_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/LDALDB.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-illness/ldaldb.html"}}, "MFB": {"dm": 4, "terms": 12, "name": "豪康愛", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/MFB_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/MFB.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-illness/mfb.html"}}, "VSC": {"dm": 6, "terms": 14, "name": "安心守護 A 型", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-long-term-care/VSC_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-long-term-care/VSC.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-long-term-care/vsc.html"}}, "VSD": {"dm": 6, "terms": 11, "name": "安心守護 B 型", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-long-term-care/VSD_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-long-term-care/VSD.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-long-term-care/vsd.html"}}, "WV4": {"dm": 4, "terms": 8, "name": "超實在", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-reimbursement-benefits/WV4_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-reimbursement-benefits/WV4.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-reimbursement-benefits/wv4.html"}}, "XB7": {"dm": 2, "terms": 18, "name": "超全方位", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/accident/XB7XB8XB9_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/accident/XB7.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/accident/xb7.html"}}, "XJ2": {"dm": 2, "terms": 14, "name": "新金骨力", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/accident/XJ2_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/accident/XJ2.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/accident/xj2.html"}}, "ZCO": {"dm": 4, "terms": 32, "name": "新鍾心滿福", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/ZCO_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/ZCO.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-illness/zco.html"}}, "DX4": {"dm": 2, "terms": 8, "name": "IN享愛", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/life-caring/DX4_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/life-caring/DX4.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/life-caring/dx4.html"}}, "CCA": {"dm": 2, "terms": 10, "name": "繽利101", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/life-caring/CCA_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/life-caring/CCA.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/life-caring/cca.html"}}, "WZC": {"dm": 2, "terms": 10, "name": "豪美利101", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/life-caring/WZC_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/life-caring/WZC.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/life-caring/wzc.html"}}, "DPC": {"dm": 4, "terms": 9, "name": "醫護康愛", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/DPC_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/DPC.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-illness/dpc.html"}}, "GI2": {"dm": 4, "terms": 23, "name": "樂享平安", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/accident/GI2_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/accident/GI2_.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/accident/gi2.html"}}, "DTG": {"dm": 4, "terms": 22, "name": "樂順心", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-surgery/DTFDTG_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-surgery/DTFDTG.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-surgery/dtg.html"}}, "DCC": {"dm": 6, "terms": 17, "name": "樂心安", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-surgery/DCCDCD_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-surgery/DCCDCD.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-surgery/dcc.html"}}, "SC2": {"dm": 2, "terms": 9, "name": "樂鍾心", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/SC2_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/SC2.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-illness/sc2.html"}}};window.TOPIC_IDX={"map": 29, "save-shelf": 30, "save-cards": 31, "c1-vision": 0, "c1-why": 1, "c1-what": 2, "c1-how": 3, "c1-howmuch": 4, "accident": 5, "hosp": 6, "surgery": 7, "medexp": 8, "cancer": 9, "ci": 10, "ci-compare": 11, "ltc": 12, "life": 13, "inv": 14, "c3-stages": 15, "c3-check": 16, "c3-priority": 17, "c3-budget": 18, "c3-sign": 19, "data-cost": 20, "pc-town": 21, "pc-car": 22, "pc-compulsory": 23, "pc-liab": 24, "pc-pd": 25, "pc-travel": 26, "pc-house": 27, "pc-biz": 28};</script><script>Object.assign(window.DOCS,{"CK28": {"dm": 2, "terms": 0, "name": "觀念 DM：28000 人生四階段"}, "C321": {"dm": 2, "terms": 0, "name": "觀念 DM：321+1 保障怎麼配"}, "CNHI": {"dm": 2, "terms": 0, "name": "觀念 DM：健保協同商保"}, "CMED": {"dm": 4, "terms": 0, "name": "觀念 DM：醫療補給站"}, "CLTC": {"dm": 2, "terms": 0, "name": "觀念 DM：長照互動"}, "CRET": {"dm": 2, "terms": 0, "name": "觀念 DM：退休準備"}});</script>
+</section><script>window.DOCS={"B94": {"dm": 4, "terms": 24, "name": "新真大心", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-surgery/B94_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-surgery/B94%E6%A2%9D%E6%AC%BE.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-surgery/b94.html"}}, "CV4": {"dm": 4, "terms": 9, "name": "新實全心意", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-reimbursement-benefits/CV4_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-reimbursement-benefits/CV4.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-reimbursement-benefits/cv4.html"}}, "DQ1": {"dm": 2, "terms": 5, "name": "IN康愛", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/DQ1_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/DQ1.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-illness/dq1.html"}}, "DQB": {"dm": 4, "terms": 5, "name": "樂康愛", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/DQB_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/DQB.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-illness/dqb.html"}}, "FG3": {"dm": 6, "terms": 11, "name": "倍愛醫靠 A 型", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-reimbursement-benefits/FG3_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-reimbursement-benefits/FG3.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-reimbursement-benefits/fg3.html"}}, "FG4": {"dm": 6, "terms": 11, "name": "倍愛醫靠 B 型", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-reimbursement-benefits/FG4_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-reimbursement-benefits/FG4.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-reimbursement-benefits/fg4.html"}}, "FMC": {"dm": 4, "terms": 12, "name": "好康愛", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/FMC_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/FMC.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-illness/fmc.html"}}, "LCC": {"dm": 6, "terms": 10, "name": "樂齡守護", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-long-term-care/LCCLCD_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-long-term-care/LCCLCD.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-long-term-care/lcc.html"}}, "LDALDB": {"dm": 2, "terms": 13, "name": "睛智守護", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/LDALDB_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/LDALDB.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-illness/ldaldb.html"}}, "MFB": {"dm": 4, "terms": 12, "name": "豪康愛", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/MFB_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/MFB.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-illness/mfb.html"}}, "VSC": {"dm": 6, "terms": 14, "name": "安心守護 A 型", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-long-term-care/VSC_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-long-term-care/VSC.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-long-term-care/vsc.html"}}, "VSD": {"dm": 6, "terms": 11, "name": "安心守護 B 型", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-long-term-care/VSD_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-long-term-care/VSD.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-long-term-care/vsd.html"}}, "WV4": {"dm": 4, "terms": 8, "name": "超實在", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-reimbursement-benefits/WV4_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-reimbursement-benefits/WV4.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-reimbursement-benefits/wv4.html"}}, "XB7": {"dm": 2, "terms": 18, "name": "超全方位", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/accident/XB7XB8XB9_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/accident/XB7.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/accident/xb7.html"}}, "XJ2": {"dm": 2, "terms": 14, "name": "新金骨力", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/accident/XJ2_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/accident/XJ2.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/accident/xj2.html"}}, "ZCO": {"dm": 4, "terms": 32, "name": "新鍾心滿福", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/ZCO_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/ZCO.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-illness/zco.html"}}, "DX4": {"dm": 2, "terms": 8, "name": "IN享愛", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/life-caring/DX4_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/life-caring/DX4.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/life-caring/dx4.html"}}, "CCA": {"dm": 2, "terms": 10, "name": "繽利101", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/life-caring/CCA_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/life-caring/CCA.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/life-caring/cca.html"}}, "WZC": {"dm": 2, "terms": 10, "name": "豪美利101", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/life-caring/WZC_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/life-caring/WZC.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/life-caring/wzc.html"}}, "DPC": {"dm": 4, "terms": 9, "name": "醫護康愛", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/DPC_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/DPC.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-illness/dpc.html"}}, "GI2": {"dm": 4, "terms": 23, "name": "樂享平安", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/accident/GI2_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/accident/GI2_.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/accident/gi2.html"}}, "DTG": {"dm": 4, "terms": 22, "name": "樂順心", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-surgery/DTFDTG_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-surgery/DTFDTG.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-surgery/dtg.html"}}, "DCC": {"dm": 6, "terms": 17, "name": "樂心安", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-surgery/DCCDCD_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-surgery/DCCDCD.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-surgery/dcc.html"}}, "SC2": {"dm": 2, "terms": 9, "name": "樂鍾心", "u": {"dm": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/SC2_DM.pdf", "terms": "https://www.cathaylife.com.tw/official/content/dam/cathaylife-official/files/products/health-illness/SC2.pdf", "page": "https://www.cathaylife.com.tw/official/content/cathaylife-official/zh-tw/cathaylife/products/health-illness/sc2.html"}}};window.TOPIC_IDX={"needmap": 32, "map": 29, "save-shelf": 30, "save-cards": 31, "c1-vision": 0, "c1-why": 1, "c1-what": 2, "c1-how": 3, "c1-howmuch": 4, "accident": 5, "hosp": 6, "surgery": 7, "medexp": 8, "cancer": 9, "ci": 10, "ci-compare": 11, "ltc": 12, "life": 13, "inv": 14, "c3-stages": 15, "c3-check": 16, "c3-priority": 17, "c3-budget": 18, "c3-sign": 19, "data-cost": 20, "pc-town": 21, "pc-car": 22, "pc-compulsory": 23, "pc-liab": 24, "pc-pd": 25, "pc-travel": 26, "pc-house": 27, "pc-biz": 28};</script><script>Object.assign(window.DOCS,{"CK28": {"dm": 2, "terms": 0, "name": "觀念 DM：28000 人生四階段"}, "C321": {"dm": 2, "terms": 0, "name": "觀念 DM：321+1 保障怎麼配"}, "CNHI": {"dm": 2, "terms": 0, "name": "觀念 DM：健保協同商保"}, "CMED": {"dm": 4, "terms": 0, "name": "觀念 DM：醫療補給站"}, "CLTC": {"dm": 2, "terms": 0, "name": "觀念 DM：長照互動"}, "CRET": {"dm": 2, "terms": 0, "name": "觀念 DM：退休準備"}});</script>
   </main>
   <p class="foot">商品重點整理自各商品條款，右邊小字是條款頁碼；實際以條款為準。考題請到手冊講者區練習。</p>
 </div>

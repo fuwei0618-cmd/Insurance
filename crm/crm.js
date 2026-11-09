@@ -601,8 +601,9 @@ const CALL_FLOW = [
   ['一通電話只做三件事（不在電話裡賣東西）', ['顧關係、更新資料：確認電話地址，問近況。', '聽到一個「線索」：客戶生活上有什麼變化。', '約見面：理由用「保單整理」（我幫您把保單整理成一張表）。']],
   ['準備（只做一次）', ['匯入名單：服務件 →「⋯ 更多」→ 匯入名單，選公司的 PDF。', '主管給的意外險升級名單：「⋯ 更多」→ 名單加標籤，選 PDF（用姓名比對，不看別份編號）。', '送禮專區建好「2027 年曆」活動和品項。']],
   ['每次開始：按「📞 開始打電話」', ['不用想從誰開始，它會照順序一位一位帶你：① 意外險升級 → ② 已加 LINE → ③ 其他；同一組裡照地區由近到遠（桃園 → 八德 → 龜山 → 蘆竹 → 大園 → 觀音 → 新屋 → 楊梅 → 平鎮 → 中壢 → 龍潭 → 大溪 → 新北、台北）。', '一次只打一區，約到的人也在同一區，之後排拜訪比較順。', '已加 LINE 的人：先傳「年底準備了年曆想送您，什麼時間方便打給您？」，回了再打。']],
-  ['電話中：話術六步', ['開場、確認服務人員 → 年曆 → 家戶 → 職業 → 聊天 → 收尾。', '意外險升級的人：在第 4 步「確認職業」順勢帶到「意外險可以升級」。', '打電話前看一眼「打電話前的功課」：住址、保單概況。']],
-  ['聊天時：聽線索，只順口提一樣', ['一通電話最多提一樣，而且要客戶先說出線索才提；說完就停，不追。', '換車、買車、常騎車 → 車險、強制險到期；要出國 → 旅綜險；結婚、生小孩、買房 → 保單整理（看保額夠不夠）。', '家人朋友住院、生病 → 實支實付、癌症、重大傷病；爸媽年紀大、在照顧長輩 → 長照。', '定存到期、領年終、嫌利息低 → 存錢；在玩股票、想投資 → 證券；繳保費、刷卡 → CUBE 卡。', '什麼線索都沒聽到 → 保單整理：「我幫您把保單整理成一張表，以後要理賠一看就知道找哪一張。」', '缺口不主動講，客戶自己問「這樣夠嗎？」再談。觀念極端的不辯論：「保險都騙人」→ 只當理賠窗口；「保很多了」→ 幫忙整理重複的；「只想存錢」→ 直接談儲蓄。', '掛電話時把聽到的線索記在備註，見面前翻手冊對應的那一頁準備。']],
+  ['電話中：六步（2～3 分鐘）', ['① 問候、表明身分：「我是國泰的○○，負責您的保單服務。」', '② 說來電目的：「打來確認您的聯絡資料有沒有變。」順便送年曆、確認地址；家戶、職業也在這一步問。', '③ 一個開放式問題：「最近家裡或工作有什麼變化嗎？」', '④ 聽：這是重點。客戶說到生活上的變化，就是線索。不打斷，不急著接商品。', '⑤ 順口提一句：只提一樣，說完就停。', '⑥ 約時間或收尾：客戶說好就約時間；說不用就謝謝結束，不追。', '意外險升級的人：在第 ② 步問職業時，順勢帶到「意外險可以升級」。', '打電話前看一眼「打電話前的功課」：住址、保單概況。']],
+  ['聽到線索：只順口提一樣（對照保險手冊「需求地圖」）', ['一通電話最多提一樣，而且要客戶先說出線索才提；說完就停，不追。', '換車、買車、常騎車 → 車險、強制險到期；要出國 → 旅綜險；買房、颱風 → 住宅險；自己開店 → 頭家壓箱保。', '家人朋友住院、自費很貴 → 實支實付；朋友得癌症、是家裡經濟支柱 → 癌症、重大傷病；爸媽年紀大、在照顧長輩 → 長照。', '結婚、生小孩、背房貸 → 保單整理（看保額夠不夠）。', '定存到期、領年終、嫌利息低 → 存錢；快退休 → 每年有錢領；想存錢又怕生病 → 存錢＋保一種病；在玩股票 → 證券；繳保費、刷卡 → 國泰世華信用卡。', '什麼線索都沒聽到 → 保單整理：「您保單也好幾年了，我可以免費幫您整理成一張表，看哪裡重複、哪裡不夠。」', '缺口不主動講，客戶自己問「這樣夠嗎？」再談。', '掛電話時把聽到的線索記在備註，見面前翻保險手冊「需求地圖」對應的那一頁準備。']],
+  ['觀念很極端的客戶：感受先認同，結論不爭辯，商品要適合', ['「保險都是騙人的」→ 不辯論。「沒關係，您現有的保單，有理賠需要隨時找我。」只當理賠窗口。', '「我保很多了」→ 先同意。「那更需要整理，看有沒有重複繳的。」', '「我只想存錢」→ 不談保障，直接談存錢（保險手冊第四章）。', '「我只做投資」→ 順著談，不硬轉成保險；有需要再介紹證券。', '原則：認同他的感受，不一定認同他的結論；順著他重視的那一塊走。不是能成交就好，只賣適合他、他聽得懂的（金融消費者保護法第 9 條：簽約前要了解客戶，確認商品適合）。']],
   ['掛電話三十秒內記完，按「下一位 ›」', ['結果：未接、已接・聊過、約訪成功…', '分級 A／B／C-1／C-2／C-3；勾服務人員、家戶、職業確認。', '年曆：要的填品項（或到總表「🎁 送禮」填）；不要的按「不送年曆」。有加 LINE 就勾，約好了填約訪日期。']],
   ['沒接的人', ['換時段再打：看三時段哪個還是灰的（灰＝還沒打、紅＝沒接、綠＝接了）。', '三個時段都紅了：傳簡訊或 LINE，年曆改成寄送。']],
   ['排拜訪、送年曆', ['年曆到貨後，總表點「已排訪」加地區，同一區排同一天，半天三到四家。', '見到面勾「已見面」，送禮按「已送」；A、B 開建議書案件；有人買了再「轉成客戶」。']],
@@ -780,7 +781,7 @@ function answerStatsHTML(k) { // 每通電話自動記下撥打時間，算出�
 const scripts = () => notes().filter((n) => n.kind === 'script').sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
 const logsOf = (k) => (k.logs || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.at || '').localeCompare(a.at || ''));
 const stCls = (st) => (st === '已約訪' ? 'p-done' : st === '結案' ? 'p-off' : st === '再聯絡' ? 'p-wait' : 'p-go');
-const SAMPLE_SCRIPT = '1. 開場、確認服務人員\n您好，請問是○○先生／小姐嗎？我是國泰人壽的服務人員馥瑋，之後由我負責您的保單服務。請問現在講電話方便嗎？大概三分鐘。\n\n2. 年曆\n年底我準備了年曆想送您，方便我親自送過去，還是寄給您比較方便？（確認地址）\n\n3. 確認家戶\n保單上的家人還住一起嗎？要不要也幫他們準備一份？\n\n4. 確認職業\n順便幫您確認一下，工作有沒有換？職業類別不一樣，意外險的理賠可能會受影響。\n\n5. 聊天（生活／工作／理財）\n最近工作忙嗎？家裡大家都好嗎？\n→ 邊聊邊判斷分級：A／B／C-1／C-2／C-3\n\n6. 收尾\n那我們約○月○日送過去，到時候再跟您聯絡。有任何保單的問題都可以直接找我。';
+const SAMPLE_SCRIPT = '1. 問候、表明身分\n您好，請問是○○先生／小姐嗎？我是國泰人壽的馥瑋，負責您的保單服務。現在講電話方便嗎？大概兩三分鐘。\n\n2. 來電目的（確認資料、年曆）\n打來確認您的聯絡資料有沒有變。年底我準備了年曆想送您，地址還是○○嗎？方便我親自送過去，還是寄給您？\n→ 順便問：保單上的家人還住一起嗎？要不要也幫他們準備一份？工作有沒有換？職業類別不一樣，意外險的理賠可能會受影響。\n\n3. 一個開放式問題\n最近家裡或工作有什麼變化嗎？\n\n4. 聽（重點）\n客戶說到生活上的變化，就是線索。不打斷，不急著接商品。\n→ 邊聽邊判斷分級：A／B／C-1／C-2／C-3\n\n5. 順口提一句（只提一樣，說完就停）\n例如：您保單也好幾年了，我可以免費幫您整理成一張表，看哪裡重複、哪裡不夠。\n\n6. 約時間或收尾\n說好：那我○月○日把年曆送過去，順便把整理好的表帶給您看。\n說不用：好的，謝謝您。有任何保單的問題都可以直接找我。（不追）';
 function callListHTML() {
   const q = S.q.trim(), all = calls(), today = localDay();
   const rank = (k) => ({ 再聯絡: 0, 待撥: 1, 已約訪: 2, 結案: 3 }[k.status] ?? 1);
@@ -834,7 +835,7 @@ function callDetailHTML() {
   ${giftSectionHTML('call', k.id, k.name)}
   ${answerStatsHTML(k)}
   <details class="sec script" open><summary><h2 style="display:inline">話術 SOP</h2></summary>
-   ${scs.length ? `<div class="actions" style="align-items:center"><select id="kScript" aria-label="選擇話術">${scs.map((x) => `<option value="${x.id}"${x.id === S.script ? ' selected' : ''}>${esc(x.title)}</option>`).join('')}</select><button class="linkbtn" data-act="editscript">編輯</button><button class="linkbtn" data-act="newscript">＋ 新話術</button></div><pre class="scripttext">${esc(sc?.body || '')}</pre>${nimgsHTML(sc || {})}`
+   ${scs.length ? `<div class="actions" style="align-items:center"><select id="kScript" aria-label="選擇話術">${scs.map((x) => `<option value="${x.id}"${x.id === S.script ? ' selected' : ''}>${esc(x.title)}</option>`).join('')}</select><button class="linkbtn" data-act="editscript">編輯</button><button class="linkbtn" data-act="newscript">＋ 新話術</button><button class="linkbtn" data-act="samplescript">＋ 新版範例</button></div><pre class="scripttext">${esc(sc?.body || '')}</pre>${nimgsHTML(sc || {})}`
     : `<div class="sub">還沒有話術。可以先用範例改成你自己的說法。</div><div class="actions"><button class="btn pri" data-act="samplescript">用範例開始</button><button class="btn" data-act="newscript">自己寫</button></div>`}</details>
   <div class="sec"><h2>記錄這通</h2>
    <div class="tags">${RESULTS.map(([r]) => `<button class="tag${S.kres === r ? ' on' : ''}" data-kres="${r}">${r}</button>`).join('')}</div>
@@ -2205,7 +2206,7 @@ app.addEventListener('click', async (e) => {
     case 'geditems': S.gedit = !S.gedit; App.render(); break;
     case 'gaddi': { const ev = Vault.get('gevents', S.gev); if (!ev) break; ev.items = [...(ev.items || []), { id: uid(), name: '', code: '', qty: 0 }]; Vault.put('gevents', ev); App.render(); break; }
     case 'gevdel': { const ev = Vault.get('gevents', S.gev); if (!ev) break; if (!armConfirm(b, '連名單一起刪除，再按一次')) break; Vault.all('gifts').filter((g) => g.eventId === ev.id).forEach((g) => Vault.del('gifts', g.id)); Vault.del('gevents', ev.id); S.gev = null; App.render(); break; }
-    case 'samplescript': { const n = Vault.put('notes', { kind: 'script', group: '電訪', title: '服務件電訪', body: SAMPLE_SCRIPT, images: [] }); S.script = n.id; editNote(n.id); break; }
+    case 'samplescript': { const n = Vault.put('notes', { kind: 'script', group: '電訪', title: scripts().length ? '服務件電訪（新版六步）' : '服務件電訪', body: SAMPLE_SCRIPT, images: [] }); S.script = n.id; editNote(n.id); break; }
     case 'newscript': { const n = Vault.put('notes', { kind: 'script', group: '電訪', title: '', body: '', images: [] }); S.script = n.id; editNote(n.id, true); break; }
     case 'editscript': if (S.script) editNote(S.script); break;
     case 'logcall': {
