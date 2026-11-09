@@ -598,6 +598,7 @@ function callSlots(k) { // 三個時段：上午、下午、晚上，各打過�
 }
 function callGift(k) { const gs = Vault.all('gifts').filter((g) => g.who?.type === 'call' && g.who?.id === k.id); if (gs.length) return gs.every((g) => g.status === '已送') ? '已送' : '預備'; return k.giftSkip ? '不送' : ''; }
 const CALL_FLOW = [
+  ['一通電話只做三件事（不在電話裡賣東西）', ['顧關係、更新資料：確認電話地址，問近況。', '聽到一個「線索」：客戶生活上有什麼變化。', '約見面：理由用「保單整理」（我幫您把保單整理成一張表）。']],
   ['準備（只做一次）', ['匯入名單：服務件 →「⋯ 更多」→ 匯入名單，選公司的 PDF。', '主管給的意外險升級名單：「⋯ 更多」→ 名單加標籤，選 PDF（用姓名比對，不看別份編號）。', '送禮專區建好「2027 年曆」活動和品項。']],
   ['每次開始：按「📞 開始打電話」', ['不用想從誰開始，它會照順序一位一位帶你：① 意外險升級 → ② 已加 LINE → ③ 其他；同一組裡照地區由近到遠（桃園 → 八德 → 龜山 → 蘆竹 → 大園 → 觀音 → 新屋 → 楊梅 → 平鎮 → 中壢 → 龍潭 → 大溪 → 新北、台北）。', '一次只打一區，約到的人也在同一區，之後排拜訪比較順。', '已加 LINE 的人：先傳「年底準備了年曆想送您，什麼時間方便打給您？」，回了再打。']],
   ['電話中：話術六步', ['開場、確認服務人員 → 年曆 → 家戶 → 職業 → 聊天 → 收尾。', '意外險升級的人：在第 4 步「確認職業」順勢帶到「意外險可以升級」。', '打電話前看一眼「打電話前的功課」：住址、保單概況。']],
@@ -2043,6 +2044,7 @@ function drawThumbs() {
 function newCase(cat) { const c = saveCase({ date: localDay(), client: '', title: '', cat, status: '進行中', items: [], causeType: '', causeDetail: '', diag: '', next: '', cost: '', ratio: '', payout: '', notes: '', docs: [], isRef: false }); S.sel = c.id; S.showDetail = true; return c; }
 function armConfirm(b, label) { if (b.dataset.confirm) return true; b.dataset.confirm = 1; b.textContent = label; setTimeout(() => { if (b.isConnected) { delete b.dataset.confirm; App.render(); } }, 4000); return false; }
 app.addEventListener('click', async (e) => {
+  { const km = e.target.closest('.kmenu button'); if (km) km.closest('details')?.removeAttribute('open'); } // 選單按完就收起來，不擋畫面
   const rview = e.target.closest('[data-refview]'); // 理賠參考：點圖片看遮罩版，可以左右翻
   if (rview) { const rc = Vault.get('cases', S.refSel); if (!rc) return; const list = refDocs(rc).map(([x]) => x); showGallery({ list, i: +rview.dataset.refview, masked: true }); return; }
   const rdoc = e.target.closest('[data-refdoc]'); // 理賠參考：點文件選／取消
