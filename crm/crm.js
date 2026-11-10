@@ -696,9 +696,10 @@ function kBirthY(k) {
 const kAge = (k) => { const y = kBirthY(k); return y ? new Date().getFullYear() - y : null; };
 const kAgeGrp = (k) => { const a = kAge(k); return a == null ? '' : a >= 55 ? 'old' : 'young'; };
 const kSlot = () => (new Date().getHours() < 17 ? 'day' : 'night'); // 下午五點前算白天
-const agePri = (k) => { const g = kAgeGrp(k); return !g ? 1 : g === (kSlot() === 'day' ? 'old' : 'young') ? 0 : 2; };
+const kWeekend = () => [0, 6].includes(new Date().getDay());
+const agePri = (k) => { if (kWeekend()) return 0; const g = kAgeGrp(k); return !g ? 1 : g === (kSlot() === 'day' ? 'old' : 'young') ? 0 : 2; };
 const ageLab = (k) => ({ old: '55 歲以上', young: '55 歲以下' })[kAgeGrp(k)] || '年齡未填';
-const slotTip = () => (kSlot() === 'day' ? '☀️ 現在是白天：先打 55 歲以上' : '🌙 現在是晚上：先打 55 歲以下（七、八點吃完飯最好）');
+const slotTip = () => kWeekend() ? '🗓 假日：大家都可能在家，不分年齡照順序打（下午最好）' : (kSlot() === 'day' ? '☀️ 現在是白天：先打 55 歲以上' : '🌙 現在是晚上：先打 55 歲以下（七、八點吃完飯最好）');
 const kCallCmp = (a, b) => agePri(a) - agePri(b) || callRank(a) - callRank(b) || areaSort(kArea(a), kArea(b)) || addrCmp(a, b);
 function openCallTagImport() { // 主管給的名單：貼序號或姓名，一次加上標籤
   const tags = callTags();
