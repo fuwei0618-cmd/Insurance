@@ -2214,23 +2214,27 @@ async function openWith(raw){
 }
 function draw(){ document.querySelectorAll('[data-dmt]').forEach((b)=>b.classList.toggle('on',b.dataset.dmt===tab));
   body.innerHTML = tab==='dm' ? `<img src="${DATA.dm}" alt="存錢＋保一種病文宣" style="width:100%;height:auto;display:block;border-radius:8px">` : DATA.script; body.scrollTop=0; }
+async function unwrap(pw){ const [,s,iv,ct]=WRAP.split('.'); const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+  const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:d64(s),iterations:310000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
+  return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:d64(iv)},key,d64(ct))); }
 function pwForm(msg){ $('dmlkTabs').hidden=true; $('dmlkTabs').style.display='none';
-  body.innerHTML = WRAP ? `<form class="pwf" id="dmlkF"><p style="margin:0">輸入密碼才會顯示文宣與講稿。</p><input id="dmlkPw" type="password" autocomplete="current-password" placeholder="密碼"><label style="font-size:14px"><input type="checkbox" id="dmlkRem" checked style="width:auto"> 這台裝置記住（下次不用再輸入）</label><button>打開</button><p id="dmlkMsg" style="margin:0;color:#C0392B;font-size:14px">${msg||''}</p></form>` : '<p class="pwf">還沒設定密碼。</p>';
+  body.innerHTML = WRAP ? `<form class="pwf" id="dmlkF"><p style="margin:0">輸入密碼才會顯示文宣與講稿。</p><input id="dmlkPw" type="password" autocomplete="current-password" placeholder="密碼"><label style="font-size:14px"><input type="checkbox" id="dmlkRem" checked style="width:auto"> 這台裝置記住（跟講者模式共用，下次都不用再輸入）</label><button>打開</button><p id="dmlkMsg" style="margin:0;color:#C0392B;font-size:14px">${msg||''}</p></form>` : '<p class="pwf">還沒設定密碼。</p>';
   const f=$('dmlkF'); if(!f) return; setTimeout(()=>$('dmlkPw').focus(),50);
   f.onsubmit=async(e)=>{e.preventDefault(); $('dmlkMsg').textContent='解鎖中…';
-    try{ const [,s,iv,ct]=WRAP.split('.'); const base=await crypto.subtle.importKey('raw',new TextEncoder().encode($('dmlkPw').value),'PBKDF2',false,['deriveKey']);
-      const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:d64(s),iterations:310000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
-      const raw=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:d64(iv)},key,d64(ct)));
-      if($('dmlkRem').checked){ try{localStorage.setItem(LS,btoa(String.fromCharCode(...raw)))}catch(e){} }
+    try{ const pw=$('dmlkPw').value, raw=await unwrap(pw);
+      if($('dmlkRem').checked){ try{localStorage.setItem(LS,btoa(String.fromCharCode(...raw)));localStorage.setItem('npw',JSON.stringify(pw))}catch(e){} }
       await openWith(raw);
     }catch(err){ $('dmlkMsg').textContent='密碼不正確，請再試一次。'; } };
 }
 $('dmlkBtn').onclick=async()=>{ ov.hidden=false; document.documentElement.style.overflow='hidden';
   if(DATA){draw();return} let m=null; try{m=localStorage.getItem(LS)}catch(e){}
-  if(m){ try{ await openWith(d64(m)); return; }catch(e){ try{localStorage.removeItem(LS)}catch(_){} } } pwForm(); };
+  if(m){ try{ await openWith(d64(m)); return; }catch(e){ try{localStorage.removeItem(LS)}catch(_){} } }
+  let pw=null; try{pw=JSON.parse(localStorage.getItem('npw')||'null')||sessionStorage.getItem('npw')}catch(e){}
+  if(pw&&WRAP){ body.innerHTML='<p class="pwf">解鎖中…</p>'; try{ const raw=await unwrap(pw); try{localStorage.setItem(LS,btoa(String.fromCharCode(...raw)))}catch(e){} await openWith(raw); return; }catch(e){} }
+  pwForm(); };
 $('dmlkX').onclick=()=>{ ov.hidden=true; document.documentElement.style.overflow=''; };
 ov.addEventListener('click',(e)=>{ const b=e.target.closest('[data-dmt]'); if(b){tab=b.dataset.dmt; draw();} });
-$('dmlkLock').onclick=()=>{ try{localStorage.removeItem(LS)}catch(e){} DATA=null; body.innerHTML=''; pwForm('已鎖上。'); };
+$('dmlkLock').onclick=()=>{ try{localStorage.removeItem(LS);localStorage.removeItem('npw');sessionStorage.removeItem('npw')}catch(e){} DATA=null; body.innerHTML=''; pwForm('已鎖上。'); };
 $('dmlkPrint').onclick=()=>{ const w=window.open('','_blank'); if(!w){alert('請允許跳出視窗');return} w.document.write(`<!doctype html><title>列印文宣</title><style>@page{size:A4 landscape;margin:0}body{margin:0}img{width:100%;height:auto;display:block}</style><img src="${DATA.dm}" onload="setTimeout(()=>print(),200)">`); w.document.close(); };
 })();
 </script>
