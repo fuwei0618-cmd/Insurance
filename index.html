@@ -2192,7 +2192,48 @@ P.querySelectorAll(".shlv").forEach(function(x){x.classList.toggle("on",x.datase
 @media (max-width:640px){.pg-ic .two{grid-template-columns:minmax(0,1fr)}}
 </style>
 <div class="pg-ic">
-<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><a href="https://claude.ai/artifact/RrAWRN2wpdssNqhzi2Pcre" target="_blank" rel="noopener" style="display:inline-flex;gap:8px;align-items:center;background:#E8392B;color:#fff;text-decoration:none;border-radius:10px;padding:10px 16px;font-weight:700">🖨 文宣列印版 ›</a><a href="https://claude.ai/artifact/3eroxeQveNvYvZmZagLQAR" target="_blank" rel="noopener" style="display:inline-flex;gap:8px;align-items:center;background:#1E6B3C;color:#fff;text-decoration:none;border-radius:10px;padding:10px 16px;font-weight:700">文宣與講稿（可編輯）›</a><small style="color:var(--muted)">兩個連結都只有你的帳號打得開</small></div>
+<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><button type="button" id="dmlkBtn" style="font:inherit;font-size:15px;font-weight:700;border:0;border-radius:999px;padding:8px 18px;background:#C0392B;color:#fff;cursor:pointer">🔒 文宣與講稿（要密碼）</button><small style="color:var(--muted)">裡面有建議書試算數字，業務自用；輸入密碼才打得開</small></div>
+<div id="dmlk" hidden style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);overscroll-behavior:contain">
+<div style="position:absolute;inset:16px;max-width:1160px;margin:0 auto;background:var(--paper,#fff);border-radius:16px;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap"><b style="font-size:17px;margin-right:auto">存錢＋保一種病・文宣與講稿</b><span id="dmlkTabs" hidden style="display:flex;gap:6px"><button type="button" data-dmt="dm" class="dmlkb on">文宣</button><button type="button" data-dmt="sc" class="dmlkb">講稿</button><button type="button" id="dmlkPrint" class="dmlkb">🖨 列印文宣</button><button type="button" id="dmlkLock" class="dmlkb">鎖上</button></span><button type="button" id="dmlkX" class="dmlkb">✕ 關閉</button></div>
+<div id="dmlkBody" style="flex:1;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:14px"></div>
+</div></div>
+<style>.dmlkb{font:inherit;font-size:14px;font-weight:700;border:1px solid var(--line);background:var(--paper,#fff);color:inherit;border-radius:999px;padding:5px 12px;cursor:pointer}.dmlkb.on{background:#2B2B2B;color:#fff;border-color:#2B2B2B}#dmlk .pwf{max-width:360px;margin:40px auto;display:flex;flex-direction:column;gap:10px}#dmlk .pwf input{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px}#dmlk .pwf button{font:inherit;font-size:16px;font-weight:700;padding:10px;border:0;border-radius:10px;background:#C0392B;color:#fff}</style>
+<script>
+(function(){
+const WRAP='';
+const LS='dmlk1';
+const $=(i)=>document.getElementById(i), ov=$('dmlk'), body=$('dmlkBody');
+const d64=(s)=>Uint8Array.from(atob(s),(c)=>c.charCodeAt(0));
+let DATA=null, tab='dm';
+async function openWith(raw){
+  const r=await fetch('data/dm-savesick.json',{cache:'no-cache'}); const n=await r.json();
+  const k=await crypto.subtle.importKey('raw',raw,'AES-GCM',false,['decrypt']);
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:d64(n.iv)},k,d64(n.data));
+  DATA=JSON.parse(new TextDecoder().decode(pt)); $('dmlkTabs').hidden=false; $('dmlkTabs').style.display='flex'; draw();
+}
+function draw(){ document.querySelectorAll('[data-dmt]').forEach((b)=>b.classList.toggle('on',b.dataset.dmt===tab));
+  body.innerHTML = tab==='dm' ? `<img src="${DATA.dm}" alt="存錢＋保一種病文宣" style="width:100%;height:auto;display:block;border-radius:8px">` : DATA.script; body.scrollTop=0; }
+function pwForm(msg){ $('dmlkTabs').hidden=true; $('dmlkTabs').style.display='none';
+  body.innerHTML = WRAP ? `<form class="pwf" id="dmlkF"><p style="margin:0">輸入密碼才會顯示文宣與講稿。</p><input id="dmlkPw" type="password" autocomplete="current-password" placeholder="密碼"><label style="font-size:14px"><input type="checkbox" id="dmlkRem" checked style="width:auto"> 這台裝置記住（下次不用再輸入）</label><button>打開</button><p id="dmlkMsg" style="margin:0;color:#C0392B;font-size:14px">${msg||''}</p></form>` : '<p class="pwf">還沒設定密碼。</p>';
+  const f=$('dmlkF'); if(!f) return; setTimeout(()=>$('dmlkPw').focus(),50);
+  f.onsubmit=async(e)=>{e.preventDefault(); $('dmlkMsg').textContent='解鎖中…';
+    try{ const [,s,iv,ct]=WRAP.split('.'); const base=await crypto.subtle.importKey('raw',new TextEncoder().encode($('dmlkPw').value),'PBKDF2',false,['deriveKey']);
+      const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:d64(s),iterations:310000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
+      const raw=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:d64(iv)},key,d64(ct)));
+      if($('dmlkRem').checked){ try{localStorage.setItem(LS,btoa(String.fromCharCode(...raw)))}catch(e){} }
+      await openWith(raw);
+    }catch(err){ $('dmlkMsg').textContent='密碼不正確，請再試一次。'; } };
+}
+$('dmlkBtn').onclick=async()=>{ ov.hidden=false; document.documentElement.style.overflow='hidden';
+  if(DATA){draw();return} let m=null; try{m=localStorage.getItem(LS)}catch(e){}
+  if(m){ try{ await openWith(d64(m)); return; }catch(e){ try{localStorage.removeItem(LS)}catch(_){} } } pwForm(); };
+$('dmlkX').onclick=()=>{ ov.hidden=true; document.documentElement.style.overflow=''; };
+ov.addEventListener('click',(e)=>{ const b=e.target.closest('[data-dmt]'); if(b){tab=b.dataset.dmt; draw();} });
+$('dmlkLock').onclick=()=>{ try{localStorage.removeItem(LS)}catch(e){} DATA=null; body.innerHTML=''; pwForm('已鎖上。'); };
+$('dmlkPrint').onclick=()=>{ const w=window.open('','_blank'); if(!w){alert('請允許跳出視窗');return} w.document.write(`<!doctype html><title>列印文宣</title><style>@page{size:A4 landscape;margin:0}body{margin:0}img{width:100%;height:auto;display:block}</style><img src="${DATA.dm}" onload="setTimeout(()=>print(),200)">`); w.document.close(); };
+})();
+</script>
 <div class="two"><div><b style="color:#1E5A37">Ａ　另給一筆</b>生病時另外多給一筆錢，保單繼續存、繼續累積。美愛康泰、美智守護、美利甘心。</div><div><b style="color:#7A5410">Ｂ　確診一次給</b>生病時把整筆保障一次拿出來用，給付後保單結束。美滿雙寶、滿福寶。</div></div>
 <div class="grid"><article class="ic" style="--k:#B5532E">
 <header><b class="ill">癌症</b><span class="nm">美愛康泰</span><span class="cur">美元</span></header>
