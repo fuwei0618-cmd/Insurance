@@ -433,7 +433,7 @@ const TPLGROUPS = ['LINE', '簡訊', '信件', '通話', '其他'];
 const linkify = (html) => html.replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.length > 60 ? u.slice(0, 57) + '…' : u}</a>`);
 
 /* ================= 狀態與畫面 ================= */
-const S = { railMini: (() => { try { return localStorage.getItem('crm-railmini') === '1'; } catch (e) { return false; } })(), ginvOpen: false, gview: 'table', ktable: false, kprog: '全部', kmark: '全部', ksort: 'no', kview: 'prog', kedit: false, kfromTable: false, kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
+const S = { railMini: (() => { try { return localStorage.getItem('crm-railmini') === '1'; } catch (e) { return false; } })(), ginvOpen: false, gview: 'table', ktable: true, kprog: '全部', kmark: '全部', ksort: 'no', kview: 'prog', kedit: false, kfromTable: false, kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
 const cases = () => Vault.all('cases');
 const localDay = (d = new Date()) => { const t = new Date(d); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
 const caseDate = (c) => c.date || (c.createdAt ? localDay(c.createdAt) : '');
@@ -2056,7 +2056,7 @@ app.addEventListener('click', async (e) => {
   const kl = e.target.closest('[data-klink]'); if (kl) { const a = Vault.get('calls', kl.dataset.kprev), b = Vault.get('calls', kl.dataset.klink); if (a && b) { if (a.hh && a.hh === b.hh) { b.hh = ''; b.hhOk = false; Vault.put('calls', b); if (!calls().some((x) => x.id !== a.id && x.hh === a.hh)) { a.hh = ''; a.hhOk = false; Vault.put('calls', a); } toast('拆開了'); } else toast('同一戶：' + linkHH(a, b)); App.render(); } return; }
   const kr = e.target.closest('tr[data-ksel]'); if (kr) { S.ktable = false; S.kfromTable = true; S.ksel = kr.dataset.ksel; S.kres = ''; S.showDetail = true; App.render(); window.scrollTo(0, 0); return; }
   const b = e.target.closest('button'); if (!b) return; const d = b.dataset; const c = cur();
-  if (d.nav) { S.view = d.nav; S.showDetail = false; S.q = ''; App.render(); return; }
+  if (d.nav) { if (d.nav === 'calls' && !S.kcalling) { S.ktable = true; S.kfromTable = false; } S.view = d.nav; S.showDetail = false; S.q = ''; App.render(); return; }
   if (d.cat) { S.cat = d.cat; App.render(); return; }
   if (d.cg) { S.cg = d.cg; S.cat = '全部'; const g = GROUPS.find((x) => x.name === d.cg); if (g) { const has = g.cats.filter((k) => cases().some((c) => c.cat === k)); if (has.length === 1) S.cat = has[0]; } App.render(); return; }
   if (d.sel) { S.folder = '全部'; S.sel = d.sel; S.showDetail = true; App.render(); return; }
