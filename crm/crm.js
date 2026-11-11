@@ -491,7 +491,7 @@ function railHTML() {
   <button class="nav" data-act="lock">鎖定</button></nav>`;
 }
 function tabsHTML() {
-  const t = [NAV[0], NAV[1], NAV[2], ['scan', '掃描', 'scan'], NAV[3], ['refs', '參考', 'book'], NAV[5]];
+  const t = [NAV[0], NAV[1], NAV[2], ['scan', '掃描', 'scan'], NAV[3], NAV[6], NAV[5]];
   return `<nav class="tabs" aria-label="分頁">${t.map(([k, l, i]) => k === 'scan' ? `<button class="tab scan" data-act="scan"><span class="c">${ICON.scan}</span>${l}</button>` : `<button class="tab${S.view === k ? ' on' : ''}" data-nav="${k}">${ICON[i]}${l}</button>`).join('')}</nav>`;
 }
 function caseSummary(c) { const a = [c.cat]; if ((c.people || []).length > 1) a.push(c.people.length + ' 人'); if (c.items?.length) a.push(c.items.slice(0, 2).join('、')); if (c.causeType) a.push(c.causeType + (c.causeDetail ? '›' + c.causeDetail : '')); return a.join(' · '); }
@@ -1867,6 +1867,7 @@ function quickHTML() {
   const phones = notes().filter((n) => n.kind === 'quick');
   const waiting = cases().filter((c) => c.status !== '已結案').sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
   return `<h1>快查</h1>
+  <div class="actions qnavm"><button class="btn" data-nav="refs">${ICON.book} 理賠參考</button><button class="btn" data-nav="gifts">${ICON.gift} 送禮</button></div>
   <input class="search" id="qq" placeholder="搜尋全部 SOP、案件、範本" style="max-width:520px" autocomplete="off">
   <div id="qres"></div>
   <div class="cards">

@@ -634,3 +634,6 @@ label.bdit{cursor:pointer}
   html:has(.app),html:has(.app) body,html:has(.ov) body{overflow:hidden;overscroll-behavior:none}
   .list,.detail,.wide,.rail,.ovbody,.ktablewrap{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 }
+
+.qnavm{display:none}
+@media (max-width:900px){.qnavm{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px}.qnavm .btn svg{width:16px;height:16px;vertical-align:-3px}}
