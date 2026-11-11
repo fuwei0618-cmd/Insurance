@@ -2195,13 +2195,13 @@ P.querySelectorAll(".shlv").forEach(function(x){x.classList.toggle("on",x.datase
 <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><button type="button" id="dmlkBtn" style="font:inherit;font-size:15px;font-weight:700;border:0;border-radius:999px;padding:8px 18px;background:#C0392B;color:#fff;cursor:pointer">🔒 文宣與講稿（要密碼）</button><small style="color:var(--muted)">裡面有建議書試算數字，業務自用；輸入密碼才打得開</small></div>
 <div id="dmlk" hidden style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);overscroll-behavior:contain">
 <div style="position:absolute;inset:16px;max-width:1160px;margin:0 auto;background:var(--paper,#fff);border-radius:16px;display:flex;flex-direction:column;overflow:hidden">
-<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap"><b style="font-size:17px;margin-right:auto">存錢＋保一種病・文宣與講稿</b><span id="dmlkTabs" hidden style="display:flex;gap:6px"><button type="button" data-dmt="dm" class="dmlkb on">文宣</button><button type="button" data-dmt="sc" class="dmlkb">講稿</button><button type="button" id="dmlkPrint" class="dmlkb">🖨 列印文宣</button><button type="button" id="dmlkLock" class="dmlkb">鎖上</button></span><button type="button" id="dmlkX" class="dmlkb">✕ 關閉</button></div>
+<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap"><b style="font-size:17px;margin-right:auto">存錢＋保一種病・文宣與講稿</b><span id="dmlkTabs" hidden style="display:flex;gap:6px"><button type="button" data-dmt="dm" class="dmlkb on">文宣</button><button type="button" data-dmt="sc" class="dmlkb">講稿</button><button type="button" data-dmt="learn" class="dmlkb">搞懂</button><button type="button" data-dmt="quiz" class="dmlkb">小測驗</button><button type="button" id="dmlkPrint" class="dmlkb">🖨 列印文宣</button><button type="button" id="dmlkLock" class="dmlkb">鎖上</button></span><button type="button" id="dmlkX" class="dmlkb">✕ 關閉</button></div>
 <div id="dmlkBody" style="flex:1;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:14px"></div>
 </div></div>
-<style>.dmlkb{font:inherit;font-size:14px;font-weight:700;border:1px solid var(--line);background:var(--paper,#fff);color:inherit;border-radius:999px;padding:5px 12px;cursor:pointer}.dmlkb.on{background:#2B2B2B;color:#fff;border-color:#2B2B2B}#dmlk .pwf{max-width:360px;margin:40px auto;display:flex;flex-direction:column;gap:10px}#dmlk .pwf input{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px}#dmlk .pwf button{font:inherit;font-size:16px;font-weight:700;padding:10px;border:0;border-radius:10px;background:#C0392B;color:#fff}</style>
+<style>.dmlkb{font:inherit;font-size:14px;font-weight:700;border:1px solid var(--line);background:var(--paper,#fff);color:inherit;border-radius:999px;padding:5px 12px;cursor:pointer}.dmlkb.on{background:#2B2B2B;color:#fff;border-color:#2B2B2B}#dmlk .dmq{max-width:640px;margin:20px auto;background:#FFFDF7;color:#1E2826;padding:16px;border-radius:14px;display:flex;flex-direction:column;gap:10px}#dmlk .dmq h3{margin:0;font-size:20px;line-height:1.5;color:#1E2826}#dmlk .dmlkb{white-space:nowrap}#dmlkTabs{flex-wrap:wrap}#dmlk .dmqn{margin:0;font-size:13.5px;color:var(--muted)}#dmlk .dmqo{font:inherit;font-size:16px;text-align:left;padding:12px 14px;border:2px solid var(--line);border-radius:12px;background:var(--paper,#fff);color:inherit;cursor:pointer}#dmlk .dmqo.ok{border-color:#1E6B3C;background:#E6F2EA}#dmlk .dmqo.no{border-color:#C0392B;background:#FBE9E7}#dmlk .dmqe{margin:0;line-height:1.7;background:#FFF4D6;border-radius:10px;padding:10px 12px}#dmlk .dmq>.dmlkb{align-self:flex-start;font-size:15px;padding:8px 16px}#dmlk .pwf{max-width:360px;margin:40px auto;display:flex;flex-direction:column;gap:10px}#dmlk .pwf input{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px}#dmlk .pwf button{font:inherit;font-size:16px;font-weight:700;padding:10px;border:0;border-radius:10px;background:#C0392B;color:#fff}</style>
 <script>
 (function(){
-const WRAP='w1.dLskhpNkpeBbQ0IIvF3gAA==.e2sW7FNBnW1CzgV9.GUjqbe2QkciypykAs7kBpiugALfIQwU9/3hbo32mQ2ln/qDi8Wl6P1gVgmVlri2E';
+const WRAP='w1.BMrrP1DpDwvbCNgVc+xvhw==.BdrVvQlehZ1jwask.+jeb7pxiVP4JpWt3EPVk5i7M7fV9ie+Ybg5bD/5c2h1e5QRU4YG7TnYn+l8YK9gc';
 const LS='dmlk1';
 const $=(i)=>document.getElementById(i), ov=$('dmlk'), body=$('dmlkBody');
 const d64=(s)=>Uint8Array.from(atob(s),(c)=>c.charCodeAt(0));
@@ -2213,7 +2213,13 @@ async function openWith(raw){
   DATA=JSON.parse(new TextDecoder().decode(pt)); $('dmlkTabs').hidden=false; $('dmlkTabs').style.display='flex'; draw();
 }
 function draw(){ document.querySelectorAll('[data-dmt]').forEach((b)=>b.classList.toggle('on',b.dataset.dmt===tab));
-  body.innerHTML = tab==='dm' ? `<img src="${DATA.dm}" alt="存錢＋保一種病文宣" style="width:100%;height:auto;display:block;border-radius:8px">` : DATA.script; body.scrollTop=0; }
+  if((tab==='learn'||tab==='quiz')&&!DATA.learn){ body.innerHTML='<p class="pwf">這一版還沒有這個內容。</p>'; return; }
+  body.innerHTML = tab==='dm' ? `<img src="${DATA.dm}" alt="存錢＋保一種病文宣" style="width:100%;height:auto;display:block;border-radius:8px">` : tab==='sc' ? DATA.script : tab==='learn' ? DATA.learn : quizHTML(); body.scrollTop=0; }
+let QS={i:0,score:0,pick:null};
+function quizHTML(){ const Q=DATA.quiz, e=(t)=>String(t).replace(/[&<>]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  if(QS.i>=Q.length) return `<div class="dmq"><h3>做完了！答對 ${QS.score}／${Q.length} 題</h3><p>${QS.score>=Q.length-1?'可以拿出去講了 👍':'錯的那幾題，回「搞懂」看一下再來一次。'}</p><button type="button" class="dmlkb" data-dmq="again">再做一次</button></div>`;
+  const q=Q[QS.i], done=QS.pick!=null;
+  return `<div class="dmq"><p class="dmqn">第 ${QS.i+1}／${Q.length} 題　答對 ${QS.score} 題</p><h3>${e(q.q)}</h3>${q.o.map((o,j)=>`<button type="button" class="dmqo${done?(j===q.a?' ok':j===QS.pick?' no':''):''}" data-dmq="${j}" ${done?'disabled':''}>${e(o)}</button>`).join('')}${done?`<p class="dmqe"><b>${QS.pick===q.a?'答對了！':'差一點。'}</b>${e(q.e)}</p><button type="button" class="dmlkb on" data-dmq="next">${QS.i+1<Q.length?'下一題 ›':'看結果'}</button>`:''}</div>`; }
 async function unwrap(pw){ const [,s,iv,ct]=WRAP.split('.'); const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
   const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:d64(s),iterations:310000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
   return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:d64(iv)},key,d64(ct))); }
@@ -2233,7 +2239,10 @@ $('dmlkBtn').onclick=async()=>{ ov.hidden=false; document.documentElement.style.
   if(pw&&WRAP){ body.innerHTML='<p class="pwf">解鎖中…</p>'; try{ const raw=await unwrap(pw); try{localStorage.setItem(LS,btoa(String.fromCharCode(...raw)))}catch(e){} await openWith(raw); return; }catch(e){} }
   pwForm(); };
 $('dmlkX').onclick=()=>{ ov.hidden=true; document.documentElement.style.overflow=''; };
-ov.addEventListener('click',(e)=>{ const b=e.target.closest('[data-dmt]'); if(b){tab=b.dataset.dmt; draw();} });
+ov.addEventListener('click',(e)=>{ const b=e.target.closest('[data-dmt]'); if(b){tab=b.dataset.dmt; draw(); return;}
+  const q=e.target.closest('[data-dmq]'); if(!q) return; const v=q.dataset.dmq;
+  if(v==='again') QS={i:0,score:0,pick:null}; else if(v==='next'){QS.i++;QS.pick=null;} else { QS.pick=+v; if(QS.pick===DATA.quiz[QS.i].a) QS.score++; }
+  body.innerHTML=quizHTML(); });
 $('dmlkLock').onclick=()=>{ try{localStorage.removeItem(LS);localStorage.removeItem('npw');sessionStorage.removeItem('npw')}catch(e){} DATA=null; body.innerHTML=''; pwForm('已鎖上。'); };
 $('dmlkPrint').onclick=()=>{ const w=window.open('','_blank'); if(!w){alert('請允許跳出視窗');return} w.document.write(`<!doctype html><title>列印文宣</title><style>@page{size:A4 landscape;margin:0}body{margin:0}img{width:100%;height:auto;display:block}</style><img src="${DATA.dm}" onload="setTimeout(()=>print(),200)">`); w.document.close(); };
 })();
