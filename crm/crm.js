@@ -3456,6 +3456,7 @@ async function lock(auto) {
 }
 ['pointerdown', 'keydown'].forEach((t) => document.addEventListener(t, () => (lastAct = Date.now()), true));
 setInterval(() => { if (Vault.key && Date.now() - lastAct > (CFG.AUTO_LOCK_MINUTES || 30) * 60000) lock(true); }, 30000);
+setInterval(() => { if (Vault.key && document.visibilityState === 'visible' && !Vault.dirty && !Vault.saving && !MOCK) Vault.pull(); }, 45000); // 兩台同時開著：每 45 秒讀回另一台的更新
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Vault.key) { if (Date.now() - lastAct > (CFG.AUTO_LOCK_MINUTES || 30) * 60000) { lastAct = Date.now(); lock(true); Vault.pull(); } else Vault.pull(); } else if (Vault.dirty) Vault.save(); });
 window.addEventListener('online', () => { if (Vault.key) { Vault.save(); Files.retryUploads(); } });
 window.addEventListener('beforeunload', (e) => { if (Vault.dirty) { Vault.save(); e.preventDefault(); e.returnValue = ''; } });
