@@ -654,10 +654,13 @@ function hhCandidates(k) { const ad = normAddr(k.addr), hp = phoneDigits(k.home)
 function callHHSectionHTML(k) {
   const mem = k.hh ? calls().filter((o) => o.hh === k.hh && o.id !== k.id).sort(noCmp) : [], cand = hhCandidates(k);
   const row = (o, btn) => `<div class="khrow"><span><span class="kno">${esc(o.no || '')}</span><b>${esc(o.name || '未填')}</b> <span class="sub">${esc(o.addr || '')}</span></span>${btn}</div>`;
-  return `<div class="sec"><h2>家戶 <span class="sub">${k.hh ? esc(k.hh) + `・${mem.length + 1} 人` : '還沒拉家戶'}</span></h2>
+  const hq = (S.hhq || '').trim(), found = hq ? calls().filter((o) => o.id !== k.id && !(k.hh && o.hh === k.hh) && [o.name, o.phone, o.home, o.addr].join(' ').includes(hq)).slice(0, 8) : [];
+  return `<details class="sec" id="khhsec" data-dk="khh"${S.hhOpen ? ' open' : ''}><summary><h2 style="display:inline">家戶</h2> <span class="sub">${k.hh ? esc(k.hh) + `・${mem.length + 1} 人` : '還沒拉家戶'}</span></summary>
+   <label class="f">找人加進這一戶<input id="kHhQ" value="${esc(S.hhq || '')}" placeholder="打姓名、電話或地址" autocomplete="off"></label>
+   ${found.map((o) => row(o, `<button class="btn sm" data-khadd="${o.id}">＋ 同一戶</button>`)).join('')}${hq && !found.length ? '<div class="sub">找不到。</div>' : ''}
    ${mem.map((o) => row(o, `<button class="btn sm" data-khout="${o.id}">移出</button>`)).join('')}
    ${cand.length ? `<div class="sub" style="margin:6px 0 4px">可能同一戶，電話中問到就按「＋ 同一戶」：</div>${cand.map(([o, w]) => row(o, `<span class="pill">${w}</span><button class="btn sm" data-khadd="${o.id}">＋ 同一戶</button>`)).join('')}` : mem.length ? '' : '<div class="sub">沒有找到同地址、同住家電話的人。</div>'}
-   ${k.hh ? `<div class="actions" style="margin:6px 0 0"><button class="linkbtn" data-khout="${k.id}">把自己移出這一戶</button></div>` : ''}</div>`;
+   ${k.hh ? `<div class="actions" style="margin:6px 0 0"><button class="linkbtn" data-khout="${k.id}">把自己移出這一戶</button></div>` : ''}</details>`;
 }
 const KSKIP = ['同事的件', '保經', '保單停效、解約', '其他'];
 const skipWhy = (k) => k.otherWhy || '同事的件';
@@ -836,7 +839,7 @@ function callDetailHTML() { // 一張「這通電話」卡從上點到下；很�
   <div class="khero">${tel(k.phone, '手機')}${tel(k.home, '住家')}${!k.phone && !k.home ? '<span class="sub">沒有電話：到「聯絡資料」補，或用寄的</span>' : ''}
    <span class="khtags">${(k.tags || []).map((t) => `<span class="pill p-go">${esc(t)}</span>`).join(' ')} ${k.line ? '' : '<span class="sub">LINE</span>'}${klmBtn(k)}</span>
    ${k.addr ? `<div class="sub khaddr">${esc(k.addr)}${k.hh ? '・' + esc(k.hh) : ''}</div>` : ''}
-   ${(() => { const oth = (callHouseholds(calls()).get(hhKey(k)) || []).filter((o) => o.id !== k.id); return oth.length ? `<div class="khhrow"><span class="sub">同戶</span>${oth.map((o) => { const gf = callGift(o), pg = callProg(o); return `<button class="tag" data-ksel="${o.id}">${esc(o.name || '未填')}<span class="sub">　${esc(pg)}${gf ? '・年曆' + esc(gf === '要' ? '要' : gf) : ''}</span> ›</button>`; }).join('')}</div>` : ''; })()}
+   ${(() => { const oth = (callHouseholds(calls()).get(hhKey(k)) || []).filter((o) => o.id !== k.id); return `<div class="khhrow"><span class="sub">同戶</span>${oth.map((o) => { const gf = callGift(o), pg = callProg(o); return `<button class="tag" data-ksel="${o.id}">${esc(o.name || '未填')}<span class="sub">　${esc(pg)}${gf ? '・年曆' + esc(gf === '要' ? '要' : gf) : ''}</span> ›</button>`; }).join('')}<button class="linkbtn" data-act="hhopen">${oth.length ? '＋ 再連結家人' : '＋ 連結家人'}</button></div>`; })()}
    <div class="khskip"><button class="tag${k.other ? ' on' : ''}" data-kchk="other">${k.other ? '✓ ' : ''}不追蹤</button>${k.other ? `<select data-kf="otherWhy" id="kf_otherWhy2" aria-label="原因">${KSKIP.map((x) => `<option${skipWhy(k) === x ? ' selected' : ''}>${x}</option>`).join('')}</select><input data-kf="otherWho" id="kf_otherWho2" value="${esc(k.otherWho)}" placeholder="${skipWhy(k) === '同事的件' ? '哪位同事' : '補充'}">` : '<span class="sub">停效、同事的件、保經…按這個，撥打時就跳過</span>'}<button class="tag${k.mailBack ? ' on' : ''}" data-kchk="mailBack">寄信退件</button></div></div>
   <div class="sec kcard"><h2>這通電話 <span class="sub">掛掉後 30 秒，從上點到下</span></h2>
    <div class="krow"><span class="klab">結果</span><div class="tags">${RESULTS.map(([r]) => `<button class="tag${S.kres === r ? ' on' : ''}" data-kres="${r}">${r}</button>`).join('')}</div></div>
@@ -2138,7 +2141,7 @@ app.addEventListener('click', async (e) => {
   if (d.ktagdel) { const k = curCall(); if (k) { k.tags = (k.tags || []).filter((x) => x !== d.ktagdel); Vault.put('calls', k); App.render(); } return; }
   if (d.kview) { S.kview = d.kview; App.render(); return; }
   if (d.kgev) { S.gev = d.kgev; App.render(); return; }
-  if (d.khadd) { const k = curCall(), o = Vault.get('calls', d.khadd); if (k && o) { toast('同一戶：' + linkHH(k, o)); App.render(); } return; }
+  if (d.khadd) { const k = curCall(), o = Vault.get('calls', d.khadd); if (k && o) { toast('同一戶：' + linkHH(k, o)); S.hhq = ''; App.render(); } return; }
   if (d.khout) { const o = Vault.get('calls', d.khout); if (o) { const old = o.hh; o.hh = ''; o.hhOk = false; Vault.put('calls', o); const left = calls().filter((x) => x.hh === old); if (left.length === 1) { left[0].hh = ''; left[0].hhOk = false; Vault.put('calls', left[0]); } App.render(); } return; }
   if (d.khhok) { const g = callHouseholds(calls()).get(d.khhok) || []; const nm = g.find((x) => x.hh)?.hh || ((g[0]?.name || '').slice(0, 1) + '家'); g.forEach((k) => { k.hh = nm; k.hhOk = true; Vault.put('calls', k); }); toast(`已確認：${nm}`); App.render(); return; }
   if (d.kar) { S.kar = d.kar; App.render(); return; }
@@ -2230,6 +2233,7 @@ app.addEventListener('click', async (e) => {
       const dd = BD.draft; dd.rows = dd.rows.filter((r) => (r.name || '').trim()); const used = new Set(dd.rows.map((r) => r.cat)); Object.keys(dd.cats).forEach((k) => { if (!used.has(k) && !BINDER_SEED.cats[k]) delete dd.cats[k]; }); dd.done = (dd.done || []).filter((x) => dd.rows.some((r) => r.id === x));
       binderSave(dd); BD.edit = false; BD.draft = null; App.render(); toast('已儲存'); break; }
     case 'ktagimp': openCallTagImport(); break;
+    case 'hhopen': S.hhOpen = true; S.hhq = ''; App.render(); { const el = document.getElementById('khhsec'); if (el) { el.open = true; el.scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => $('kHhQ')?.focus(), 300); } } break;
     case 'kcol': S.kcolHide = !S.kcolHide; try { localStorage.setItem('crm-kcolhide', S.kcolHide ? '1' : '0'); } catch (e) {} App.render(); break;
     case 'kfold': S.kfold = !S.kfold; try { localStorage.setItem('crm-kfold', S.kfold ? '1' : '0'); } catch (e) {} App.render(); break;
     case 'kphoto': openCallPhoto(null); break;
@@ -2365,7 +2369,8 @@ app.addEventListener('input', (e) => {
   const ds = e.target.dataset || {}; if (ds.f || ds.cf || ds.kf || ds.tltitle || ds.tlnote || ds.pprod) savePill('editing');
   if (e.target.classList?.contains('grow')) fitNote(e.target);
   if (e.target.classList?.contains('tlnote')) { fitNote(e.target); return; }
-  if (e.target.id === 'q') { S.q = e.target.value; if (!e.isComposing) App.render(); } // 注音選字中不要重畫，否則會打斷輸入法
+  if (e.target.id === 'q') { S.q = e.target.value; if (!e.isComposing) App.render(); }
+  if (e.target.id === 'kHhQ') { S.hhq = e.target.value; if (!e.isComposing) App.render(); } // 注音選字中不要重畫，否則會打斷輸入法
   if (e.target.id === 'qq') {
     const q = e.target.value.trim(); const box = $('qres'); if (!q) { box.innerHTML = ''; return; }
     const cls = clients().filter((x) => [x.name, x.phone, x.line, x.note].join(' ').includes(q)).slice(0, 6);
@@ -2398,7 +2403,7 @@ app.addEventListener('change', (e) => { // 送禮：品項和活動名稱
   const gi = e.target.dataset?.gitem; if (gi) { const ev = Vault.get('gevents', S.gev); const it = ev?.items.find((x) => x.id === gi); if (!it) return; const f = e.target.dataset.gf; it[f] = f === 'qty' ? Math.max(0, parseInt(e.target.value, 10) || 0) : e.target.value.trim(); Vault.put('gevents', ev); App.render(); return; }
   const gef = e.target.dataset?.gevf; if (gef) { const ev = Vault.get('gevents', S.gev); if (!ev) return; ev[gef] = e.target.value.trim(); Vault.put('gevents', ev); App.render(); }
 });
-app.addEventListener('compositionend', (e) => { if (e.target.id === 'q') { S.q = e.target.value; App.render(); } });
+app.addEventListener('compositionend', (e) => { if (e.target.id === 'q') { S.q = e.target.value; App.render(); } if (e.target.id === 'kHhQ') { S.hhq = e.target.value; App.render(); } });
 const ov = $('ovRoot');
 let NE = null; // 正在編輯的筆記（拖曳／貼上圖片會加到這裡）
 async function shrink(file, max = 2400, q = 0.85) { // 截圖縮到合理大小，文字仍清楚
