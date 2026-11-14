@@ -637,3 +637,11 @@ label.bdit{cursor:pointer}
 
 .qnavm{display:none}
 @media (max-width:900px){.qnavm{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px}.qnavm .btn svg{width:16px;height:16px;vertical-align:-3px}}
+
+/* 服務件流程：一頁看完（寬螢幕分欄、字小一點） */
+.cfone{max-width:1400px}
+.cfone>.sec,.cfone>.note{margin:0 0 8px}
+.cfgrid{column-width:330px;column-gap:12px}
+.cfgrid .sec{break-inside:avoid;display:block;margin:0 0 10px;padding:10px 12px;border:1px solid var(--line,#ddd);border-radius:10px}
+.cfgrid h2{font-size:14.5px;margin:0 0 6px}
+.cfgrid .cflow{font-size:13px;line-height:1.5;gap:3px;padding-left:18px}
