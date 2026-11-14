@@ -696,3 +696,25 @@ details.cffold summary{cursor:pointer;font-weight:600;font-size:14px}
 .cfcard tr.cfgh:first-child th{padding-top:0}
 @media print{#printArea .cfk{color:#C0392B!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}#printArea .cfcard tr.cfgh th{font-size:8.5pt;padding:2pt 2pt 0}}
 @media print{#printArea .cfprint{font-size:8.3pt;line-height:1.32}#printArea .cfsteps{font-size:8.3pt}#printArea .cfcard table{font-size:7.8pt}#printArea .cfcard td{padding:0 2pt}#printArea .cfcard tr.cfgh th{font-size:8pt;padding:1pt 2pt 0}#printArea .cffold{font-size:8pt}}
+
+/* 服務件記錄頁：上面電話、下面一張「這通電話」卡 */
+.khero{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 0 12px}
+.ktel{display:inline-flex;align-items:center;gap:6px;font-size:20px;font-weight:700;text-decoration:none;color:var(--ink,#222);border:1px solid var(--line,#ccc);border-radius:12px;padding:6px 14px;background:var(--card,#fff)}
+.ktel span{font-size:12px;font-weight:400;color:var(--muted,#777)}
+.khtags{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.khaddr{flex-basis:100%}
+.kcard{border:2px solid var(--accent,#5f7d4a)!important}
+.krow{display:flex;gap:10px;align-items:flex-start;margin:0 0 10px}
+.klab{flex:0 0 40px;font-size:13px;font-weight:700;padding-top:7px;color:var(--muted,#555)}
+.krow>div{flex:1;min-width:0}
+.kgift{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:14px}
+.kgift label{display:inline-flex;align-items:center;gap:6px}
+.kgift .gn{width:60px}
+.lvtip{font-size:12px;color:var(--muted,#666)}
+.kcardgo{align-items:center;margin-top:6px}
+details.sec>summary{cursor:pointer}
+@media (max-width:700px){.lvtip{display:none}}
+.lvtag.on .lvtip{color:inherit;opacity:.9}
+.kgift label{white-space:nowrap}
+.kgift .gcell{border:1px solid var(--line,#ccc);border-radius:8px;padding:5px 8px;background:var(--card,#fff);font:inherit}
+.kgift select.gcell{min-width:96px}
