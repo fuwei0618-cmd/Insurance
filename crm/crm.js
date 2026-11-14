@@ -728,13 +728,14 @@ function kStartCalling(fromId) { // 照撥打順序找下一位：今天打過�
   const q = kQueue(), today = localDay(), fresh = (k) => !(k.logs || []).some((l) => l.date === today);
   let i = fromId ? q.findIndex((k) => k.id === fromId) : -1; let nx = q.slice(i + 1).find(fresh) || (fromId ? null : q.find(fresh));
   if (!nx) { const fl = S.kmark !== '全部' ? `「${S.kmark}」` : ''; toast(q.length ? `${fl}今天這輪打完了，沒接的明天換時段再打` : fl ? `${fl}這組都打過了，換下一個標記` : '都打過了'); S.kcalling = false; App.render(); return; }
+  if (!fromId) S.khist = []; else if (S.ksel) (S.khist = S.khist || []).push(S.ksel); // 記住走過的人，可以按「上一位」回去
   S.kcalling = true; S.view = 'calls'; S.ktable = false; S.kfromTable = false; S.ksel = nx.id; S.kres = ''; S.showDetail = true; App.render(); window.scrollTo(0, 0);
 }
 function kCallBarHTML(k) {
   if (!S.kcalling) return ''; const q = kQueue(), r = callRank(k), lab = r === 0 ? '① ' + (k.tags || []).filter((t) => !isAgeTag(t)).join('、') : r === 1 ? '② 已加 LINE' : r === 2 ? '③ 其他' : '';
   const same = q.filter((x) => callRank(x) === r && kArea(x) === kArea(k)), pos = same.findIndex((x) => x.id === k.id);
   const td = new Date().toDateString(), met = calls().filter((x) => (x.logs || []).some((l) => l.result === '約訪成功' && l.at && new Date(l.at).toDateString() === td)).length;
-  return `<div class="kcallbar" style="flex-wrap:wrap"><span style="flex-basis:100%;font-size:13px">🎯 今天約到 <b>${met}</b>／2 位願意見面聊的人${met >= 2 ? '　達成了 🎉' : ''}　<span class="sub">🙏 每一通好好打，結果交出去。</span></span><span><b>📞 撥打中</b>　${S.kmark !== '全部' ? `<span class="pill p-go">${esc(S.kmark)}</span> ` : ''}${esc(lab)}・${esc(kArea(k) || '沒有地區')}${pos >= 0 ? `　第 ${pos + 1}／${same.length} 位` : ''}<span class="sub">　整份還有 ${q.length} 位沒接通</span></span><span style="display:flex;gap:6px"><button class="btn sm" data-act="kstop">結束</button><button class="btn sm pri" data-act="knext">下一位 ›</button></span></div>`;
+  return `<div class="kcallbar" style="flex-wrap:wrap"><span style="flex-basis:100%;font-size:13px">🎯 今天約到 <b>${met}</b>／2 位願意見面聊的人${met >= 2 ? '　達成了 🎉' : ''}　<span class="sub">🙏 每一通好好打，結果交出去。</span></span><span><b>📞 撥打中</b>　${S.kmark !== '全部' ? `<span class="pill p-go">${esc(S.kmark)}</span> ` : ''}${esc(lab)}・${esc(kArea(k) || '沒有地區')}${pos >= 0 ? `　第 ${pos + 1}／${same.length} 位` : ''}<span class="sub">　整份還有 ${q.length} 位沒接通</span></span><span style="display:flex;gap:6px"><button class="btn sm" data-act="kstop">結束</button>${(S.khist || []).length ? '<button class="btn sm" data-act="kprev">‹ 上一位</button>' : ''}<button class="btn sm pri" data-act="knext">下一位 ›</button></span></div>`;
 }
 function callTableHTML() {
   const all = calls(), q = S.q.trim(), hhs = callHouseholds(all), grpOf = (k) => hhs.get(hhKey(k));
@@ -2219,6 +2220,7 @@ app.addEventListener('click', async (e) => {
     case 'korder': openCallOrderImport(); break;
     case 'kstart': kStartCalling(null); break;
     case 'knext': kStartCalling(S.ksel); break;
+    case 'kprev': { const id = (S.khist || []).pop(); if (id && Vault.get('calls', id)) { S.ksel = id; S.kres = ''; S.showDetail = true; App.render(); window.scrollTo(0, 0); } break; }
     case 'kstop': S.kcalling = false; App.render(); break;
     case 'bdhide': BD.hide = !BD.hide; App.render(); break;
     case 'bdedit': { if (!BD.edit) { BD.draft = JSON.parse(JSON.stringify(binderData())); BD.edit = true; App.render(); break; }
