@@ -690,3 +690,9 @@ details.cffold summary{cursor:pointer;font-weight:600;font-size:14px}
  #printArea .cflv,#printArea .cffoot{font-size:8pt;margin:3pt 0}
  #printArea .cffold{font-size:8.5pt;margin-top:4pt}
 }
+
+.cfk{color:#C0392B;font-weight:700}
+.cfcard tr.cfgh th{text-align:left;font-size:12px;font-weight:700;color:var(--ink,#333);padding:6px 4px 2px;border-bottom:1px solid var(--line,#ccc)}
+.cfcard tr.cfgh:first-child th{padding-top:0}
+@media print{#printArea .cfk{color:#C0392B!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}#printArea .cfcard tr.cfgh th{font-size:8.5pt;padding:2pt 2pt 0}}
+@media print{#printArea .cfprint{font-size:8.3pt;line-height:1.32}#printArea .cfsteps{font-size:8.3pt}#printArea .cfcard table{font-size:7.8pt}#printArea .cfcard td{padding:0 2pt}#printArea .cfcard tr.cfgh th{font-size:8pt;padding:1pt 2pt 0}#printArea .cffold{font-size:8pt}}
