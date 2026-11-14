@@ -657,3 +657,4 @@ label.bdit{cursor:pointer}
 /* 總表：上方篩選收起來，名單多一點空間 */
 .colhead.kfolded .kfunnel,.colhead.kfolded #q,.colhead.kfolded .chips,.colhead.kfolded~.note{display:none}
 .kfoldsum{font-size:14px;color:var(--muted,#666)}
+.kg-要{background:#FAEEDA}
