@@ -433,7 +433,7 @@ const TPLGROUPS = ['LINE', '簡訊', '信件', '通話', '其他'];
 const linkify = (html) => html.replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.length > 60 ? u.slice(0, 57) + '…' : u}</a>`);
 
 /* ================= 狀態與畫面 ================= */
-const S = { railMini: (() => { try { return localStorage.getItem('crm-railmini') === '1'; } catch (e) { return false; } })(), ginvOpen: false, gview: 'table', kfold: (() => { try { return localStorage.getItem('crm-kfold') === '1'; } catch (e) { return false; } })(), ktable: true, kprog: '全部', kmark: '全部', ksort: 'no', kview: 'prog', kedit: false, kfromTable: false, kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
+const S = { railMini: (() => { try { return localStorage.getItem('crm-railmini') === '1'; } catch (e) { return false; } })(), ginvOpen: false, gview: 'table', kcolHide: (() => { try { return localStorage.getItem('crm-kcolhide') === '1'; } catch (e) { return false; } })(), kfold: (() => { try { return localStorage.getItem('crm-kfold') === '1'; } catch (e) { return false; } })(), ktable: true, kprog: '全部', kmark: '全部', ksort: 'no', kview: 'prog', kedit: false, kfromTable: false, kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'cases', showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
 const cases = () => Vault.all('cases');
 const localDay = (d = new Date()) => { const t = new Date(d); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
 const caseDate = (c) => c.date || (c.createdAt ? localDay(c.createdAt) : '');
@@ -455,7 +455,7 @@ const App = {
     if (!Vault.db) return;
     syncCats(); syncRefLists(); if (S.cat !== '全部' && !CATS.includes(S.cat)) S.cat = '全部'; if (S.cg !== '全部' && !GROUPS.some((g) => g.name === S.cg)) S.cg = '全部';
     const v = S.view;
-    app.className = 'app' + ((v === 'cases' || v === 'refs' || v === 'clients' || (v === 'calls' && !S.ktable)) ? '' : ' single') + (S.showDetail ? ' showdetail' : '') + (MOCK ? ' test' : '') + (S.railMini ? ' railmini' : '');
+    app.className = 'app' + ((v === 'cases' || v === 'refs' || v === 'clients' || (v === 'calls' && !S.ktable)) ? '' : ' single') + (S.showDetail ? ' showdetail' : '') + (MOCK ? ' test' : '') + (S.railMini ? ' railmini' : '') + (v === 'calls' && !S.ktable && S.kcolHide ? ' colhide' : '');
     let h = MOCK ? '<div class="testbar">測試模式：資料只存在這台裝置，不會上傳 OneDrive</div>' : '';
     h += railHTML();
     if (v === 'clients') h += clientListHTML() + '<section class="detail split">' + clientDetailHTML() + '</section>';
@@ -810,7 +810,7 @@ function callListHTML() {
   const list = all.filter((k) => (S.kst === '全部' || k.status === S.kst) && (S.kar === '全部' || kArea(k) === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && (!q || [k.name, k.phone, k.source, k.note, k.addr, k.area].join(' ').includes(q)))
     .sort((a, b) => rank(a) - rank(b) || (a.nextDate || '9999').localeCompare(b.nextDate || '9999') || noCmp(a, b));
   const fsum = [q && '搜尋「' + q + '」', S.kst !== '全部' && S.kst, S.klv !== '全部' && S.klv, S.kar !== '全部' && S.kar].filter(Boolean);
-  return `<section class="col"><div class="colhead${S.kfold ? ' kfolded' : ''}"><h1>服務件 <span style="display:flex;gap:6px"><button class="btn" data-act="kfold" title="${S.kfold ? '展開篩選' : '收起篩選'}">${S.kfold ? '▾' : '▴'}</button><button class="btn" data-act="ktable">總表</button><details class="kmore"><summary class="btn">⋯ 更多</summary><div class="kmenu"><button class="btn" data-act="cflow">流程（可印 A4）</button><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="kphoto">📷 拍照新增</button><button class="btn" data-act="newcall">＋ 新增一位</button><button class="btn" data-act="ktagimp">名單加標籤</button><button class="btn" data-act="korder">匯入另一種排序</button></div></details></span></h1>
+  return `<section class="col"><div class="colhead${S.kfold ? ' kfolded' : ''}"><h1>服務件 <span style="display:flex;gap:6px"><button class="btn" data-act="kcol" title="收起名單，右邊變寬">«</button><button class="btn" data-act="ktable">總表</button><details class="kmore"><summary class="btn">⋯ 更多</summary><div class="kmenu"><button class="btn" data-act="cflow">流程（可印 A4）</button><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="kphoto">📷 拍照新增</button><button class="btn" data-act="newcall">＋ 新增一位</button><button class="btn" data-act="ktagimp">名單加標籤</button><button class="btn" data-act="korder">匯入另一種排序</button></div></details></span></h1>
   ${S.kcalling ? '' : '<button class="btn pri kstartbig" data-act="kstart">📞 開始打電話<span>照順序一位一位帶你打</span></button>'}
   ${S.kfold ? `<div class="kfoldsum">篩選：${fsum.length ? esc(fsum.join('・')) : '全部'}　<b>${list.length}</b> 位　<button class="linkbtn" data-act="kfold">展開</button></div>` : ''}
   <div class="mobsync">${syncHTML()}</div>
@@ -828,7 +828,7 @@ function callDetailHTML() { // 一張「這通電話」卡從上點到下；很�
   const evs = gevents(); if (!evs.some((x) => x.id === S.gev)) S.gev = evs[0]?.id || null; const ev = S.gev && Vault.get('gevents', S.gev);
   const g = ev && giftsOf(ev.id).find((x) => x.who?.type === 'call' && x.who.id === k.id), gItems = g && Object.keys(g.items || {}).length;
   const tel = (x, lab) => x ? `<a class="ktel" href="tel:${esc(x.replace(/[^0-9+#*]/g, ''))}"><span>${lab}</span>📞 ${esc(x)}</a>` : '';
-  return `${kCallBarHTML(k)}<button class="back" data-act="back">‹ 服務件名單</button>${S.kfromTable ? '<button class="btn sm" data-act="ktable" style="margin-bottom:8px">‹ 回總表</button>' : ''}
+  return `${S.kcolHide ? '<button class="btn sm kcolshow" data-act="kcol">» 名單</button>' : ''}${kCallBarHTML(k)}<button class="back" data-act="back">‹ 服務件名單</button>${S.kfromTable ? '<button class="btn sm" data-act="ktable" style="margin-bottom:8px">‹ 回總表</button>' : ''}
   <div class="dhead"><input class="title" id="kf_name" data-kf="name" value="${esc(k.name)}" placeholder="姓名" aria-label="姓名"><button class="btn sm" data-act="kphotoin">📷 拍照帶入</button><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></div>
   <div class="khero">${tel(k.phone, '手機')}${tel(k.home, '住家')}${!k.phone && !k.home ? '<span class="sub">沒有電話：到「聯絡資料」補，或用寄的</span>' : ''}
    <span class="khtags">${(k.tags || []).map((t) => `<span class="pill p-go">${esc(t)}</span>`).join(' ')} ${k.line ? '' : '<span class="sub">LINE</span>'}${klmBtn(k)}</span>
@@ -2222,6 +2222,7 @@ app.addEventListener('click', async (e) => {
       const dd = BD.draft; dd.rows = dd.rows.filter((r) => (r.name || '').trim()); const used = new Set(dd.rows.map((r) => r.cat)); Object.keys(dd.cats).forEach((k) => { if (!used.has(k) && !BINDER_SEED.cats[k]) delete dd.cats[k]; }); dd.done = (dd.done || []).filter((x) => dd.rows.some((r) => r.id === x));
       binderSave(dd); BD.edit = false; BD.draft = null; App.render(); toast('已儲存'); break; }
     case 'ktagimp': openCallTagImport(); break;
+    case 'kcol': S.kcolHide = !S.kcolHide; try { localStorage.setItem('crm-kcolhide', S.kcolHide ? '1' : '0'); } catch (e) {} App.render(); break;
     case 'kfold': S.kfold = !S.kfold; try { localStorage.setItem('crm-kfold', S.kfold ? '1' : '0'); } catch (e) {} App.render(); break;
     case 'kphoto': openCallPhoto(null); break;
     case 'kgiftgo': S.view = 'calls'; S.ktable = true; S.kview = 'gift'; S.showDetail = false; S.q = ''; App.render(); break;

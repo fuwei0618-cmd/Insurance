@@ -718,3 +718,14 @@ details.sec>summary{cursor:pointer}
 .kgift label{white-space:nowrap}
 .kgift .gcell{border:1px solid var(--line,#ccc);border-radius:8px;padding:5px 8px;background:var(--card,#fff);font:inherit}
 .kgift select.gcell{min-width:96px}
+
+/* 服務件名單整欄收起（像左邊工具列）；窄螢幕不受影響 */
+.kcolshow{display:none;margin-bottom:8px}
+@media (min-width:901px){
+ .app.colhide{grid-template-columns:132px minmax(0,1fr)}
+ .app.railmini.colhide{grid-template-columns:58px minmax(0,1fr)}
+ .app.colhide>.col{display:none}
+ .app.colhide .kcolshow{display:inline-flex;align-self:flex-start;width:auto}
+}
+/* 窄螢幕（並排視窗、手機）：工具列縮小的設定不能把內容擠到窄欄 */
+@media (max-width:900px){.app.railmini,.app.railmini.single,.app.colhide{grid-template-columns:minmax(0,1fr)}}
