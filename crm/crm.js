@@ -651,7 +651,7 @@ function callHHSectionHTML(k) {
 }
 const KSKIP = ['同事的件', '保經', '其他'];
 const skipWhy = (k) => k.otherWhy || '同事的件';
-const KMARKS = ['全部', '已加 LINE', '未加 LINE', '退件', '不追蹤', '家戶待確認'];
+const KMARKS = ['全部', '已加 LINE', 'LINE 未回', '未加 LINE', '退件', '不追蹤', '家戶待確認'];
 function callGiftSheetHTML(list, ev, evs) { // 服務件專區裡的送禮表：一列一位，一欄一個品項，填數字就自動記到送禮專區
   if (!ev) return '<div class="empty">還沒有送禮活動。先到「送禮」按「＋ 新活動」建一個，例如「2027 年曆」，再回來這裡填。</div>';
   const items = giftItemsSorted(ev.items || []), cats = []; items.forEach((it) => { const c = it.cat || '未分類'; const l = cats[cats.length - 1]; l && l.c === c ? l.n++ : cats.push({ c, n: 1 }); });
@@ -721,7 +721,7 @@ function callTableHTML() {
   const all = calls(), q = S.q.trim(), hhs = callHouseholds(all), grpOf = (k) => hhs.get(hhKey(k));
   const areas = [...new Set(all.map(kArea).filter(Boolean))].sort(areaSort); if (S.kar !== '全部' && !areas.includes(S.kar)) S.kar = '全部';
   const tags = callTags(); if (!['全部', ...KMARKS, ...tags].includes(S.kmark)) S.kmark = '全部';
-  const markOk = (k) => (k.tags || []).includes(S.kmark) || ({ 全部: true, '已加 LINE': !!k.line, '未加 LINE': !k.line, 退件: !!k.mailBack, 不追蹤: !!k.other, 家戶待確認: hhPending(grpOf(k)) })[S.kmark];
+  const markOk = (k) => (k.tags || []).includes(S.kmark) || ({ 全部: true, '已加 LINE': !!k.line, 'LINE 未回': !!k.line && k.lineMsg === '未回', '未加 LINE': !k.line, 退件: !!k.mailBack, 不追蹤: !!k.other, 家戶待確認: hhPending(grpOf(k)) })[S.kmark];
   let list = all.filter((k) => (S.kprog === '全部' || callProg(k) === S.kprog) && (S.kar === '全部' || kArea(k) === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && markOk(k) && (!q || [k.no, k.name, k.phone, k.home, k.addr, k.area, k.note, k.hh, k.otherWho].join(' ').includes(q))).sort(noCmp);
   if (S.ksort === 'addr') list.sort(addrCmp);
   if (S.ksort === 'call') list.sort((a, b) => callRank(a) - callRank(b) || areaSort(kArea(a), kArea(b)) || addrCmp(a, b));
@@ -751,7 +751,7 @@ function callTableHTML() {
     return head + `<tr data-ksel="${k.id}" class="kp-${pg}${k.other ? ' kother' : ''}${linked ? ' klinked' : ''}">
      <td class="sub">${lk}${esc(k.no || '')}${jump ? '<span class="kjump" title="序號比上一位小">↰</span>' : ''}</td><td><b>${esc(k.name || '未填')}</b> ${(k.tags || []).map((t) => `<span class="pill p-go">${esc(t)}</span>`).join('')}${badges}</td><td>${esc(kArea(k))}</td><td>${k.level ? `<b class="lvl lv-${esc(k.level)}">${esc(k.level)}</b>` : ''}</td><td>${hhCell}</td>
      <td><span class="kdots">${dot(sl['上午'], '上午')}${dot(sl['下午'], '下午')}${dot(sl['晚上'], '晚上')}</span></td><td><span class="kprog">${pg}</span></td>
-     <td>${l ? `${esc(l.result)}<span class="sub"> ${fmtDay(l.date).slice(5)}</span>` : ''}</td><td>${gf ? `<span class="kg kg-${gf}">${gf}</span>` : ''}</td><td>${k.line ? '✓' : ''}</td>
+     <td>${l ? `${esc(l.result)}<span class="sub"> ${fmtDay(l.date).slice(5)}</span>` : ''}</td><td>${gf ? `<span class="kg kg-${gf}">${gf}</span>` : ''}</td><td>${k.line ? `<button class="klm klm-${k.lineMsg === '未回' ? 'no' : k.lineMsg === '已回' ? 'ok' : 'on'}" data-klm="${k.id}" title="點一下換：✓ → 未回 → 已回">${k.lineMsg || '✓'}</button>` : ''}</td>
      <td>${k.visitDate ? fmtDay(k.visitDate).slice(5) : pg === '已排訪' ? '✓' : ''}</td><td>${k.met ? '✓' : ''}</td><td class="knote">${esc((k.note || l?.note || '').slice(0, 40))}</td></tr>`; }).join('');
   const tableHTML = KG ? callGiftSheetHTML(list, gev, gevs) : `<div class="ktablewrap"><table class="ktable${E ? ' editing' : ''}"><thead><tr>${cols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>${list.length ? '' : '<div class="empty">沒有符合的對象。</div>'}</div>`;
   return `<div class="colhead"><h1>服務件總表 <span style="display:flex;gap:6px;flex-wrap:wrap"><span class="seg2"><button class="btn sm${KG ? '' : ' pri'}" data-kview="prog">進度</button><button class="btn sm${KG ? ' pri' : ''}" data-kview="gift">🎁 送禮</button></span><span class="seg2">${[['call', '撥打順序'], ['no', '序號'], ['addr', '地址'], ...(all.some((k) => k.ord2 != null) ? [['co', '公司順序']] : []), ['hh', '家戶']].map(([v, l]) => `<button class="btn sm${S.ksort === v ? ' pri' : ''}" data-ksort="${v}">${l}</button>`).join('')}</span>${KG ? '' : `<button class="btn${E ? ' pri' : ''}" data-act="kedit">${E ? '✓ 改好了' : '✎ 直接修改'}</button>`}<button class="btn" data-act="klist">‹ 名單</button><details class="kmore"><summary class="btn">⋯ 更多</summary><div class="kmenu"><button class="btn" data-act="cflow">流程（可印 A4）</button><button class="btn" data-act="importcalls">匯入名單</button><button class="btn" data-act="kphoto">📷 拍照新增</button><button class="btn" data-act="newcall">＋ 新增一位</button><button class="btn" data-act="ktagimp">名單加標籤</button><button class="btn" data-act="korder">匯入另一種排序</button></div></details><button class="btn pri" data-act="kstart">📞 開始打電話</button></span></h1>
@@ -2056,6 +2056,7 @@ app.addEventListener('click', async (e) => {
   const tileImg = e.target.closest('.doc[data-di] canvas, .doc[data-di] .pdftile'); // 點圖片＝看
   if (tileImg) { tileImg.closest('.doc').querySelector('[data-view],[data-cview]')?.click(); return; }
   const kl = e.target.closest('[data-klink]'); if (kl) { const a = Vault.get('calls', kl.dataset.kprev), b = Vault.get('calls', kl.dataset.klink); if (a && b) { if (a.hh && a.hh === b.hh) { b.hh = ''; b.hhOk = false; Vault.put('calls', b); if (!calls().some((x) => x.id !== a.id && x.hh === a.hh)) { a.hh = ''; a.hhOk = false; Vault.put('calls', a); } toast('拆開了'); } else toast('同一戶：' + linkHH(a, b)); App.render(); } return; }
+  const klm = e.target.closest('[data-klm]'); if (klm) { const k = Vault.get('calls', klm.dataset.klm); if (k) { k.lineMsg = k.lineMsg === '未回' ? '已回' : k.lineMsg === '已回' ? '' : '未回'; Vault.put('calls', k); App.render(); } return; }
   const kr = e.target.closest('tr[data-ksel]'); if (kr) { S.ktable = false; S.kfromTable = true; S.ksel = kr.dataset.ksel; S.kres = ''; S.showDetail = true; App.render(); window.scrollTo(0, 0); return; }
   const b = e.target.closest('button'); if (!b) return; const d = b.dataset; const c = cur();
   if (d.nav) { if (d.nav === 'calls' && !S.kcalling) { S.ktable = true; S.kfromTable = false; } S.view = d.nav; S.showDetail = false; S.q = ''; App.render(); return; }

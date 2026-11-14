@@ -645,3 +645,8 @@ label.bdit{cursor:pointer}
 .cfgrid .sec{break-inside:avoid;display:block;margin:0 0 10px;padding:10px 12px;border:1px solid var(--line,#ddd);border-radius:10px}
 .cfgrid h2{font-size:14.5px;margin:0 0 6px}
 .cfgrid .cflow{font-size:13px;line-height:1.5;gap:3px;padding-left:18px}
+
+/* 總表 LINE 格：點一下換 ✓ → 未回 → 已回 */
+.klm{border:1px solid var(--line,#ccc);background:transparent;border-radius:999px;padding:3px 10px;font:inherit;font-size:13px;cursor:pointer;min-width:44px;min-height:32px}
+.klm-no{background:#F6E3C8;border-color:#E2B56A;color:#7a4b00;font-weight:600}
+.klm-ok{background:#E3EEDB;border-color:#9DBA88;color:#3d5a2a}
