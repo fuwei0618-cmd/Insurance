@@ -651,8 +651,9 @@ function callHHSectionHTML(k) {
 }
 const KSKIP = ['同事的件', '保經', '其他'];
 const skipWhy = (k) => k.otherWhy || '同事的件';
-const KMARKS = ['全部', '已加 LINE', 'LINE 未回', '年曆待問', '未加 LINE', '退件', '不追蹤', '家戶待確認'];
-const klmBtn = (k) => k.line ? `<button class="klm klm-${k.lineMsg === '未回' ? 'no' : k.lineMsg === '已回' ? 'ok' : 'on'}" data-klm="${k.id}" title="點一下換：✓ → 未回 → 已回">${k.lineMsg || '✓'}</button>` : '';
+const KMARKS = ['全部', '已加 LINE', '年曆未回', 'LINE 從沒回', '年曆待問', '未加 LINE', '退件', '不追蹤', '家戶待確認'];
+const LMSG = ['', '年曆未回', '已回', '從沒回'], lmsg = (k) => (k.lineMsg === '未回' ? '年曆未回' : k.lineMsg || ''); // 舊的「未回」當成年曆未回
+const klmBtn = (k) => { if (!k.line) return ''; const m = lmsg(k); return `<button class="klm klm-${({ 年曆未回: 'no', 已回: 'ok', 從沒回: 'never' })[m] || 'on'}" data-klm="${k.id}" title="點一下換：✓ → 年曆未回 → 已回 → 從沒回">${m || '✓'}</button>`; };
 function callGiftSheetHTML(list, ev, evs) { // 服務件專區裡的送禮表：一列一位，一欄一個品項，填數字就自動記到送禮專區
   if (!ev) return '<div class="empty">還沒有送禮活動。先到「送禮」按「＋ 新活動」建一個，例如「2027 年曆」，再回來這裡填。</div>';
   const items = giftItemsSorted(ev.items || []), cats = []; items.forEach((it) => { const c = it.cat || '未分類'; const l = cats[cats.length - 1]; l && l.c === c ? l.n++ : cats.push({ c, n: 1 }); });
@@ -724,7 +725,7 @@ function callTableHTML() {
   const all = calls(), q = S.q.trim(), hhs = callHouseholds(all), grpOf = (k) => hhs.get(hhKey(k));
   const areas = [...new Set(all.map(kArea).filter(Boolean))].sort(areaSort); if (S.kar !== '全部' && !areas.includes(S.kar)) S.kar = '全部';
   const tags = callTags(); if (!['全部', ...KMARKS, ...tags].includes(S.kmark)) S.kmark = '全部';
-  const markOk = (k) => (k.tags || []).includes(S.kmark) || ({ 全部: true, '已加 LINE': !!k.line, 'LINE 未回': !!k.line && k.lineMsg === '未回', 年曆待問: callGift(k) === '待問', '未加 LINE': !k.line, 退件: !!k.mailBack, 不追蹤: !!k.other, 家戶待確認: hhPending(grpOf(k)) })[S.kmark];
+  const markOk = (k) => (k.tags || []).includes(S.kmark) || ({ 全部: true, '已加 LINE': !!k.line, 年曆未回: !!k.line && lmsg(k) === '年曆未回', 'LINE 從沒回': !!k.line && lmsg(k) === '從沒回', 年曆待問: callGift(k) === '待問', '未加 LINE': !k.line, 退件: !!k.mailBack, 不追蹤: !!k.other, 家戶待確認: hhPending(grpOf(k)) })[S.kmark];
   let list = all.filter((k) => (S.kprog === '全部' || callProg(k) === S.kprog) && (S.kar === '全部' || kArea(k) === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && markOk(k) && (!q || [k.no, k.name, k.phone, k.home, k.addr, k.area, k.note, k.hh, k.otherWho].join(' ').includes(q))).sort(noCmp);
   if (S.ksort === 'addr') list.sort(addrCmp);
   if (S.ksort === 'call') list.sort((a, b) => callRank(a) - callRank(b) || areaSort(kArea(a), kArea(b)) || addrCmp(a, b));
@@ -2061,7 +2062,7 @@ app.addEventListener('click', async (e) => {
   const tileImg = e.target.closest('.doc[data-di] canvas, .doc[data-di] .pdftile'); // 點圖片＝看
   if (tileImg) { tileImg.closest('.doc').querySelector('[data-view],[data-cview]')?.click(); return; }
   const kl = e.target.closest('[data-klink]'); if (kl) { const a = Vault.get('calls', kl.dataset.kprev), b = Vault.get('calls', kl.dataset.klink); if (a && b) { if (a.hh && a.hh === b.hh) { b.hh = ''; b.hhOk = false; Vault.put('calls', b); if (!calls().some((x) => x.id !== a.id && x.hh === a.hh)) { a.hh = ''; a.hhOk = false; Vault.put('calls', a); } toast('拆開了'); } else toast('同一戶：' + linkHH(a, b)); App.render(); } return; }
-  const klm = e.target.closest('[data-klm]'); if (klm) { const k = Vault.get('calls', klm.dataset.klm); if (k) { k.lineMsg = k.lineMsg === '未回' ? '已回' : k.lineMsg === '已回' ? '' : '未回'; Vault.put('calls', k); App.render(); } return; }
+  const klm = e.target.closest('[data-klm]'); if (klm) { const k = Vault.get('calls', klm.dataset.klm); if (k) { k.lineMsg = LMSG[(LMSG.indexOf(lmsg(k)) + 1) % LMSG.length]; Vault.put('calls', k); App.render(); } return; }
   const kr = e.target.closest('tr[data-ksel]'); if (kr) { S.ktable = false; S.kfromTable = true; S.ksel = kr.dataset.ksel; S.kres = ''; S.showDetail = true; App.render(); window.scrollTo(0, 0); return; }
   const b = e.target.closest('button'); if (!b) return; const d = b.dataset; const c = cur();
   if (d.nav) { if (d.nav === 'calls' && !S.kcalling) { S.ktable = true; S.kfromTable = false; } S.view = d.nav; S.showDetail = false; S.q = ''; App.render(); return; }

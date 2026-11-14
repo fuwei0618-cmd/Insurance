@@ -658,3 +658,4 @@ label.bdit{cursor:pointer}
 .colhead.kfolded .kfunnel,.colhead.kfolded #q,.colhead.kfolded .chips,.colhead.kfolded~.note{display:none}
 .kfoldsum{font-size:14px;color:var(--muted,#666)}
 .kg-要{background:#FAEEDA}
+.klm-never{background:#ECE9E2;border-color:#B9B3A6;color:#5c574d}
