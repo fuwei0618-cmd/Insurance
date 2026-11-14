@@ -693,7 +693,9 @@ const kArea = (k) => k.area || areaOf(k.addr) || '';
 const areaRank = (a) => { const i = AREA_ORDER.indexOf(a); return i < 0 ? (a ? 100 : 999) : i; };
 const areaSort = (a, b) => areaRank(a) - areaRank(b) || a.localeCompare(b, 'zh-Hant');
 const callTags = () => [...new Set(calls().flatMap((k) => k.tags || []))];
-const callRank = (k) => (k.other ? 9 : (k.tags || []).length ? 0 : k.line ? 1 : 2);
+const isAgeTag = (t) => /^\d{1,2}\s*[-~～－]\s*\d{1,2}(歲)?$|^\d{1,2}\s*歲?以上$/.test(t); // 20-29、60以上、60歲以上
+const ageRank = (k) => { const t = (k.tags || []).find(isAgeTag); if (!t) return 50; return -parseInt(t, 10); }; // 年紀大的組先打
+const callRank = (k) => (k.other ? 9 : (k.tags || []).some((t) => !isAgeTag(t)) ? 0 : k.line ? 1 : 2);
 function openCallTagImport() { // 主管給的名單：貼序號或姓名，一次加上標籤
   const tags = callTags();
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>名單加標籤</h2><button class="btn" id="ktX">取消</button><button class="btn pri" id="ktGo">加上標籤</button></div>
@@ -718,7 +720,7 @@ function openCallTagImport() { // 主管給的名單：貼序號或姓名，一�
 }
 const kMarkOkFn = (hhs) => (k) => (k.tags || []).includes(S.kmark) || ({ 全部: true, '已加 LINE': !!k.line, 年曆未回: !!k.line && lmsg(k) === '年曆未回', 'LINE 從沒回': !!k.line && lmsg(k) === '從沒回', 年曆待問: callGift(k) === '待問', '未加 LINE': !k.line, 退件: !!k.mailBack, 不追蹤: !!k.other, 家戶待確認: hhPending(hhs.get(hhKey(k))) })[S.kmark];
 const kFilterOk = () => { const all = calls(), mk = kMarkOkFn(callHouseholds(all)); return (k) => (S.kar === '全部' || kArea(k) === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && mk(k); }; // 開始打電話也照總表上點的標記、地區、分級
-const kQueue = () => { const ok = kFilterOk(); return calls().filter((k) => !k.other && ['未打', '未接'].includes(callProg(k)) && ok(k)).sort((a, b) => callRank(a) - callRank(b) || areaSort(kArea(a), kArea(b)) || addrCmp(a, b)); };
+const kQueue = () => { const ok = kFilterOk(); return calls().filter((k) => !k.other && ['未打', '未接'].includes(callProg(k)) && ok(k)).sort((a, b) => callRank(a) - callRank(b) || ageRank(a) - ageRank(b) || areaSort(kArea(a), kArea(b)) || addrCmp(a, b)); };
 function kStartCalling(fromId) { // 照撥打順序找下一位：今天打過的先跳過
   const q = kQueue(), today = localDay(), fresh = (k) => !(k.logs || []).some((l) => l.date === today);
   let i = fromId ? q.findIndex((k) => k.id === fromId) : -1; let nx = q.slice(i + 1).find(fresh) || (fromId ? null : q.find(fresh));
@@ -726,7 +728,7 @@ function kStartCalling(fromId) { // 照撥打順序找下一位：今天打過�
   S.kcalling = true; S.view = 'calls'; S.ktable = false; S.kfromTable = false; S.ksel = nx.id; S.kres = ''; S.showDetail = true; App.render(); window.scrollTo(0, 0);
 }
 function kCallBarHTML(k) {
-  if (!S.kcalling) return ''; const q = kQueue(), r = callRank(k), lab = r === 0 ? '① ' + (k.tags || []).join('、') : r === 1 ? '② 已加 LINE' : r === 2 ? '③ 其他' : '';
+  if (!S.kcalling) return ''; const q = kQueue(), r = callRank(k), lab = r === 0 ? '① ' + (k.tags || []).filter((t) => !isAgeTag(t)).join('、') : r === 1 ? '② 已加 LINE' : r === 2 ? '③ 其他' : '';
   const same = q.filter((x) => callRank(x) === r && kArea(x) === kArea(k)), pos = same.findIndex((x) => x.id === k.id);
   const td = new Date().toDateString(), met = calls().filter((x) => (x.logs || []).some((l) => l.result === '約訪成功' && l.at && new Date(l.at).toDateString() === td)).length;
   return `<div class="kcallbar" style="flex-wrap:wrap"><span style="flex-basis:100%;font-size:13px">🎯 今天約到 <b>${met}</b>／2 位願意見面聊的人${met >= 2 ? '　達成了 🎉' : ''}　<span class="sub">🙏 每一通好好打，結果交出去。</span></span><span><b>📞 撥打中</b>　${S.kmark !== '全部' ? `<span class="pill p-go">${esc(S.kmark)}</span> ` : ''}${esc(lab)}・${esc(kArea(k) || '沒有地區')}${pos >= 0 ? `　第 ${pos + 1}／${same.length} 位` : ''}<span class="sub">　整份還有 ${q.length} 位沒接通</span></span><span style="display:flex;gap:6px"><button class="btn sm" data-act="kstop">結束</button><button class="btn sm pri" data-act="knext">下一位 ›</button></span></div>`;
@@ -738,7 +740,7 @@ function callTableHTML() {
   const markOk = kMarkOkFn(hhs);
   let list = all.filter((k) => (S.kprog === '全部' || callProg(k) === S.kprog) && (S.kar === '全部' || kArea(k) === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && markOk(k) && (!q || [k.no, k.name, k.phone, k.home, k.addr, k.area, k.note, k.hh, k.otherWho].join(' ').includes(q))).sort(noCmp);
   if (S.ksort === 'addr') list.sort(addrCmp);
-  if (S.ksort === 'call') list.sort((a, b) => callRank(a) - callRank(b) || areaSort(kArea(a), kArea(b)) || addrCmp(a, b));
+  if (S.ksort === 'call') list.sort((a, b) => callRank(a) - callRank(b) || ageRank(a) - ageRank(b) || areaSort(kArea(a), kArea(b)) || addrCmp(a, b));
   if (S.ksort === 'co') list.sort((a, b) => (a.ord2 ?? 1e9) - (b.ord2 ?? 1e9) || noCmp(a, b));
   if (S.ksort === 'hh') { const first = new Map(); list.forEach((k, i) => { const key = hhKey(k); if (!first.has(key)) first.set(key, i); }); list = list.map((k, i) => [k, i]).sort((x, y) => first.get(hhKey(x[0])) - first.get(hhKey(y[0])) || x[1] - y[1]).map(([k]) => k); }
   const mine = all.filter((k) => !k.other), n = (f) => mine.filter(f).length, na = (f) => all.filter(f).length, prog = (k) => callProg(k);
@@ -753,7 +755,7 @@ function callTableHTML() {
   const rows = list.map((k, ri) => { const nn = parseInt(k.no, 10), jump = (S.ksort === 'addr' || S.ksort === 'co') && !isNaN(nn) && nn < maxNo; if (jump) jumps++; if (!isNaN(nn)) maxNo = Math.max(maxNo, nn);
     const prevK = list[ri - 1], linked = prevK && k.hh && prevK.hh === k.hh, lk = S.ksort !== 'no' && prevK ? `<button class="klink${linked ? ' on' : ''}" data-klink="${k.id}" data-kprev="${prevK.id}" title="${linked ? '已跟上一位同一戶，再按一下拆開' : '跟上一位同一戶'}">${linked ? '🔗' : '＋🔗'}</button>` : ''; const sl = callSlots(k), l = logsOf(k)[0], gf = callGift(k), pg = prog(k), g = grpOf(k), key = hhKey(k);
     let head = '';
-    if (S.ksort === 'call') { const ck = callRank(k) + '|' + kArea(k), pk2 = prevK ? callRank(prevK) + '|' + kArea(prevK) : ''; if (ck !== pk2) { const r = callRank(k), lab = r === 0 ? '① ' + (k.tags || []).join('、') : r === 1 ? '② 已加 LINE' : r === 2 ? '③ 其他' : '不追蹤', cnt = list.filter((x) => callRank(x) + '|' + kArea(x) === ck).length; head = `<tr class="khh"><td colspan="${cols.length}"><b>${esc(lab)}</b>・${esc(kArea(k) || '沒有地區')} <span class="sub">${cnt} 位</span></td></tr>`; } }
+    if (S.ksort === 'call') { const ck = callRank(k) + '|' + kArea(k), pk2 = prevK ? callRank(prevK) + '|' + kArea(prevK) : ''; if (ck !== pk2) { const r = callRank(k), lab = r === 0 ? '① ' + (k.tags || []).filter((t) => !isAgeTag(t)).join('、') : r === 1 ? '② 已加 LINE' : r === 2 ? '③ 其他' : '不追蹤', cnt = list.filter((x) => callRank(x) + '|' + kArea(x) === ck).length; head = `<tr class="khh"><td colspan="${cols.length}"><b>${esc(lab)}</b>・${esc(kArea(k) || '沒有地區')} <span class="sub">${cnt} 位</span></td></tr>`; } }
     if (S.ksort === 'hh' && key !== prevKey && g.length > 1) { const pend = hhPending(g); head = `<tr class="khh"><td colspan="${cols.length}"><b>家戶・${esc(g.find((x) => x.hh)?.hh || '同地址')}</b> <span class="sub">${g.length} 人・${esc(g[0].addr || '')}</span> ${pend ? `<span class="pill p-wait">待電話確認</span> <button class="btn sm" data-khhok="${esc(key)}">✓ 確認同一戶</button>` : '<span class="pill p-done">已確認</span>'}</td></tr>`; }
     prevKey = key;
     const hhCell = k.hh ? esc(k.hh) : g.length > 1 ? `<span class="sub">同地址 ${g.length} 人</span>` : '';
