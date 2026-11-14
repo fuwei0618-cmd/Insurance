@@ -653,7 +653,7 @@ const KSKIP = ['同事的件', '保經', '其他'];
 const skipWhy = (k) => k.otherWhy || '同事的件';
 const KMARKS = ['全部', '已加 LINE', '年曆未回', 'LINE 從沒回', '年曆待問', '未加 LINE', '退件', '不追蹤', '家戶待確認'];
 const LMSG = ['', '年曆未回', '已回', '從沒回'], lmsg = (k) => (k.lineMsg === '未回' ? '年曆未回' : k.lineMsg || ''); // 舊的「未回」當成年曆未回
-const klmBtn = (k) => { if (!k.line) return ''; const m = lmsg(k); return `<button class="klm klm-${({ 年曆未回: 'no', 已回: 'ok', 從沒回: 'never' })[m] || 'on'}" data-klm="${k.id}" title="點一下換：✓ → 年曆未回 → 已回 → 從沒回">${m || '✓'}</button>`; };
+const klmBtn = (k) => { if (!k.line) return `<button class="klm klm-add" data-klm="${k.id}" title="點一下：已加 LINE">＋</button>`; const m = lmsg(k); return `<button class="klm klm-${({ 年曆未回: 'no', 已回: 'ok', 從沒回: 'never' })[m] || 'on'}" data-klm="${k.id}" title="點一下換：✓ → 年曆未回 → 已回 → 從沒回">${m || '✓'}</button>`; };
 function callGiftSheetHTML(list, ev, evs) { // 服務件專區裡的送禮表：一列一位，一欄一個品項，填數字就自動記到送禮專區
   if (!ev) return '<div class="empty">還沒有送禮活動。先到「送禮」按「＋ 新活動」建一個，例如「2027 年曆」，再回來這裡填。</div>';
   const items = giftItemsSorted(ev.items || []), cats = []; items.forEach((it) => { const c = it.cat || '未分類'; const l = cats[cats.length - 1]; l && l.c === c ? l.n++ : cats.push({ c, n: 1 }); });
@@ -2062,7 +2062,7 @@ app.addEventListener('click', async (e) => {
   const tileImg = e.target.closest('.doc[data-di] canvas, .doc[data-di] .pdftile'); // 點圖片＝看
   if (tileImg) { tileImg.closest('.doc').querySelector('[data-view],[data-cview]')?.click(); return; }
   const kl = e.target.closest('[data-klink]'); if (kl) { const a = Vault.get('calls', kl.dataset.kprev), b = Vault.get('calls', kl.dataset.klink); if (a && b) { if (a.hh && a.hh === b.hh) { b.hh = ''; b.hhOk = false; Vault.put('calls', b); if (!calls().some((x) => x.id !== a.id && x.hh === a.hh)) { a.hh = ''; a.hhOk = false; Vault.put('calls', a); } toast('拆開了'); } else toast('同一戶：' + linkHH(a, b)); App.render(); } return; }
-  const klm = e.target.closest('[data-klm]'); if (klm) { const k = Vault.get('calls', klm.dataset.klm); if (k) { k.lineMsg = LMSG[(LMSG.indexOf(lmsg(k)) + 1) % LMSG.length]; Vault.put('calls', k); App.render(); } return; }
+  const klm = e.target.closest('[data-klm]'); if (klm) { const k = Vault.get('calls', klm.dataset.klm); if (k) { if (!k.line) k.line = true; else k.lineMsg = LMSG[(LMSG.indexOf(lmsg(k)) + 1) % LMSG.length]; Vault.put('calls', k); App.render(); } return; }
   const kr = e.target.closest('tr[data-ksel]'); if (kr) { S.ktable = false; S.kfromTable = true; S.ksel = kr.dataset.ksel; S.kres = ''; S.showDetail = true; App.render(); window.scrollTo(0, 0); return; }
   const b = e.target.closest('button'); if (!b) return; const d = b.dataset; const c = cur();
   if (d.nav) { if (d.nav === 'calls' && !S.kcalling) { S.ktable = true; S.kfromTable = false; } S.view = d.nav; S.showDetail = false; S.q = ''; App.render(); return; }
