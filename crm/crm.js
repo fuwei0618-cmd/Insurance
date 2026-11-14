@@ -662,7 +662,7 @@ function callHHSectionHTML(k) {
    ${cand.length ? `<div class="sub" style="margin:6px 0 4px">可能同一戶，電話中問到就按「＋ 同一戶」：</div>${cand.map(([o, w]) => row(o, `<span class="pill">${w}</span><button class="btn sm" data-khadd="${o.id}">＋ 同一戶</button>`)).join('')}` : mem.length ? '' : '<div class="sub">沒有找到同地址、同住家電話的人。</div>'}
    ${k.hh ? `<div class="actions" style="margin:6px 0 0"><button class="linkbtn" data-khout="${k.id}">把自己移出這一戶</button></div>` : ''}</details>`;
 }
-const KSKIP = ['同事的件', '保經', '保單停效、解約', '其他'];
+const KSKIP = ['自己家人', '同事的件', '保經', '保單停效、解約', '其他'];
 const skipWhy = (k) => k.otherWhy || '同事的件';
 const KMARKS = ['全部', '已加 LINE', '年曆未回', 'LINE 從沒回', '年曆待問', '未加 LINE', '沒電話', '退件', '不追蹤', '家戶待確認'];
 const LMSG = ['', '年曆未回', '已回', '從沒回'], lmsg = (k) => (k.lineMsg === '未回' ? '年曆未回' : k.lineMsg || ''); // 舊的「未回」當成年曆未回
