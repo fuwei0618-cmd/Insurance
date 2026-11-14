@@ -434,6 +434,8 @@ const linkify = (html) => html.replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href=
 
 /* ================= 狀態與畫面 ================= */
 const S = { railMini: (() => { try { return localStorage.getItem('crm-railmini') === '1'; } catch (e) { return false; } })(), ginvOpen: false, gview: 'table', kcolHide: (() => { try { return localStorage.getItem('crm-kcolhide') === '1'; } catch (e) { return false; } })(), kfold: (() => { try { return localStorage.getItem('crm-kfold') === '1'; } catch (e) { return false; } })(), ktable: true, kprog: '全部', kmark: '全部', ksort: 'no', kview: 'prog', kedit: false, kfromTable: false, kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'calls' /* 年底服務件期間：打開先到服務件總表；之後改回 'cases' */, showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
+const NAV_KEYS = ['view', 'ktable', 'kview', 'ksel', 'showDetail', 'kcalling', 'khist', 'kmark', 'kar', 'klv', 'kprog', 'kst', 'kfromTable', 'sel', 'csel']; // 更新或重開後回到原本的頁面（30 分鐘內）
+try { const nv = JSON.parse(localStorage.getItem('crm-nav') || 'null'); if (nv && Date.now() - nv.t < 30 * 60000) NAV_KEYS.forEach((k) => { if (k in nv) S[k] = nv[k]; }); } catch (e) { }
 const cases = () => Vault.all('cases');
 const localDay = (d = new Date()) => { const t = new Date(d); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
 const caseDate = (c) => c.date || (c.createdAt ? localDay(c.createdAt) : '');
@@ -475,6 +477,7 @@ const App = {
     const dOpen = new Map([...app.querySelectorAll('details[data-dk]')].map((d) => [d.dataset.dk, d.open])); // 點了東西重畫，收合的區塊維持原樣
     const sc = [...app.querySelectorAll('section, .list, .ktablewrap')].map((el) => [el.className, el.scrollTop, el.scrollLeft]), wy = window.scrollY; // 重畫後回到原本的捲動位置
     app.innerHTML = h;
+    try { const nv = { t: Date.now() }; NAV_KEYS.forEach((k) => { nv[k] = S[k]; }); localStorage.setItem('crm-nav', JSON.stringify(nv)); } catch (e) { }
     app.querySelectorAll('details[data-dk]').forEach((d) => { if (dOpen.has(d.dataset.dk)) d.open = dOpen.get(d.dataset.dk); });
     const pk = [S.view, S.sel, S.csel, S.ksel, S.rsel, S.showDetail].join('|'), same = App._pk === pk; App._pk = pk;
     if (same) { const els = [...app.querySelectorAll('section, .list, .ktablewrap')]; sc.forEach(([cn, t, l]) => { const el = els.find((e) => e.className === cn); if (el && t) el.scrollTop = t; if (el && l) el.scrollLeft = l; }); if (wy) window.scrollTo(0, wy); }
