@@ -734,3 +734,4 @@ details.sec>summary{cursor:pointer}
 .khskip select,.khskip input{border:1px solid var(--line,#ccc);border-radius:8px;padding:5px 8px;font:inherit;font-size:14px;background:var(--card,#fff)}
 .khskip input{width:160px}
 .khhrow{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.kg-同戶一份{background:#E3EEDB;color:#3d5a2a}
