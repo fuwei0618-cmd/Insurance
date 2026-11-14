@@ -653,7 +653,7 @@ function hhCandidates(k) { const ad = normAddr(k.addr), hp = phoneDigits(k.home)
   return calls().filter((o) => o.id !== k.id && !(k.hh && o.hh === k.hh)).map((o) => [o, ad && normAddr(o.addr) === ad ? '同地址' : hp.length >= 7 && phoneDigits(o.home) === hp ? '同住家電話' : sn && o.name?.[0] === sn && z < 1e6 && addrParts(o)[0] === z ? '同姓・同郵遞區號' : '']).filter(([, w]) => w); }
 function callHHSectionHTML(k) {
   const mem = k.hh ? calls().filter((o) => o.hh === k.hh && o.id !== k.id).sort(noCmp) : [], cand = hhCandidates(k);
-  const row = (o, btn) => `<div class="khrow"><span><span class="kno">${esc(o.no || '')}</span><b>${esc(o.name || '未填')}</b> <span class="sub">${esc(o.addr || '')}</span></span>${btn}</div>`;
+  const row = (o, btn) => `<div class="khrow"><span><span class="kno">${esc(o.no || '')}</span><button class="linkbtn khname" data-ksel="${o.id}" title="打開${esc(o.name || '')}">${esc(o.name || '未填')} ›</button> <span class="sub">${esc(o.addr || '')}</span></span>${btn}</div>`;
   const hq = (S.hhq || '').trim(), found = hq ? calls().filter((o) => o.id !== k.id && !(k.hh && o.hh === k.hh) && [o.name, o.phone, o.home, o.addr].join(' ').includes(hq)).slice(0, 8) : [];
   return `<details class="sec" id="khhsec" data-dk="khh"${S.hhOpen ? ' open' : ''}><summary><h2 style="display:inline">家戶</h2> <span class="sub">${k.hh ? esc(k.hh) + `・${mem.length + 1} 人` : '還沒拉家戶'}</span></summary>
    <label class="f">找人加進這一戶<input id="kHhQ" value="${esc(S.hhq || '')}" placeholder="打姓名、電話或地址" autocomplete="off"></label>
