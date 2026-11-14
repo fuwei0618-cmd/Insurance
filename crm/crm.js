@@ -600,7 +600,7 @@ function callGift(k) { const gs = Vault.all('gifts').filter((g) => g.who?.type =
 const CALL_FLOW = { // 服務件流程：上面三欄照時間排，中間小抄，下面收起來的設定與後續
   cols: [
     ['打之前', ['一通電話**只做三件事**：顧關係、聽一個線索、約見面。**不在電話裡賣東西。**', '**先在「標記」點年齡組**（從 60以上往下），再按「📞 開始打電話」，只帶這一組。', '**一次只打一區**，之後排拜訪才順。', '看一眼他的功課：住址、保單、年齡組。', '已加 LINE 的：**先傳 LINE 再打**：「年底準備了年曆想送您，什麼時間方便打給您？」']],
-    ['電話中（六步，2～3 分鐘）', ['① 問候、身分：「我是國泰的○○，負責您的保單服務。」', '② 來電目的：「打來**確認您的聯絡資料**有沒有變。」送年曆、確認地址、家戶、職業。意外險升級的人在這裡順帶提。', '③ 關心一句：「**快年底了，今年過得還好嗎？**」', '④ **聽**：說到生活上的變化就是線索，不打斷。', '⑤ 順口**只提一樣**（看下面小抄），說完就停。', '⑥ 好就**約時間**；不用就道謝結束，**不追**。', '接到同戶的人：家人的資料一起問；記錄後同戶其他人會自動標「同戶已聯絡」，撥打時跳過。']],
+    ['電話中（四步，2～3 分鐘）', ['① 問候、身分、目的：「我是國泰的○○，負責您的保單服務。年底了，打來**確認一下您的資料**，也準備了**年曆要送您**。」', '② 確認資料、保單一句話：地址、電話、家戶、職業。保單**只講現況**：「您目前有醫療和意外，都正常有效。」意外險升級的人在這裡順帶提。', '③ 關心、聽、關鍵字：「**快年底了，今年過得還好嗎？**」**聽**到生活上的變化，順口**只提一樣**（看下面小抄），說完就停。', '④ 年曆約時間、加 LINE：「年曆想親自拿給您，**哪天方便？**我**加您 LINE** 好聯絡。」不要就道謝結束，**不追**。', '接到同戶的人：家人的資料一起問；記錄後同戶其他人會自動標「同戶已聯絡」，撥打時跳過。']],
     ['掛電話後（30 秒內記完）', ['**30 秒內記完**：結果（未接、已接・聊過、約訪成功…）。', '分級；勾家戶、職業確認。', '年曆：要、份數或不送；LINE 點一下。', '**線索寫進備註**，見面前翻需求地圖。', '按「**下一位 ›**」。', '沒接：**換時段再打**（灰＝還沒打、紅＝沒接、綠＝接了）；三段都紅 → 傳簡訊或 LINE，年曆改寄送。']],
   ],
   cheats: [
@@ -801,7 +801,7 @@ function answerStatsHTML(k) { // 每通電話自動記下撥打時間，算出�
 const scripts = () => notes().filter((n) => n.kind === 'script').sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
 const logsOf = (k) => (k.logs || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.at || '').localeCompare(a.at || ''));
 const stCls = (st) => (st === '已約訪' ? 'p-done' : st === '結案' ? 'p-off' : st === '再聯絡' ? 'p-wait' : 'p-go');
-const SAMPLE_SCRIPT = '1. 問候、表明身分\n您好，請問是○○先生／小姐嗎？我是國泰人壽的馥瑋，負責您的保單服務。現在講電話方便嗎？大概兩三分鐘。\n\n2. 來電目的（確認資料、年曆）\n打來確認您的聯絡資料有沒有變。年底我準備了年曆想送您，地址還是○○嗎？方便我親自送過去，還是寄給您？\n→ 順便問：保單上的家人還住一起嗎？要不要也幫他們準備一份？工作有沒有換？職業類別不一樣，意外險的理賠可能會受影響。\n\n3. 隨口關心一句\n快年底了，今年過得還好嗎？\n→ 對方回什麼就順著聊：最近工作還是很忙嗎？孩子都好嗎？\n\n4. 聽（重點）\n客戶說到生活上的變化，就是線索。不打斷，不急著接商品。\n→ 邊聽邊判斷分級：A／B／C-1／C-2／C-3\n\n5. 順口提一句（只提一樣，說完就停）\n例如：您保單也好幾年了，我可以免費幫您整理成一張表，看哪裡重複、哪裡不夠。\n\n6. 約時間或收尾\n說好：那我○月○日把年曆送過去，順便把整理好的表帶給您看。\n說不用：好的，謝謝您。有任何保單的問題都可以直接找我。（不追）';
+const SAMPLE_SCRIPT = '1. 問候、身分、目的\n您好，請問是○○先生／小姐嗎？我是國泰人壽的馥瑋，負責您的保單服務。現在講電話方便嗎？大概兩三分鐘。\n年底了，打來確認一下您的資料，也準備了年曆要送您。\n\n2. 確認資料、保單一句話\n地址還是○○嗎？電話是這支嗎？\n→ 順便問：保單上的家人還住一起嗎？要不要也幫他們準備一份？工作有沒有換？職業類別不一樣，意外險的理賠可能會受影響。\n保單只講現況：您目前有醫療和意外，都正常有效。（細節留到見面）\n\n3. 關心、聽、關鍵字\n快年底了，今年過得還好嗎？\n→ 對方回什麼就順著聊：最近工作還是很忙嗎？孩子都好嗎？\n→ 聽：說到生活上的變化就是線索，不打斷，不急著接商品；邊聽邊判斷分級 A／B／C-1／C-2／C-3。\n→ 只順口提一樣，說完就停。例如：您保單也好幾年了，我可以免費幫您整理成一張表，看哪裡重複、哪裡不夠。\n\n4. 年曆約時間、加 LINE\n年曆想親自拿給您，哪天方便？我加您 LINE，到時候好聯絡。\n說好：那我○月○日把年曆送過去，順便把整理好的表帶給您看。\n說不用：好的，謝謝您。有任何保單的問題都可以直接找我。（不追）';
 function callListHTML() {
   const q = S.q.trim(), all = calls(), today = localDay();
   const rank = (k) => ({ 再聯絡: 0, 待撥: 1, 已約訪: 2, 結案: 3 }[k.status] ?? 1);
@@ -2229,7 +2229,7 @@ app.addEventListener('click', async (e) => {
     case 'geditems': S.gedit = !S.gedit; App.render(); break;
     case 'gaddi': { const ev = Vault.get('gevents', S.gev); if (!ev) break; ev.items = [...(ev.items || []), { id: uid(), name: '', code: '', qty: 0 }]; Vault.put('gevents', ev); App.render(); break; }
     case 'gevdel': { const ev = Vault.get('gevents', S.gev); if (!ev) break; if (!armConfirm(b, '連名單一起刪除，再按一次')) break; Vault.all('gifts').filter((g) => g.eventId === ev.id).forEach((g) => Vault.del('gifts', g.id)); Vault.del('gevents', ev.id); S.gev = null; App.render(); break; }
-    case 'samplescript': { const n = Vault.put('notes', { kind: 'script', group: '電訪', title: scripts().length ? '服務件電訪（新版六步）' : '服務件電訪', body: SAMPLE_SCRIPT, images: [] }); S.script = n.id; editNote(n.id); break; }
+    case 'samplescript': { const n = Vault.put('notes', { kind: 'script', group: '電訪', title: scripts().length ? '服務件電訪（四步）' : '服務件電訪', body: SAMPLE_SCRIPT, images: [] }); S.script = n.id; editNote(n.id); break; }
     case 'newscript': { const n = Vault.put('notes', { kind: 'script', group: '電訪', title: '', body: '', images: [] }); S.script = n.id; editNote(n.id, true); break; }
     case 'editscript': if (S.script) editNote(S.script); break;
     case 'logcall': {
