@@ -593,14 +593,14 @@ function callProg(k) { // 這個人走到哪一關
 }
 function callSlots(k) { // 三個時段：上午、下午、晚上，各打過沒、接了沒
   const m = { 上午: '', 下午: '', 晚上: '' };
-  (k.logs || []).filter((l) => l.at).forEach((l) => { const h = new Date(l.at).getHours(), s = h < 12 ? '上午' : h < 18 ? '下午' : '晚上'; if (!NO_ANSWER.includes(l.result)) m[s] = 'ok'; else if (!m[s]) m[s] = 'no'; });
+  (k.logs || []).filter((l) => l.at).forEach((l) => { const h = new Date(l.at).getHours(), s = h < 12 ? '上午' : h < 18 ? '下午' : '晚上'; if (l.result === '同戶已聯絡') return; if (!NO_ANSWER.includes(l.result)) m[s] = 'ok'; else if (!m[s]) m[s] = 'no'; });
   return m;
 }
 function callGift(k) { const gs = Vault.all('gifts').filter((g) => g.who?.type === 'call' && g.who?.id === k.id); if (gs.length) return gs.every((g) => g.status === '已送') ? '已送' : '預備'; return k.giftSkip ? '不送' : +k.giftQty > 0 ? '要' : k.giftTbd ? '待問' : ''; }
 const CALL_FLOW = { // 服務件流程：上面三欄照時間排，中間小抄，下面收起來的設定與後續
   cols: [
-    ['打之前', ['一通電話**只做三件事**：顧關係、聽一個線索、約見面。**不在電話裡賣東西。**', '按「📞 開始打電話」，照順序帶：意外險升級 → 已加 LINE → 其他。', '**一次只打一區**，之後排拜訪才順。', '看一眼他的功課：住址、保單、年齡組。', '已加 LINE 的：**先傳 LINE 再打**：「年底準備了年曆想送您，什麼時間方便打給您？」']],
-    ['電話中（六步，2～3 分鐘）', ['① 問候、身分：「我是國泰的○○，負責您的保單服務。」', '② 來電目的：「打來**確認您的聯絡資料**有沒有變。」送年曆、確認地址、家戶、職業。意外險升級的人在這裡順帶提。', '③ 關心一句：「**快年底了，今年過得還好嗎？**」', '④ **聽**：說到生活上的變化就是線索，不打斷。', '⑤ 順口**只提一樣**（看下面小抄），說完就停。', '⑥ 好就**約時間**；不用就道謝結束，**不追**。']],
+    ['打之前', ['一通電話**只做三件事**：顧關係、聽一個線索、約見面。**不在電話裡賣東西。**', '**先在「標記」點年齡組**（從 60以上往下），再按「📞 開始打電話」，只帶這一組。', '**一次只打一區**，之後排拜訪才順。', '看一眼他的功課：住址、保單、年齡組。', '已加 LINE 的：**先傳 LINE 再打**：「年底準備了年曆想送您，什麼時間方便打給您？」']],
+    ['電話中（六步，2～3 分鐘）', ['① 問候、身分：「我是國泰的○○，負責您的保單服務。」', '② 來電目的：「打來**確認您的聯絡資料**有沒有變。」送年曆、確認地址、家戶、職業。意外險升級的人在這裡順帶提。', '③ 關心一句：「**快年底了，今年過得還好嗎？**」', '④ **聽**：說到生活上的變化就是線索，不打斷。', '⑤ 順口**只提一樣**（看下面小抄），說完就停。', '⑥ 好就**約時間**；不用就道謝結束，**不追**。', '接到同戶的人：家人的資料一起問；記錄後同戶其他人會自動標「同戶已聯絡」，撥打時跳過。']],
     ['掛電話後（30 秒內記完）', ['**30 秒內記完**：結果（未接、已接・聊過、約訪成功…）。', '分級；勾家戶、職業確認。', '年曆：要、份數或不送；LINE 點一下。', '**線索寫進備註**，見面前翻需求地圖。', '按「**下一位 ›**」。', '沒接：**換時段再打**（灰＝還沒打、紅＝沒接、綠＝接了）；三段都紅 → 傳簡訊或 LINE，年曆改寄送。']],
   ],
   cheats: [
@@ -716,24 +716,26 @@ function openCallTagImport() { // 主管給的名單：貼序號或姓名，一�
   ov.querySelectorAll('[data-ktclear]').forEach((b) => (b.onclick = () => { if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = '再按一次確定清掉'; return; } const t = b.dataset.ktclear; calls().forEach((k) => { if ((k.tags || []).includes(t)) { k.tags = k.tags.filter((x) => x !== t); Vault.put('calls', k); } }); ov.innerHTML = ''; App.render(); toast('已清掉'); }));
   $('ktGo').onclick = () => { const t = $('ktName').value.trim(), m = match(); if (!t) { toast('先填標籤名稱'); return; } if (!m.hit.length) { toast('沒有找到人'); return; } m.hit.forEach((k) => { k.tags = [...new Set([...(k.tags || []), t])]; Vault.put('calls', k); }); ov.innerHTML = ''; S.ksort = 'call'; S.ktable = true; App.render(); toast(`已加上「${t}」${m.hit.length} 位`); };
 }
-const kQueue = () => calls().filter((k) => !k.other && ['未打', '未接'].includes(callProg(k))).sort((a, b) => callRank(a) - callRank(b) || areaSort(kArea(a), kArea(b)) || addrCmp(a, b));
+const kMarkOkFn = (hhs) => (k) => (k.tags || []).includes(S.kmark) || ({ 全部: true, '已加 LINE': !!k.line, 年曆未回: !!k.line && lmsg(k) === '年曆未回', 'LINE 從沒回': !!k.line && lmsg(k) === '從沒回', 年曆待問: callGift(k) === '待問', '未加 LINE': !k.line, 退件: !!k.mailBack, 不追蹤: !!k.other, 家戶待確認: hhPending(hhs.get(hhKey(k))) })[S.kmark];
+const kFilterOk = () => { const all = calls(), mk = kMarkOkFn(callHouseholds(all)); return (k) => (S.kar === '全部' || kArea(k) === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && mk(k); }; // 開始打電話也照總表上點的標記、地區、分級
+const kQueue = () => { const ok = kFilterOk(); return calls().filter((k) => !k.other && ['未打', '未接'].includes(callProg(k)) && ok(k)).sort((a, b) => callRank(a) - callRank(b) || areaSort(kArea(a), kArea(b)) || addrCmp(a, b)); };
 function kStartCalling(fromId) { // 照撥打順序找下一位：今天打過的先跳過
   const q = kQueue(), today = localDay(), fresh = (k) => !(k.logs || []).some((l) => l.date === today);
   let i = fromId ? q.findIndex((k) => k.id === fromId) : -1; let nx = q.slice(i + 1).find(fresh) || (fromId ? null : q.find(fresh));
-  if (!nx) { toast(q.length ? '今天這輪打完了，沒接的明天換時段再打' : '都打過了'); S.kcalling = false; App.render(); return; }
+  if (!nx) { const fl = S.kmark !== '全部' ? `「${S.kmark}」` : ''; toast(q.length ? `${fl}今天這輪打完了，沒接的明天換時段再打` : fl ? `${fl}這組都打過了，換下一個標記` : '都打過了'); S.kcalling = false; App.render(); return; }
   S.kcalling = true; S.view = 'calls'; S.ktable = false; S.kfromTable = false; S.ksel = nx.id; S.kres = ''; S.showDetail = true; App.render(); window.scrollTo(0, 0);
 }
 function kCallBarHTML(k) {
   if (!S.kcalling) return ''; const q = kQueue(), r = callRank(k), lab = r === 0 ? '① ' + (k.tags || []).join('、') : r === 1 ? '② 已加 LINE' : r === 2 ? '③ 其他' : '';
   const same = q.filter((x) => callRank(x) === r && kArea(x) === kArea(k)), pos = same.findIndex((x) => x.id === k.id);
   const td = new Date().toDateString(), met = calls().filter((x) => (x.logs || []).some((l) => l.result === '約訪成功' && l.at && new Date(l.at).toDateString() === td)).length;
-  return `<div class="kcallbar" style="flex-wrap:wrap"><span style="flex-basis:100%;font-size:13px">🎯 今天約到 <b>${met}</b>／2 位願意見面聊的人${met >= 2 ? '　達成了 🎉' : ''}　<span class="sub">🙏 每一通好好打，結果交出去。</span></span><span><b>📞 撥打中</b>　${esc(lab)}・${esc(kArea(k) || '沒有地區')}${pos >= 0 ? `　第 ${pos + 1}／${same.length} 位` : ''}<span class="sub">　整份還有 ${q.length} 位沒接通</span></span><span style="display:flex;gap:6px"><button class="btn sm" data-act="kstop">結束</button><button class="btn sm pri" data-act="knext">下一位 ›</button></span></div>`;
+  return `<div class="kcallbar" style="flex-wrap:wrap"><span style="flex-basis:100%;font-size:13px">🎯 今天約到 <b>${met}</b>／2 位願意見面聊的人${met >= 2 ? '　達成了 🎉' : ''}　<span class="sub">🙏 每一通好好打，結果交出去。</span></span><span><b>📞 撥打中</b>　${S.kmark !== '全部' ? `<span class="pill p-go">${esc(S.kmark)}</span> ` : ''}${esc(lab)}・${esc(kArea(k) || '沒有地區')}${pos >= 0 ? `　第 ${pos + 1}／${same.length} 位` : ''}<span class="sub">　整份還有 ${q.length} 位沒接通</span></span><span style="display:flex;gap:6px"><button class="btn sm" data-act="kstop">結束</button><button class="btn sm pri" data-act="knext">下一位 ›</button></span></div>`;
 }
 function callTableHTML() {
   const all = calls(), q = S.q.trim(), hhs = callHouseholds(all), grpOf = (k) => hhs.get(hhKey(k));
   const areas = [...new Set(all.map(kArea).filter(Boolean))].sort(areaSort); if (S.kar !== '全部' && !areas.includes(S.kar)) S.kar = '全部';
   const tags = callTags(); if (!['全部', ...KMARKS, ...tags].includes(S.kmark)) S.kmark = '全部';
-  const markOk = (k) => (k.tags || []).includes(S.kmark) || ({ 全部: true, '已加 LINE': !!k.line, 年曆未回: !!k.line && lmsg(k) === '年曆未回', 'LINE 從沒回': !!k.line && lmsg(k) === '從沒回', 年曆待問: callGift(k) === '待問', '未加 LINE': !k.line, 退件: !!k.mailBack, 不追蹤: !!k.other, 家戶待確認: hhPending(grpOf(k)) })[S.kmark];
+  const markOk = kMarkOkFn(hhs);
   let list = all.filter((k) => (S.kprog === '全部' || callProg(k) === S.kprog) && (S.kar === '全部' || kArea(k) === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && markOk(k) && (!q || [k.no, k.name, k.phone, k.home, k.addr, k.area, k.note, k.hh, k.otherWho].join(' ').includes(q))).sort(noCmp);
   if (S.ksort === 'addr') list.sort(addrCmp);
   if (S.ksort === 'call') list.sort((a, b) => callRank(a) - callRank(b) || areaSort(kArea(a), kArea(b)) || addrCmp(a, b));
@@ -2233,7 +2235,9 @@ app.addEventListener('click', async (e) => {
       const res = RESULTS.find(([r]) => r === S.kres);
       k.logs = [...(k.logs || []), { id: uid(), date: localDay(), at: new Date().toISOString(), result: S.kres || '通話', note }];
       if (res) k.status = res[1]; if (next) k.nextDate = next; else if (res && res[1] === '結案') k.nextDate = '';
-      Vault.put('calls', k); S.kres = ''; App.render(); toast(S.kcalling ? '已記錄，按上面「下一位 ›」繼續' : '已記錄'); break;
+      Vault.put('calls', k); let hn = 0;
+      if (['已接・聊過', '約訪成功'].includes(S.kres)) { const all = calls(), g = callHouseholds(all).get(hhKey(k)) || []; g.filter((o) => o.id !== k.id && !o.other && ['未打', '未接'].includes(callProg(o))).forEach((o) => { o.logs = [...(o.logs || []), { id: uid(), date: localDay(), at: new Date().toISOString(), result: '同戶已聯絡', note: `跟 ${k.name || '同戶'} 講過`, via: k.id }]; Vault.put('calls', o); hn++; }); }
+      S.kres = ''; App.render(); toast((S.kcalling ? '已記錄，按上面「下一位 ›」繼續' : '已記錄') + (hn ? `；同戶 ${hn} 位也標成已聯絡` : '')); break;
     }
     case 'tocliient': { const k = curCall(); if (!k) break; let cl = clients().find((x) => x.name === k.name && k.name); if (!cl) cl = Vault.put('clients', { name: k.name, phone: k.phone, note: [k.source, k.note].filter(Boolean).join('\n'), docs: [] }); k.clientId = cl.id; Vault.put('calls', k); App.render(); toast(`已轉成客戶「${cl.name || '未填姓名'}」`); break; }
     case 'delcall': if (armConfirm(b, '再按一次確定刪除')) { Vault.del('calls', S.ksel); S.ksel = null; S.showDetail = false; App.render(); } break;
