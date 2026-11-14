@@ -652,6 +652,7 @@ function callHHSectionHTML(k) {
 const KSKIP = ['同事的件', '保經', '其他'];
 const skipWhy = (k) => k.otherWhy || '同事的件';
 const KMARKS = ['全部', '已加 LINE', 'LINE 未回', '年曆待問', '未加 LINE', '退件', '不追蹤', '家戶待確認'];
+const klmBtn = (k) => k.line ? `<button class="klm klm-${k.lineMsg === '未回' ? 'no' : k.lineMsg === '已回' ? 'ok' : 'on'}" data-klm="${k.id}" title="點一下換：✓ → 未回 → 已回">${k.lineMsg || '✓'}</button>` : '';
 function callGiftSheetHTML(list, ev, evs) { // 服務件專區裡的送禮表：一列一位，一欄一個品項，填數字就自動記到送禮專區
   if (!ev) return '<div class="empty">還沒有送禮活動。先到「送禮」按「＋ 新活動」建一個，例如「2027 年曆」，再回來這裡填。</div>';
   const items = giftItemsSorted(ev.items || []), cats = []; items.forEach((it) => { const c = it.cat || '未分類'; const l = cats[cats.length - 1]; l && l.c === c ? l.n++ : cats.push({ c, n: 1 }); });
@@ -660,16 +661,16 @@ function callGiftSheetHTML(list, ev, evs) { // 服務件專區裡的送禮表：
   return `${evs.length > 1 ? `<div class="chips"><span class="sub" style="align-self:center">活動</span>${evs.map((x) => `<button class="chip${x.id === ev.id ? ' on' : ''}" data-kgev="${x.id}">${esc(x.name || '未命名')}</button>`).join('')}</div>` : ''}
   <div class="note">「${esc(ev.name || '')}」：要的勾「要」；說了幾份就填「份數」（款式還沒決定也沒關係）；決定款式後，再到品項格子填。說不用的，勾「不送」。備註直接打，點別的地方就存好。上面的篩選、排序一樣能用。</div>
   <div class="ktablewrap"><table class="ktable gsheet"><thead>
-   <tr><th rowspan="2" class="gstick">序號・姓名</th><th rowspan="2">地區</th><th rowspan="2">分級</th>${cats.map((c) => `<th colspan="${c.n}" class="gcath">${esc(c.c)}</th>`).join('')}<th rowspan="2">要</th><th rowspan="2">份數</th><th rowspan="2">送法</th><th rowspan="2">已送</th><th rowspan="2">不送</th><th rowspan="2">備註</th></tr>
+   <tr><th rowspan="2" class="gstick">序號・姓名</th><th rowspan="2">地區</th><th rowspan="2">分級</th><th rowspan="2">LINE</th>${cats.map((c) => `<th colspan="${c.n}" class="gcath">${esc(c.c)}</th>`).join('')}<th rowspan="2">要</th><th rowspan="2">份數</th><th rowspan="2">送法</th><th rowspan="2">已送</th><th rowspan="2">不送</th><th rowspan="2">備註</th></tr>
    <tr>${items.map((it) => `<th class="gith">${giftThumb(it)}<div>${esc(it.name || it.code || '品項')}</div></th>`).join('')}</tr></thead><tbody>
-   ${list.map((k) => { const g = gmap.get(k.id); return `<tr class="${g?.status === '已送' ? 'gdone' : ''}${k.other || k.giftSkip ? ' kother' : ''}"><td class="gstick"><span class="kno">${esc(k.no || '')}</span><button class="linkbtn" data-ksel="${k.id}">${esc(k.name || '未填')}</button>${k.other ? ` <span class="pill p-off">${esc(skipWhy(k))}</span>` : ''}${k.mailBack ? ' <span class="pill p-off">退件</span>' : ''}</td><td>${esc(k.area || '')}</td><td>${k.level ? `<b class="lvl lv-${esc(k.level)}">${esc(k.level)}</b>` : ''}</td>
+   ${list.map((k) => { const g = gmap.get(k.id); return `<tr class="${g?.status === '已送' ? 'gdone' : ''}${k.other || k.giftSkip ? ' kother' : ''}"><td class="gstick"><span class="kno">${esc(k.no || '')}</span><button class="linkbtn" data-ksel="${k.id}">${esc(k.name || '未填')}</button>${k.other ? ` <span class="pill p-off">${esc(skipWhy(k))}</span>` : ''}${k.mailBack ? ' <span class="pill p-off">退件</span>' : ''}</td><td>${esc(k.area || '')}</td><td>${k.level ? `<b class="lvl lv-${esc(k.level)}">${esc(k.level)}</b>` : ''}</td><td>${klmBtn(k)}</td>
      ${items.map((it) => `<td><input class="gcell gn" inputmode="numeric" data-kgq="${k.id}:${it.id}" value="${g?.items?.[it.id] || ''}"></td>`).join('')}
      <td style="text-align:center"><input type="checkbox" data-kte="${k.id}" data-kfield="giftTbd"${(k.giftTbd || +k.giftQty > 0) && !g ? ' checked' : ''}${g ? ' disabled title="已填款式數量"' : ''}></td><td><input class="gcell gn" inputmode="numeric" data-kte="${k.id}" data-kfield="giftQty" value="${esc(k.giftQty || '')}"${g ? ' disabled' : ''}></td>
      <td><select class="gcell" data-kgm="${k.id}">${['', '當面', '寄送', '放管理室'].map((m) => `<option${(g?.method || '') === m ? ' selected' : ''}>${m}</option>`).join('')}</select></td>
      <td style="text-align:center"><input type="checkbox" class="gchk" data-kgd="${k.id}"${g?.status === '已送' ? ' checked' : ''}></td>
      <td style="text-align:center"><input type="checkbox" data-kte="${k.id}" data-kfield="giftSkip"${k.giftSkip ? ' checked' : ''}></td>
      <td><input class="nctxt gnote" data-kte="${k.id}" data-kfield="note" value="${esc(k.note || '')}" placeholder="例：LINE 說要 2 本"></td></tr>`; }).join('')}
-   <tr class="gtot"><td class="gstick">合計（${want} 位要送）</td><td></td><td></td>${items.map((it) => `<td>${tot(it.id) || ''}</td>`).join('')}<td>${list.filter((k) => !gmap.has(k.id) && (k.giftTbd || +k.giftQty > 0)).length}</td><td>${list.reduce((a, k) => a + (gmap.has(k.id) ? 0 : +k.giftQty || 0), 0) || ''}</td><td></td><td>${sent}/${want}</td><td>${list.filter((k) => k.giftSkip).length}</td><td></td></tr>
+   <tr class="gtot"><td class="gstick">合計（${want} 位要送）</td><td></td><td></td><td></td>${items.map((it) => `<td>${tot(it.id) || ''}</td>`).join('')}<td>${list.filter((k) => !gmap.has(k.id) && (k.giftTbd || +k.giftQty > 0)).length}</td><td>${list.reduce((a, k) => a + (gmap.has(k.id) ? 0 : +k.giftQty || 0), 0) || ''}</td><td></td><td>${sent}/${want}</td><td>${list.filter((k) => k.giftSkip).length}</td><td></td></tr>
   </tbody></table>${list.length ? '' : '<div class="empty">沒有符合的對象。</div>'}</div>`;
 }
 function kgRec(callId) { // 找這位在目前活動的送禮紀錄，沒有就建一筆
@@ -753,7 +754,7 @@ function callTableHTML() {
     return head + `<tr data-ksel="${k.id}" class="kp-${pg}${k.other ? ' kother' : ''}${linked ? ' klinked' : ''}">
      <td class="sub">${lk}${esc(k.no || '')}${jump ? '<span class="kjump" title="序號比上一位小">↰</span>' : ''}</td><td><b>${esc(k.name || '未填')}</b> ${(k.tags || []).map((t) => `<span class="pill p-go">${esc(t)}</span>`).join('')}${badges}</td><td>${esc(kArea(k))}</td><td>${k.level ? `<b class="lvl lv-${esc(k.level)}">${esc(k.level)}</b>` : ''}</td><td>${hhCell}</td>
      <td><span class="kdots">${dot(sl['上午'], '上午')}${dot(sl['下午'], '下午')}${dot(sl['晚上'], '晚上')}</span></td><td><span class="kprog">${pg}</span></td>
-     <td>${l ? `${esc(l.result)}<span class="sub"> ${fmtDay(l.date).slice(5)}</span>` : ''}</td><td>${gf ? `<span class="kg kg-${gf}">${gf === '要' ? `要 ${esc(k.giftQty)} 份` : gf}</span>` : ''}</td><td>${k.line ? `<button class="klm klm-${k.lineMsg === '未回' ? 'no' : k.lineMsg === '已回' ? 'ok' : 'on'}" data-klm="${k.id}" title="點一下換：✓ → 未回 → 已回">${k.lineMsg || '✓'}</button>` : ''}</td>
+     <td>${l ? `${esc(l.result)}<span class="sub"> ${fmtDay(l.date).slice(5)}</span>` : ''}</td><td>${gf ? `<span class="kg kg-${gf}">${gf === '要' ? `要 ${esc(k.giftQty)} 份` : gf}</span>` : ''}</td><td>${klmBtn(k)}</td>
      <td>${k.visitDate ? fmtDay(k.visitDate).slice(5) : pg === '已排訪' ? '✓' : ''}</td><td>${k.met ? '✓' : ''}</td><td class="knote">${esc((k.note || l?.note || '').slice(0, 40))}</td></tr>`; }).join('');
   const tableHTML = KG ? callGiftSheetHTML(list, gev, gevs) : `<div class="ktablewrap"><table class="ktable${E ? ' editing' : ''}"><thead><tr>${cols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>${list.length ? '' : '<div class="empty">沒有符合的對象。</div>'}</div>`;
   const fsum = [S.q.trim() && '搜尋「' + S.q.trim() + '」', S.kprog !== '全部' && S.kprog, S.klv !== '全部' && S.klv, S.kmark !== '全部' && S.kmark, S.kar !== '全部' && S.kar].filter(Boolean);
