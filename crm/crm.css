@@ -729,3 +729,7 @@ details.sec>summary{cursor:pointer}
 }
 /* 窄螢幕（並排視窗、手機）：工具列縮小的設定不能把內容擠到窄欄 */
 @media (max-width:900px){.app.railmini,.app.railmini.single,.app.colhide{grid-template-columns:minmax(0,1fr)}}
+
+.khskip{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.khskip select,.khskip input{border:1px solid var(--line,#ccc);border-radius:8px;padding:5px 8px;font:inherit;font-size:14px;background:var(--card,#fff)}
+.khskip input{width:160px}

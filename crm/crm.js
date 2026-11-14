@@ -472,8 +472,10 @@ const App = {
     const ae = document.activeElement, keep = ae?.id, pos = ae?.selectionStart, pos2 = ae?.selectionEnd; // 重畫後把游標放回原本那格，鍵盤才不會收起來
     const typing = ae && app.contains(ae) && (ae.tagName === 'TEXTAREA' || (ae.tagName === 'INPUT' && !['checkbox', 'radio', 'file', 'button'].includes(ae.type)));
     const keepSel = typing ? (keep ? '#' + CSS.escape(keep) : [...ae.attributes].filter((x) => x.name.startsWith('data-')).map((x) => `[${x.name}="${CSS.escape(x.value)}"]`).join('')) : '';
+    const dOpen = new Map([...app.querySelectorAll('details[data-dk]')].map((d) => [d.dataset.dk, d.open])); // 點了東西重畫，收合的區塊維持原樣
     const sc = [...app.querySelectorAll('section, .list, .ktablewrap')].map((el) => [el.className, el.scrollTop, el.scrollLeft]), wy = window.scrollY; // 重畫後回到原本的捲動位置
     app.innerHTML = h;
+    app.querySelectorAll('details[data-dk]').forEach((d) => { if (dOpen.has(d.dataset.dk)) d.open = dOpen.get(d.dataset.dk); });
     const pk = [S.view, S.sel, S.csel, S.ksel, S.rsel, S.showDetail].join('|'), same = App._pk === pk; App._pk = pk;
     if (same) { const els = [...app.querySelectorAll('section, .list, .ktablewrap')]; sc.forEach(([cn, t, l]) => { const el = els.find((e) => e.className === cn); if (el && t) el.scrollTop = t; if (el && l) el.scrollLeft = l; }); if (wy) window.scrollTo(0, wy); }
     if (keepSel && (same || keep === 'q')) { const el = app.querySelector(keepSel); if (el) { el.focus({ preventScroll: true }); try { el.setSelectionRange(pos, pos2 ?? pos); } catch (e) { } } }
@@ -657,7 +659,7 @@ function callHHSectionHTML(k) {
    ${cand.length ? `<div class="sub" style="margin:6px 0 4px">可能同一戶，電話中問到就按「＋ 同一戶」：</div>${cand.map(([o, w]) => row(o, `<span class="pill">${w}</span><button class="btn sm" data-khadd="${o.id}">＋ 同一戶</button>`)).join('')}` : mem.length ? '' : '<div class="sub">沒有找到同地址、同住家電話的人。</div>'}
    ${k.hh ? `<div class="actions" style="margin:6px 0 0"><button class="linkbtn" data-khout="${k.id}">把自己移出這一戶</button></div>` : ''}</div>`;
 }
-const KSKIP = ['同事的件', '保經', '其他'];
+const KSKIP = ['同事的件', '保經', '保單停效、解約', '其他'];
 const skipWhy = (k) => k.otherWhy || '同事的件';
 const KMARKS = ['全部', '已加 LINE', '年曆未回', 'LINE 從沒回', '年曆待問', '未加 LINE', '沒電話', '退件', '不追蹤', '家戶待確認'];
 const LMSG = ['', '年曆未回', '已回', '從沒回'], lmsg = (k) => (k.lineMsg === '未回' ? '年曆未回' : k.lineMsg || ''); // 舊的「未回」當成年曆未回
@@ -832,7 +834,8 @@ function callDetailHTML() { // 一張「這通電話」卡從上點到下；很�
   <div class="dhead"><input class="title" id="kf_name" data-kf="name" value="${esc(k.name)}" placeholder="姓名" aria-label="姓名"><button class="btn sm" data-act="kphotoin">📷 拍照帶入</button><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></div>
   <div class="khero">${tel(k.phone, '手機')}${tel(k.home, '住家')}${!k.phone && !k.home ? '<span class="sub">沒有電話：到「聯絡資料」補，或用寄的</span>' : ''}
    <span class="khtags">${(k.tags || []).map((t) => `<span class="pill p-go">${esc(t)}</span>`).join(' ')} ${k.line ? '' : '<span class="sub">LINE</span>'}${klmBtn(k)}</span>
-   ${k.addr ? `<div class="sub khaddr">${esc(k.addr)}${k.hh ? '・' + esc(k.hh) : ''}</div>` : ''}</div>
+   ${k.addr ? `<div class="sub khaddr">${esc(k.addr)}${k.hh ? '・' + esc(k.hh) : ''}</div>` : ''}
+   <div class="khskip"><button class="tag${k.other ? ' on' : ''}" data-kchk="other">${k.other ? '✓ ' : ''}不追蹤</button>${k.other ? `<select data-kf="otherWhy" id="kf_otherWhy2" aria-label="原因">${KSKIP.map((x) => `<option${skipWhy(k) === x ? ' selected' : ''}>${x}</option>`).join('')}</select><input data-kf="otherWho" id="kf_otherWho2" value="${esc(k.otherWho)}" placeholder="${skipWhy(k) === '同事的件' ? '哪位同事' : '補充'}">` : '<span class="sub">停效、同事的件、保經…按這個，撥打時就跳過</span>'}<button class="tag${k.mailBack ? ' on' : ''}" data-kchk="mailBack">寄信退件</button></div></div>
   <div class="sec kcard"><h2>這通電話 <span class="sub">掛掉後 30 秒，從上點到下</span></h2>
    <div class="krow"><span class="klab">結果</span><div class="tags">${RESULTS.map(([r]) => `<button class="tag${S.kres === r ? ' on' : ''}" data-kres="${r}">${r}</button>`).join('')}</div></div>
    <div class="krow"><span class="klab">分級</span><div class="tags">${LEVELS.map((x) => `<button class="tag lvtag${k.level === x ? ' on' : ''}" data-klv="${x}" title="${esc(LEVEL_TIP[x])}"><b>${x}</b> <span class="lvtip">${LEVEL_TIP[x]}</span></button>`).join('')}</div></div>
@@ -841,14 +844,14 @@ function callDetailHTML() { // 一張「這通電話」卡從上點到下；很�
    <label class="f">備註／線索 <span class="sub">總表看得到</span><textarea id="kf_note" class="grow" data-kf="note" rows="2" placeholder="例：LINE 說要 2 本；最近換工作；女兒要結婚…">${esc(k.note)}</textarea></label>
    <div class="grid2"><label class="f">下次聯絡<input type="date" id="kf_nextDate" data-kf="nextDate" value="${esc(k.nextDate)}"></label><label class="f">約訪日期<input type="date" id="kf_visitDate" data-kf="visitDate" value="${esc(k.visitDate)}"></label></div>
    <div class="actions kcardgo"><button class="tag${k.met ? ' on' : ''}" data-kchk="met">${k.met ? '✓ ' : ''}已見面</button><span style="flex:1"></span><button class="btn" data-act="logcall">記錄</button>${S.kcalling ? '<button class="btn pri" data-act="logcall" data-next="1">記錄，下一位 ›</button>' : ''}</div></div>
-  <details class="sec"><summary><h2 style="display:inline">電話裡要確認的</h2> <span class="sub">${CALL_CHECKS.filter(([key]) => k[key]).length}／${CALL_CHECKS.length}</span></summary>
+  <details class="sec" data-dk="kchk"><summary><h2 style="display:inline">電話裡要確認的</h2> <span class="sub">${CALL_CHECKS.filter(([key]) => k[key]).length}／${CALL_CHECKS.length}</span></summary>
    <div class="tags">${CALL_CHECKS.map(([key, l]) => `<button class="tag${k[key] ? ' on' : ''}" data-kchk="${key}">${k[key] ? '✓ ' : ''}${l}</button>`).join('')}</div>
    <label class="f">職業類別／工作<input id="kf_job" data-kf="job" value="${esc(k.job)}" placeholder="例如：第一類、辦公室行政"></label>
    <label class="f">家戶（同住家人、保單上的人）<input id="kf_house" data-kf="house" value="${esc(k.house)}"></label></details>
-  <details class="sec script"><summary><h2 style="display:inline">話術</h2></summary>
+  <details class="sec script" data-dk="kscript"><summary><h2 style="display:inline">話術</h2></summary>
    ${scs.length ? `<div class="actions" style="align-items:center"><select id="kScript" aria-label="選擇話術">${scs.map((x) => `<option value="${x.id}"${x.id === S.script ? ' selected' : ''}>${esc(x.title)}</option>`).join('')}</select><button class="linkbtn" data-act="editscript">編輯</button><button class="linkbtn" data-act="newscript">＋ 新話術</button><button class="linkbtn" data-act="samplescript">＋ 新版範例</button></div><pre class="scripttext">${esc(sc?.body || '')}</pre>${nimgsHTML(sc || {})}`
     : `<div class="sub">還沒有話術。可以先用範例改成你自己的說法。</div><div class="actions"><button class="btn pri" data-act="samplescript">用範例開始</button><button class="btn" data-act="newscript">自己寫</button></div>`}</details>
-  <details class="sec"><summary><h2 style="display:inline">聯絡資料</h2> <span class="sub">要改電話、地址才打開</span></summary><div class="grid2">
+  <details class="sec" data-dk="kcontact"><summary><h2 style="display:inline">聯絡資料</h2> <span class="sub">要改電話、地址才打開</span></summary><div class="grid2">
    <label class="f">手機<input id="kf_phone" data-kf="phone" inputmode="tel" value="${esc(k.phone)}"></label>
    <label class="f">住家電話<input id="kf_home" data-kf="home" inputmode="tel" value="${esc(k.home)}"></label>
    <label class="f">狀態<select id="kf_status" data-kf="status">${CALL_ST.map((x) => `<option${x === k.status ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
@@ -861,11 +864,11 @@ function callDetailHTML() { // 一張「這通電話」卡從上點到下；很�
    <div class="tags"><button class="tag${k.line ? ' on' : ''}" data-kchk="line">已加 LINE</button><button class="tag${k.hhOk ? ' on' : ''}" data-kchk="hhOk">${k.hhOk ? '✓ ' : ''}家戶電話確認過</button><button class="tag${k.mailBack ? ' on' : ''}" data-kchk="mailBack">寄信退件</button><button class="tag${k.other ? ' on' : ''}" data-kchk="other">${k.other ? '✓ ' : ''}不追蹤</button></div>
    ${(k.tags || []).length ? `<div class="tags">${k.tags.map((t) => `<span class="tag on" style="cursor:default">${esc(t)} <button class="linkbtn" data-ktagdel="${esc(t)}" aria-label="拿掉標籤">✕</button></span>`).join('')}</div>` : ''}
    ${k.other ? `<div class="grid2"><label class="f">原因<select id="kf_otherWhy" data-kf="otherWhy">${KSKIP.map((x) => `<option${skipWhy(k) === x ? ' selected' : ''}>${x}</option>`).join('')}</select></label><label class="f">${skipWhy(k) === '同事的件' ? '哪位同事' : '補充'}<input id="kf_otherWho" data-kf="otherWho" value="${esc(k.otherWho)}"></label></div>` : ''}</details>
-  <details class="sec"${k.addrNote || k.policy ? ' open' : ''}><summary><h2 style="display:inline">打電話前、出發前的功課</h2></summary>
+  <details class="sec" data-dk="khw"${k.addrNote || k.policy ? ' open' : ''}><summary><h2 style="display:inline">打電話前、出發前的功課</h2></summary>
    <label class="f">住址觀察<input id="kf_addrNote" data-kf="addrNote" value="${esc(k.addrNote)}" placeholder="例如：電梯大樓、透天、社區"></label>
    <label class="f">保單概況<textarea id="kf_policy" class="grow" data-kf="policy" rows="2" placeholder="有哪些保單、繳費狀況…">${esc(k.policy)}</textarea></label></details>
   ${callHHSectionHTML(k)}
-  <details class="sec"><summary><h2 style="display:inline">送禮紀錄</h2> <span class="sub">挑款式、已送</span></summary>${giftSectionHTML('call', k.id, k.name)}</details>
+  <details class="sec" data-dk="kgift"><summary><h2 style="display:inline">送禮紀錄</h2> <span class="sub">挑款式、已送</span></summary>${giftSectionHTML('call', k.id, k.name)}</details>
   ${answerStatsHTML(k)}
   <details class="sec"${logs.length ? ' open' : ''}><summary><h2 style="display:inline">通話紀錄</h2> <span class="sub">${logs.length ? logs.length + ' 通，新的在上面' : '還沒有'}</span></summary>
    ${logs.length ? `<div class="tl">${logs.map((l) => `<div class="tli"><span class="tldot"></span><div class="tlrow"><span class="tldate" style="padding:3px 6px">${fmtDay(l.date)}${l.at ? ' ' + callWhen(l.at) : ''}</span><span class="tltitle" style="padding:3px 6px">${esc(l.result)}</span><button class="tldel" data-kdel="${l.id}" aria-label="刪除這通">✕</button></div>${l.note ? `<div class="lognote">${esc(l.note)}</div>` : ''}</div>`).join('')}</div>` : ''}</details>
