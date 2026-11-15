@@ -434,7 +434,7 @@ const linkify = (html) => html.replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href=
 
 /* ================= 狀態與畫面 ================= */
 const S = { railMini: (() => { try { return localStorage.getItem('crm-railmini') === '1'; } catch (e) { return false; } })(), ginvOpen: false, gview: 'table', kcolHide: (() => { try { return localStorage.getItem('crm-kcolhide') === '1'; } catch (e) { return false; } })(), kfold: (() => { try { return localStorage.getItem('crm-kfold') === '1'; } catch (e) { return false; } })(), ktable: true, kprog: '全部', kmark: '全部', ksort: 'no', kview: 'prog', kedit: false, kfromTable: false, kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'calls' /* 年底服務件期間：打開先到服務件總表；之後改回 'cases' */, showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
-const NAV_KEYS = ['view', 'ktable', 'kview', 'ksel', 'showDetail', 'kcalling', 'khist', 'kmark', 'kar', 'klv', 'kprog', 'kst', 'kfromTable', 'sel', 'csel']; // 更新或重開後回到原本的頁面（30 分鐘內）
+const NAV_KEYS = ['view', 'ktable', 'kview', 'ksel', 'showDetail', 'kcalling', 'khist', 'kqSnap', 'kmark', 'kar', 'klv', 'kprog', 'kst', 'kfromTable', 'sel', 'csel']; // 更新或重開後回到原本的頁面（30 分鐘內）
 try { const nv = JSON.parse(localStorage.getItem('crm-nav') || 'null'); if (nv && Date.now() - nv.t < 30 * 60000) NAV_KEYS.forEach((k) => { if (k in nv) S[k] = nv[k]; }); } catch (e) { }
 const cases = () => Vault.all('cases');
 const localDay = (d = new Date()) => { const t = new Date(d); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
@@ -732,10 +732,14 @@ const kFilterOk = () => { const all = calls(), mk = kMarkOkFn(callHouseholds(all
 const kQueue = () => { const ok = kFilterOk(); return calls().filter((k) => !k.other && hasTel(k) && ['未打', '未接'].includes(callProg(k)) && ok(k)).sort((a, b) => callRank(a) - callRank(b) || ageRank(a) - ageRank(b) || areaSort(kArea(a), kArea(b)) || addrCmp(a, b)); };
 function kStartCalling(fromId) { // 照撥打順序找下一位：今天打過的先跳過
   const q = kQueue(), today = localDay(), fresh = (k) => !(k.logs || []).some((l) => l.date === today);
-  let i = fromId ? q.findIndex((k) => k.id === fromId) : -1; let nx = q.slice(i + 1).find(fresh) || (fromId ? null : q.find(fresh));
+  let i = fromId ? q.findIndex((k) => k.id === fromId) : -1, nx;
+  if (fromId && i < 0 && (S.kqSnap || []).includes(fromId)) { // 這位剛被標成不追蹤、已見面等，已不在名單裡：照原本的順序接下去
+    const after = S.kqSnap.slice(S.kqSnap.indexOf(fromId) + 1), byId = new Map(q.map((k) => [k.id, k]));
+    nx = after.map((id) => byId.get(id)).find((k) => k && fresh(k));
+  } else nx = q.slice(i + 1).find(fresh) || (fromId ? null : q.find(fresh));
   if (!nx) { const fl = S.kmark !== '全部' ? `「${S.kmark}」` : ''; toast(q.length ? `${fl}今天這輪打完了，沒接的明天換時段再打` : fl ? `${fl}這組都打過了，換下一個標記` : '都打過了'); S.kcalling = false; App.render(); return; }
   if (!fromId) S.khist = []; else if (S.ksel) (S.khist = S.khist || []).push(S.ksel); // 記住走過的人，可以按「上一位」回去
-  S.kcalling = true; S.view = 'calls'; S.ktable = false; S.kfromTable = false; S.ksel = nx.id; S.kres = ''; S.showDetail = true; App.render(); window.scrollTo(0, 0);
+  S.kqSnap = q.map((k) => k.id); S.kcalling = true; S.view = 'calls'; S.ktable = false; S.kfromTable = false; S.ksel = nx.id; S.kres = ''; S.showDetail = true; App.render(); window.scrollTo(0, 0);
 }
 function kCallBarHTML(k) {
   if (!S.kcalling) return ''; const q = kQueue(), r = callRank(k), lab = r === 0 ? '① ' + (k.tags || []).filter((t) => !isAgeTag(t)).join('、') : r === 1 ? '② 已加 LINE' : r === 2 ? '③ 其他' : '';
