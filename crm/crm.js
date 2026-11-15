@@ -626,19 +626,26 @@ const cfBody = (pr) => { const F = CALL_FLOW;
    <div class="cfcheat">${F.cheats.map(([h, rows, foot]) => `<div class="cfcard"><h3>${esc(h)}</h3><table>${rows.map(([a, b]) => b == null ? `<tr class="cfgh"><th colspan="2">${esc(a.slice(1))}</th></tr>` : `<tr><td>${esc(a)}</td><td>→ ${esc(b)}</td></tr>`).join('')}</table><div class="cffoot">${cfEm(foot)}</div></div>`).join('')}</div>
    ${F.folds.map(([h, l]) => pr ? `<div class="cffold"><b>${esc(h)}</b><ul>${l.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` : `<details class="cffold"><summary>${esc(h)}</summary><ul>${l.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>`).join('')}`; };
 const CALL_HEART = { goal: '今天的目標：約到 2 個願意見面聊的人', prayer: '請讓我今天打的每一通電話，都遇到願意好好說話的人。讓我聽得到他們真正需要的東西，說出口的話剛剛好，不多也不少。結果交給祢，我只負責把每一通打好。' };
-function openSmsPicker(k) { // 選一則範本，直接開簡訊（iPad 會用 iPhone 的門號傳）
+function openSmsPicker(k) { // 選一則範本，改好再傳（iPad 會用 iPhone 的門號傳）
   const num = (k.phone || '').replace(/[^0-9+]/g, ''), fill = (t) => String(t || '').replace(/\{姓名\}/g, k.name || '');
   const rank = (n) => (chOf(n).includes('簡訊') ? 0 : chOf(n).includes('LINE') ? 1 : 2);
-  const draw = () => { const q = ($('smsQ')?.value || '').trim(); const ts = notes().filter((n) => n.kind === 'tpl' && (!q || (n.title + n.body).includes(q))).sort((a, b) => rank(a) - rank(b) || (a.title || '').localeCompare(b.title || ''));
-    $('smsList').innerHTML = ts.length ? ts.map((n) => `<div class="smsit"><div><b>${esc(n.title || '未命名')}</b> <span class="sub">${esc(chOf(n).join('、'))}</span><div class="smsbody">${esc(fill(n.body))}</div></div><div class="smsgo"><button class="btn pri" data-sms="${n.id}">傳簡訊</button><button class="btn" data-smscp="${n.id}">只複製</button></div></div>`).join('') : '<div class="sub">沒有符合的範本。到「範本」新增一則，管道勾「簡訊」，就會排在最前面。</div>'; };
+  const all = notes().filter((n) => n.kind === 'tpl'), cats = [...new Set(all.flatMap(catsOf))].sort((x, y) => x.localeCompare(y)), chs = TPLGROUPS.filter((c) => all.some((n) => chOf(n).includes(c)));
+  let fch = '全部', fcat = '全部';
+  const chipRow = (lab, list, cur, key) => `<div class="chips"><span class="sub" style="align-self:center">${lab}</span>${['全部', ...list].map((x) => `<button class="chip${cur === x ? ' on' : ''}" data-${key}="${esc(x)}">${esc(x)}</button>`).join('')}</div>`;
+  const draw = () => { const q = ($('smsQ')?.value || '').trim();
+    const ts = all.filter((n) => (fch === '全部' || chOf(n).includes(fch)) && (fcat === '全部' || catsOf(n).includes(fcat)) && (!q || (n.title + n.body).includes(q))).sort((a, b) => rank(a) - rank(b) || (a.title || '').localeCompare(b.title || ''));
+    $('smsChips').innerHTML = chipRow('管道', chs, fch, 'smsch') + (cats.length ? chipRow('分類', cats, fcat, 'smscat') : '');
+    $('smsList').innerHTML = ts.length ? ts.map((n) => `<div class="smsit"><div style="flex:1;min-width:0"><b>${esc(n.title || '未命名')}</b> <span class="sub">${esc(chOf(n).join('、'))}${catsOf(n).length ? '・' + esc(catsLabel(n)) : ''}</span><textarea class="smsbody" id="smsb_${n.id}" rows="4">${esc(fill(n.body))}</textarea></div><div class="smsgo"><button class="btn pri" data-sms="${n.id}">傳簡訊</button><button class="btn" data-smscp="${n.id}">只複製</button></div></div>`).join('') : '<div class="sub">沒有符合的範本。到「範本」新增一則，管道勾「簡訊」，就會排在最前面。</div>'; };
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>傳簡訊給 ${esc(k.name || '')}　<span class="sub">${esc(k.phone || '')}</span></h2><button class="btn pri" id="smsX">關閉</button></div>
-   <div class="ovbody" style="flex-direction:column;max-width:760px;margin:0 auto;width:100%"><input id="smsQ" placeholder="搜尋範本，例如：LINE、年曆" autocomplete="off"><div class="sub">範本裡寫 {姓名} 會自動換成客戶名字。按「傳簡訊」會打開簡訊並帶入內容，傳之前還可以改。</div><div id="smsList"></div></div></div>`;
+   <div class="ovbody" style="flex-direction:column;max-width:860px;margin:0 auto;width:100%"><input id="smsQ" placeholder="搜尋範本，例如：LINE、年曆" autocomplete="off"><div id="smsChips"></div><div class="sub">內容可以直接在框裡改（例如把「先生/小姐」改掉），改完再按「傳簡訊」。這裡改的不會動到原本的範本。按「傳簡訊」只會打開簡訊、帶入內容，還要你自己按傳送。</div><div id="smsList"></div></div></div>`;
   draw(); $('smsQ').oninput = draw; $('smsX').onclick = () => { ov.innerHTML = ''; };
-  $('smsList').onclick = async (e) => { const b = e.target.closest('button'); if (!b) return; const n = Vault.get('notes', b.dataset.sms || b.dataset.smscp); if (!n) return; const text = fill(n.body);
+  $('smsChips').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.smsch) fch = b.dataset.smsch; if (b.dataset.smscat) fcat = b.dataset.smscat; draw(); };
+  $('smsList').onclick = async (e) => { const b = e.target.closest('button'); if (!b) return; const id = b.dataset.sms || b.dataset.smscp; const text = $('smsb_' + id)?.value || '';
     try { await navigator.clipboard.writeText(text); } catch (er) { }
     if (b.dataset.smscp) { toast('已複製，可以貼到 LINE 或簡訊'); return; }
-    location.href = `sms:${num}${/iPad|iPhone|Mac/.test(navigator.userAgent) ? '&' : '?'}body=${encodeURIComponent(text)}`; toast('已打開簡訊，內容也複製好了'); };
+    location.href = `sms:${num}${/iPad|iPhone|Mac/.test(navigator.userAgent) ? '&' : '?'}body=${encodeURIComponent(text)}`; toast('已打開簡訊，確認後再按傳送'); };
 }
+
 function openCallFlow() {
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>服務件流程</h2><button class="btn" id="cfP">🖨 印一頁 A4</button><button class="btn pri" id="cfX">關閉</button></div>
   <div class="ovbody cfone" style="flex-direction:column;margin:0 auto;width:100%">

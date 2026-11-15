@@ -743,3 +743,5 @@ details.sec>summary{cursor:pointer}
 .smsit{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;border:1px solid var(--line,#ddd);border-radius:10px;padding:10px 12px;margin:8px 0;background:var(--card,#fff)}
 .smsbody{white-space:pre-wrap;font-size:13.5px;color:var(--ink,#333);margin-top:4px;max-height:7.5em;overflow:auto}
 .smsgo{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}
+textarea.smsbody{width:100%;box-sizing:border-box;border:1px solid var(--line,#ddd);border-radius:8px;padding:6px 8px;font:inherit;font-size:13.5px;resize:vertical;max-height:none;background:var(--card,#fff)}
+#smsChips .chips{margin:4px 0}
