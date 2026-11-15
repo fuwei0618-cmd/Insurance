@@ -736,3 +736,4 @@ details.sec>summary{cursor:pointer}
 .khhrow{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
 .kg-同戶一份{background:#E3EEDB;color:#3d5a2a}
 .khname{font-weight:700;font-size:15px}
+.klnote{width:100%;box-sizing:border-box;border:1px solid var(--line,#ccc);border-radius:8px;padding:6px 10px;font:inherit;font-size:14px;background:var(--card,#fff);margin-top:4px}
