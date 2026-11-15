@@ -626,6 +626,11 @@ const cfBody = (pr) => { const F = CALL_FLOW;
    <div class="cfcheat">${F.cheats.map(([h, rows, foot]) => `<div class="cfcard"><h3>${esc(h)}</h3><table>${rows.map(([a, b]) => b == null ? `<tr class="cfgh"><th colspan="2">${esc(a.slice(1))}</th></tr>` : `<tr><td>${esc(a)}</td><td>→ ${esc(b)}</td></tr>`).join('')}</table><div class="cffoot">${cfEm(foot)}</div></div>`).join('')}</div>
    ${F.folds.map(([h, l]) => pr ? `<div class="cffold"><b>${esc(h)}</b><ul>${l.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` : `<details class="cffold"><summary>${esc(h)}</summary><ul>${l.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>`).join('')}`; };
 const CALL_HEART = { goal: '今天的目標：約到 2 個願意見面聊的人', prayer: '請讓我今天打的每一通電話，都遇到願意好好說話的人。讓我聽得到他們真正需要的東西，說出口的話剛剛好，不多也不少。結果交給祢，我只負責把每一通打好。' };
+function kMarkSms(k, title) { // 記下「已傳簡訊」；這通電話有記結果的話，也寫進這通的備註
+  k.smsSent = { date: localDay(), title }; const cl = S.kcur?.k === k.id ? (k.logs || []).find((l) => l.id === S.kcur.l) : null;
+  if (cl && !(cl.note || '').includes('已傳簡訊')) cl.note = [cl.note, `已傳簡訊「${title}」`].filter(Boolean).join('；');
+  Vault.put('calls', k);
+}
 function openSmsPicker(k) { // 選一則範本，改好再傳（iPad 會用 iPhone 的門號傳）
   const num = (k.phone || '').replace(/[^0-9+]/g, ''), fill = (t) => String(t || '').replace(/\{姓名\}/g, k.name || '');
   const rank = (n) => (chOf(n).includes('簡訊') ? 0 : chOf(n).includes('LINE') ? 1 : 2);
@@ -643,6 +648,7 @@ function openSmsPicker(k) { // 選一則範本，改好再傳（iPad 會用 iPho
   $('smsList').onclick = async (e) => { const b = e.target.closest('button'); if (!b) return; const id = b.dataset.sms || b.dataset.smscp; const text = $('smsb_' + id)?.value || '';
     try { await navigator.clipboard.writeText(text); } catch (er) { }
     if (b.dataset.smscp) { toast('已複製，可以貼到 LINE 或簡訊'); return; }
+    kMarkSms(k, Vault.get('notes', id)?.title || '簡訊'); App.render();
     location.href = `sms:${num}${/iPad|iPhone|Mac/.test(navigator.userAgent) ? '&' : '?'}body=${encodeURIComponent(text)}`; toast('已打開簡訊，確認後再按傳送'); };
 }
 
@@ -687,7 +693,7 @@ function callHHSectionHTML(k) {
 }
 const KSKIP = ['自己家人', '同事的件', '保經', '保單停效、解約', '其他'];
 const skipWhy = (k) => k.otherWhy || '同事的件';
-const KMARKS = ['全部', '待補結果', '已加 LINE', '年曆未回', 'LINE 從沒回', '年曆待問', '未加 LINE', '沒電話', '退件', '不追蹤', '家戶待確認'];
+const KMARKS = ['全部', '待補結果', '已傳簡訊', '已加 LINE', '年曆未回', 'LINE 從沒回', '年曆待問', '未加 LINE', '沒電話', '退件', '不追蹤', '家戶待確認'];
 const LMSG = ['', '年曆未回', '已回', '從沒回'], lmsg = (k) => (k.lineMsg === '未回' ? '年曆未回' : k.lineMsg || ''); // 舊的「未回」當成年曆未回
 const klmBtn = (k) => { if (!k.line) return `<button class="klm klm-add" data-klm="${k.id}" title="點一下：已加 LINE">＋</button>`; const m = lmsg(k); return `<button class="klm klm-${({ 年曆未回: 'no', 已回: 'ok', 從沒回: 'never' })[m] || 'on'}" data-klm="${k.id}" title="點一下換：✓ → 年曆未回 → 已回 → 從沒回">${m || '✓'}</button>`; };
 function callGiftSheetHTML(list, ev, evs) { // 服務件專區裡的送禮表：一列一位，一欄一個品項，填數字就自動記到送禮專區
@@ -748,7 +754,7 @@ function openCallTagImport() { // 主管給的名單：貼序號或姓名，一�
 }
 const VSLOTS = ['平日上午', '平日下午', '平日晚上', '假日']; // 客戶願意被拜訪的時段
 const vslotChips = () => VSLOTS.filter((v) => calls().some((k) => (k.visitSlots || []).includes(v))).map((v) => '可拜訪・' + v);
-const kMarkOkFn = (hhs) => (k) => (S.kmark.startsWith('可拜訪・') ? (k.visitSlots || []).includes(S.kmark.slice(4)) : false) || (k.tags || []).includes(S.kmark) || ({ 全部: true, 待補結果: !k.other && !(k.logs || []).length && !!(k.level || k.note || k.giftTbd || +k.giftQty > 0 || k.giftSkip || k.giftWith || k.lineMsg || k.met || k.visitDate), '已加 LINE': !!k.line, 年曆未回: !!k.line && lmsg(k) === '年曆未回', 'LINE 從沒回': !!k.line && lmsg(k) === '從沒回', 年曆待問: callGift(k) === '待問', '未加 LINE': !k.line, 沒電話: !hasTel(k), 退件: !!k.mailBack, 不追蹤: !!k.other, 家戶待確認: hhPending(hhs.get(hhKey(k))) })[S.kmark];
+const kMarkOkFn = (hhs) => (k) => (S.kmark.startsWith('可拜訪・') ? (k.visitSlots || []).includes(S.kmark.slice(4)) : false) || (k.tags || []).includes(S.kmark) || ({ 全部: true, 已傳簡訊: !!k.smsSent, 待補結果: !k.other && !(k.logs || []).length && !!(k.level || k.note || k.giftTbd || +k.giftQty > 0 || k.giftSkip || k.giftWith || k.lineMsg || k.met || k.visitDate), '已加 LINE': !!k.line, 年曆未回: !!k.line && lmsg(k) === '年曆未回', 'LINE 從沒回': !!k.line && lmsg(k) === '從沒回', 年曆待問: callGift(k) === '待問', '未加 LINE': !k.line, 沒電話: !hasTel(k), 退件: !!k.mailBack, 不追蹤: !!k.other, 家戶待確認: hhPending(hhs.get(hhKey(k))) })[S.kmark];
 const hasTel = (k) => /\d{6,}/.test((k.phone || '') + ' ' + (k.home || '').replace(/\D/g, '')) || /\d{6,}/.test((k.phone || '').replace(/\D/g, '')); // 沒電話的不帶進撥打
 const kFilterOk = () => { const all = calls(), mk = kMarkOkFn(callHouseholds(all)); return (k) => (S.kar === '全部' || kArea(k) === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && mk(k); }; // 開始打電話也照總表上點的標記、地區、分級
 const kQueue = () => { const ok = kFilterOk(); return calls().filter((k) => !k.other && hasTel(k) && ['未打', '未接'].includes(callProg(k)) && ok(k)).sort((a, b) => callRank(a) - callRank(b) || ageRank(a) - ageRank(b) || areaSort(kArea(a), kArea(b)) || addrCmp(a, b)); };
@@ -887,6 +893,7 @@ function callDetailHTML() { // 一張「這通電話」卡從上點到下；很�
    ${(() => { const oth = (callHouseholds(calls()).get(hhKey(k)) || []).filter((o) => o.id !== k.id && !o.giftWith); if (!oth.length && !k.giftWith) return ''; const w = k.giftWith && Vault.get('calls', k.giftWith); return `<div class="krow"><span class="klab">同戶</span><div class="kgift"><span class="seg2">${[['', '分開送'], ...oth.map((o) => [o.id, '跟 ' + (o.name || '家人') + ' 一份'])].map(([v, l]) => `<button class="btn sm${(k.giftWith || '') === v ? ' pri' : ''}" data-kgw="${v}">${esc(l)}</button>`).join('')}</span>${w ? `<span class="sub">${esc(w.name || '')}：年曆${esc(callGift(w) || '還沒記')}</span>` : ''}</div></div>`; })()}
    ${k.giftWith ? '' : `<div class="krow"><span class="klab">年曆</span><div class="kgift">${gItems ? `<span>已選款式：${esc(giftItemsText(g, ev))}</span>` : `<label><input type="checkbox" data-kte="${k.id}" data-kfield="giftTbd"${k.giftTbd || +k.giftQty > 0 ? ' checked' : ''}> 要</label><label>份數 <input class="gcell gn" inputmode="numeric" data-kte="${k.id}" data-kfield="giftQty" value="${esc(k.giftQty || '')}"></label>`}<label><input type="checkbox" data-kte="${k.id}" data-kfield="giftSkip"${k.giftSkip ? ' checked' : ''}> 不送</label>${ev ? `<label>送法 <select class="gcell" data-kgm="${k.id}">${['', '當面', '寄送', '放管理室'].map((m) => `<option${(g?.method || '') === m ? ' selected' : ''}>${m}</option>`).join('')}</select></label><label><input type="checkbox" class="gchk" data-kgd="${k.id}"${g?.status === '已送' ? ' checked' : ''}> 已送</label>` : ''}</div></div>`}
    <div class="krow"><span class="klab">可拜訪</span><div class="tags">${VSLOTS.map((v) => `<button class="tag${(k.visitSlots || []).includes(v) ? ' on' : ''}" data-kvs="${v}">${(k.visitSlots || []).includes(v) ? '✓ ' : ''}${v}</button>`).join('')}<span class="sub">　可複選，排拜訪時好挑</span></div></div>
+   <div class="krow"><span class="klab">簡訊</span><div><button class="tag${k.smsSent ? ' on' : ''}" data-act="ksmsmark">${k.smsSent ? '✓ 已傳簡訊' : '已傳簡訊'}</button>${k.smsSent ? `<span class="sub">　${esc(fmtDay(k.smsSent.date))}・${esc(k.smsSent.title || '')}</span>` : '<span class="sub">　用「💬 選範本傳」會自動打勾；用手機傳的就自己點</span>'}</div></div>
    <div class="krow"><span class="klab">LINE</span><div>${klmBtn(k)} <span class="sub">點一下換：${k.line ? '✓ → 年曆未回 → 已回 → 從沒回' : '＋ 已加 LINE'}</span></div></div>
    <label class="f">備註／線索 <span class="sub">總表看得到</span><textarea id="kf_note" class="grow" data-kf="note" rows="2" placeholder="例：LINE 說要 2 本；最近換工作；女兒要結婚…">${esc(k.note)}</textarea></label>
    <div class="grid2"><label class="f">下次聯絡<input type="date" id="kf_nextDate" data-kf="nextDate" value="${esc(k.nextDate)}"></label><label class="f">約訪日期<input type="date" id="kf_visitDate" data-kf="visitDate" value="${esc(k.visitDate)}"></label></div>
@@ -2276,6 +2283,7 @@ app.addEventListener('click', async (e) => {
       binderSave(dd); BD.edit = false; BD.draft = null; App.render(); toast('已儲存'); break; }
     case 'ktagimp': openCallTagImport(); break;
     case 'hhopen': S.hhOpen = true; S.hhq = ''; App.render(); { const el = document.getElementById('khhsec'); if (el) { el.open = true; el.scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => $('kHhQ')?.focus(), 300); } } break;
+    case 'ksmsmark': { const k = curCall(); if (!k) break; if (k.smsSent) { k.smsSent = null; Vault.put('calls', k); } else kMarkSms(k, '手動記錄'); App.render(); break; }
     case 'ksms': { const k = curCall(); if (k) openSmsPicker(k); break; }
     case 'kcol': S.kcolHide = !S.kcolHide; try { localStorage.setItem('crm-kcolhide', S.kcolHide ? '1' : '0'); } catch (e) {} App.render(); break;
     case 'kfold': S.kfold = !S.kfold; try { localStorage.setItem('crm-kfold', S.kfold ? '1' : '0'); } catch (e) {} App.render(); break;
