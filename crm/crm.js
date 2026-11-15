@@ -626,6 +626,19 @@ const cfBody = (pr) => { const F = CALL_FLOW;
    <div class="cfcheat">${F.cheats.map(([h, rows, foot]) => `<div class="cfcard"><h3>${esc(h)}</h3><table>${rows.map(([a, b]) => b == null ? `<tr class="cfgh"><th colspan="2">${esc(a.slice(1))}</th></tr>` : `<tr><td>${esc(a)}</td><td>→ ${esc(b)}</td></tr>`).join('')}</table><div class="cffoot">${cfEm(foot)}</div></div>`).join('')}</div>
    ${F.folds.map(([h, l]) => pr ? `<div class="cffold"><b>${esc(h)}</b><ul>${l.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` : `<details class="cffold"><summary>${esc(h)}</summary><ul>${l.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>`).join('')}`; };
 const CALL_HEART = { goal: '今天的目標：約到 2 個願意見面聊的人', prayer: '請讓我今天打的每一通電話，都遇到願意好好說話的人。讓我聽得到他們真正需要的東西，說出口的話剛剛好，不多也不少。結果交給祢，我只負責把每一通打好。' };
+function openSmsPicker(k) { // 選一則範本，直接開簡訊（iPad 會用 iPhone 的門號傳）
+  const num = (k.phone || '').replace(/[^0-9+]/g, ''), fill = (t) => String(t || '').replace(/\{姓名\}/g, k.name || '');
+  const rank = (n) => (chOf(n).includes('簡訊') ? 0 : chOf(n).includes('LINE') ? 1 : 2);
+  const draw = () => { const q = ($('smsQ')?.value || '').trim(); const ts = notes().filter((n) => n.kind === 'tpl' && (!q || (n.title + n.body).includes(q))).sort((a, b) => rank(a) - rank(b) || (a.title || '').localeCompare(b.title || ''));
+    $('smsList').innerHTML = ts.length ? ts.map((n) => `<div class="smsit"><div><b>${esc(n.title || '未命名')}</b> <span class="sub">${esc(chOf(n).join('、'))}</span><div class="smsbody">${esc(fill(n.body))}</div></div><div class="smsgo"><button class="btn pri" data-sms="${n.id}">傳簡訊</button><button class="btn" data-smscp="${n.id}">只複製</button></div></div>`).join('') : '<div class="sub">沒有符合的範本。到「範本」新增一則，管道勾「簡訊」，就會排在最前面。</div>'; };
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>傳簡訊給 ${esc(k.name || '')}　<span class="sub">${esc(k.phone || '')}</span></h2><button class="btn pri" id="smsX">關閉</button></div>
+   <div class="ovbody" style="flex-direction:column;max-width:760px;margin:0 auto;width:100%"><input id="smsQ" placeholder="搜尋範本，例如：LINE、年曆" autocomplete="off"><div class="sub">範本裡寫 {姓名} 會自動換成客戶名字。按「傳簡訊」會打開簡訊並帶入內容，傳之前還可以改。</div><div id="smsList"></div></div></div>`;
+  draw(); $('smsQ').oninput = draw; $('smsX').onclick = () => { ov.innerHTML = ''; };
+  $('smsList').onclick = async (e) => { const b = e.target.closest('button'); if (!b) return; const n = Vault.get('notes', b.dataset.sms || b.dataset.smscp); if (!n) return; const text = fill(n.body);
+    try { await navigator.clipboard.writeText(text); } catch (er) { }
+    if (b.dataset.smscp) { toast('已複製，可以貼到 LINE 或簡訊'); return; }
+    location.href = `sms:${num}${/iPad|iPhone|Mac/.test(navigator.userAgent) ? '&' : '?'}body=${encodeURIComponent(text)}`; toast('已打開簡訊，內容也複製好了'); };
+}
 function openCallFlow() {
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>服務件流程</h2><button class="btn" id="cfP">🖨 印一頁 A4</button><button class="btn pri" id="cfX">關閉</button></div>
   <div class="ovbody cfone" style="flex-direction:column;margin:0 auto;width:100%">
@@ -853,7 +866,7 @@ function callDetailHTML() { // 一張「這通電話」卡從上點到下；很�
   const tel = (x, lab) => x ? `<a class="ktel" href="tel:${esc(x.replace(/[^0-9+#*]/g, ''))}"><span>${lab}</span>📞 ${esc(x)}</a>` : '';
   return `${S.kcolHide ? '<button class="btn sm kcolshow" data-act="kcol">» 名單</button>' : ''}${kCallBarHTML(k)}<button class="back" data-act="back">‹ 服務件名單</button>${S.kfromTable ? '<button class="btn sm" data-act="ktable" style="margin-bottom:8px">‹ 回總表</button>' : ''}
   <div class="dhead"><input class="title" id="kf_name" data-kf="name" value="${esc(k.name)}" placeholder="姓名" aria-label="姓名"><button class="btn sm" data-act="kphotoin">📷 拍照帶入</button><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></div>
-  <div class="khero">${tel(k.phone, '手機')}${tel(k.home, '住家')}${!k.phone && !k.home ? '<span class="sub">沒有電話：到「聯絡資料」補，或用寄的</span>' : ''}
+  <div class="khero">${tel(k.phone, '手機')}${/^09/.test((k.phone || '').replace(/\D/g, '')) ? '<button class="ktel ksms" data-act="ksms"><span>簡訊</span>💬 選範本傳</button>' : ''}${tel(k.home, '住家')}${!k.phone && !k.home ? '<span class="sub">沒有電話：到「聯絡資料」補，或用寄的</span>' : ''}
    <span class="khtags">${(k.tags || []).map((t) => `<span class="pill p-go">${esc(t)}</span>`).join(' ')} ${k.line ? '' : '<span class="sub">LINE</span>'}${klmBtn(k)}</span>
    ${k.addr ? `<div class="sub khaddr">${esc(k.addr)}${k.hh ? '・' + esc(k.hh) : ''}</div>` : ''}
    ${(() => { const oth = (callHouseholds(calls()).get(hhKey(k)) || []).filter((o) => o.id !== k.id); return `<div class="khhrow"><span class="sub">同戶</span>${oth.map((o) => { const gf = callGift(o), pg = callProg(o); return `<button class="tag" data-ksel="${o.id}">${esc(o.name || '未填')}<span class="sub">　${esc(pg)}${gf ? '・年曆' + esc(gf === '要' ? '要' : gf) : ''}</span> ›</button>`; }).join('')}<button class="linkbtn" data-act="hhopen">${oth.length ? '＋ 再連結家人' : '＋ 連結家人'}</button></div>`; })()}
@@ -2252,6 +2265,7 @@ app.addEventListener('click', async (e) => {
       binderSave(dd); BD.edit = false; BD.draft = null; App.render(); toast('已儲存'); break; }
     case 'ktagimp': openCallTagImport(); break;
     case 'hhopen': S.hhOpen = true; S.hhq = ''; App.render(); { const el = document.getElementById('khhsec'); if (el) { el.open = true; el.scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => $('kHhQ')?.focus(), 300); } } break;
+    case 'ksms': { const k = curCall(); if (k) openSmsPicker(k); break; }
     case 'kcol': S.kcolHide = !S.kcolHide; try { localStorage.setItem('crm-kcolhide', S.kcolHide ? '1' : '0'); } catch (e) {} App.render(); break;
     case 'kfold': S.kfold = !S.kfold; try { localStorage.setItem('crm-kfold', S.kfold ? '1' : '0'); } catch (e) {} App.render(); break;
     case 'kphoto': openCallPhoto(null); break;

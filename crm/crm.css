@@ -737,3 +737,9 @@ details.sec>summary{cursor:pointer}
 .kg-同戶一份{background:#E3EEDB;color:#3d5a2a}
 .khname{font-weight:700;font-size:15px}
 .klnote{width:100%;box-sizing:border-box;border:1px solid var(--line,#ccc);border-radius:8px;padding:6px 10px;font:inherit;font-size:14px;background:var(--card,#fff);margin-top:4px}
+
+.ksms{cursor:pointer;font-size:16px}
+#smsQ{width:100%;box-sizing:border-box;border:1px solid var(--line,#ccc);border-radius:10px;padding:8px 12px;font:inherit;margin-bottom:6px}
+.smsit{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;border:1px solid var(--line,#ddd);border-radius:10px;padding:10px 12px;margin:8px 0;background:var(--card,#fff)}
+.smsbody{white-space:pre-wrap;font-size:13.5px;color:var(--ink,#333);margin-top:4px;max-height:7.5em;overflow:auto}
+.smsgo{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}
