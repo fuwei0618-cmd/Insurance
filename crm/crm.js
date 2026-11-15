@@ -755,17 +755,17 @@ function kSetResult(k, r) { // 點「結果」就直接記下來；同一次再�
   if (['已接・聊過', '約訪成功'].includes(r)) { const g = callHouseholds(calls()).get(hhKey(k)) || []; g.filter((o) => o.id !== k.id && !o.other && ['未打', '未接'].includes(callProg(o))).forEach((o) => { o.logs = [...(o.logs || []), { id: uid(), date: today, at: new Date().toISOString(), result: '同戶已聯絡', note: `跟 ${k.name || '同戶'} 講過`, via: k.id }]; Vault.put('calls', o); hn++; }); }
   return { hn };
 }
-function kStartCalling(fromId) { // 照撥打順序找下一位：今天打過的先跳過
-  const q = kQueue(), today = localDay(), fresh = (k) => !(k.logs || []).some((l) => l.date === today);
-  let i = fromId ? q.findIndex((k) => k.id === fromId) : -1, nx;
-  if (fromId && i < 0 && (S.kqSnap || []).includes(fromId)) { // 這位剛被標成不追蹤、已見面等，已不在名單裡：照原本的順序接下去
-    const after = S.kqSnap.slice(S.kqSnap.indexOf(fromId) + 1), byId = new Map(q.map((k) => [k.id, k]));
-    nx = after.map((id) => byId.get(id)).find((k) => k && fresh(k));
-  } else nx = q.slice(i + 1).find(fresh) || (fromId ? null : q.find(fresh));
+function kStartCalling(fromId) { // 照撥打順序找下一位：今天打過的先跳過。順序在按「開始打電話」時就固定，中途改 LINE、分級也不會亂跳
+  const q = kQueue(), today = localDay(), fresh = (k) => !(k.logs || []).some((l) => l.date === today), byId = new Map(q.map((k) => [k.id, k]));
+  let snap = fromId && (S.kqSnap || []).includes(fromId) ? S.kqSnap : q.map((k) => k.id);
+  const known = new Set(snap); snap = [...snap, ...q.filter((k) => !known.has(k.id)).map((k) => k.id)]; // 中途新加進名單的人排在最後
+  const start = fromId ? snap.indexOf(fromId) + 1 : 0;
+  const nx = snap.slice(start).map((id) => byId.get(id)).find((k) => k && fresh(k));
   if (!nx) { const fl = S.kmark !== '全部' ? `「${S.kmark}」` : ''; toast(q.length ? `${fl}今天這輪打完了，沒接的明天換時段再打` : fl ? `${fl}這組都打過了，換下一個標記` : '都打過了'); S.kcalling = false; App.render(); return; }
   if (!fromId) S.khist = []; else if (S.ksel) (S.khist = S.khist || []).push(S.ksel); // 記住走過的人，可以按「上一位」回去
-  S.kqSnap = q.map((k) => k.id); S.kcalling = true; S.view = 'calls'; S.ktable = false; S.kfromTable = false; S.ksel = nx.id; S.kres = ''; S.showDetail = true; App.render(); window.scrollTo(0, 0);
+  S.kqSnap = snap; S.kcalling = true; S.view = 'calls'; S.ktable = false; S.kfromTable = false; S.ksel = nx.id; S.kres = ''; S.showDetail = true; App.render(); window.scrollTo(0, 0);
 }
+
 function kCallBarHTML(k) {
   if (!S.kcalling) return ''; const q = kQueue(), r = callRank(k), lab = r === 0 ? '① ' + (k.tags || []).filter((t) => !isAgeTag(t)).join('、') : r === 1 ? '② 已加 LINE' : r === 2 ? '③ 其他' : '';
   const same = q.filter((x) => callRank(x) === r && kArea(x) === kArea(k)), pos = same.findIndex((x) => x.id === k.id);
