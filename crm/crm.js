@@ -1016,7 +1016,7 @@ function giftTableHTML(all, ev) { // 像試算表：一列一個人，一欄一�
   const fold = S.gtype === '全部', svc = fold ? all.filter((g) => g.who?.type === 'call') : [], list = fold ? all.filter((g) => g.who?.type !== 'call') : all;
   const items = giftItemsSorted(ev.items || []); const cats = []; items.forEach((it) => { const c = it.cat || '未分類'; const last = cats[cats.length - 1]; last && last.c === c ? last.n++ : cats.push({ c, n: 1 }); });
   const tot = (id) => all.reduce((a, g) => a + (g.items?.[id] || 0), 0), stot = (id) => svc.reduce((a, g) => a + (g.items?.[id] || 0), 0);
-  const row = (g, sub) => `<tr class="${g.status === '已送' ? 'gdone' : ''}${sub ? ' gsvcrow' : ''}"><td class="gstick"><button class="linkbtn" data-gopen="${g.id}">${sub ? '　' : ''}${esc(giftWho(g))}</button></td>
+  const row = (g, sub) => `<tr class="${g.status === '已送' ? 'gdone' : ''}${sub ? ' gsvcrow' : ''}"><td class="gstick"><span class="gname">${sub ? '　' : ''}<input class="gcell gnm" data-gname="${g.id}" value="${esc(giftWho(g))}" aria-label="名字"><button class="linkbtn" data-gopen="${g.id}" title="打開完整資料">›</button></span></td>
      <td style="text-align:center"><input type="checkbox" class="gchk" data-gdone="${g.id}"${g.status === '已送' ? ' checked' : ''}></td>
      <td><select class="gcell gtype" data-gwho="${g.id}">${GIFT_TYPES.map(([t, l]) => `<option value="${t}"${(g.who?.type || 'other') === t ? ' selected' : ''}>${l}</option>`).join('')}</select></td>
      <td><select class="gcell gw" data-gg="${g.id}:group">${['', ...giftGroups(), ...(g.group && !giftGroups().includes(g.group) ? [g.group] : [])].map((x) => `<option${(g.group || '') === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}<option value="__edit">✎ 編修分類…</option></select></td>
@@ -1030,7 +1030,7 @@ function giftTableHTML(all, ev) { // 像試算表：一列一個人，一欄一�
    ${fold && calls().length ? `<tr class="gsvc"><td class="gstick"><button class="linkbtn" data-act="gsvctog">${S.gsvcOpen ? '▾' : '▸'} 服務件（${svc.length} 位）</button></td><td style="text-align:center">${svc.filter((g) => g.status === '已送').length}/${svc.length}</td><td class="sub">服務件</td><td></td><td></td>${items.map((it) => `<td style="text-align:center">${stot(it.id) || ''}</td>`).join('')}<td class="sub">${S.gsvcOpen ? '' : '點左邊展開'}　<button class="linkbtn" data-act="kgiftgo">到服務件送禮表 ›</button></td></tr>
    ${S.gsvcOpen ? svc.map((g) => row(g, true)).join('') : ''}` : ''}
    <tr class="gtot"><td class="gstick">合計</td><td>${all.filter((g) => g.status === '已送').length}/${all.length}</td><td></td><td></td><td></td>${items.map((it) => `<td>${tot(it.id) || ''}</td>`).join('')}<td></td></tr>
-  </tbody></table></div><div class="sub" style="margin-top:6px">格子可以直接改，改完點別的地方就會存。點名字可以打開完整資料。</div>`;
+  </tbody></table></div><div class="sub" style="margin-top:6px">格子可以直接改，名字也能直接改，改完點別的地方就會存。點名字旁邊的「›」可以打開完整資料。</div>`;
 }
 function giftThumb(it, edit) { // 品項小圖；編修時點一下可以換圖
   const img = it.img ? `<img class="gthumbimg" data-fid="${it.img}" alt="">` : '';
@@ -2444,6 +2444,9 @@ app.addEventListener('change', (e) => { // 送禮表格：直接改數量、分�
   if (e.target.id === 'gImgs') { const fs = [...e.target.files]; e.target.value = ''; if (fs.length) giftBulkImages(fs); return; }
   const ds = e.target.dataset || {};
   if (ds.gq2) { const [gid, iid] = ds.gq2.split(':'); const g = Vault.get('gifts', gid); if (!g) return; const n = Math.max(0, parseInt(e.target.value, 10) || 0); g.items = { ...(g.items || {}) }; if (n) g.items[iid] = n; else delete g.items[iid]; Vault.put('gifts', g); App.render(); return; }
+  if (ds.gname) { const g = Vault.get('gifts', ds.gname), v = e.target.value.trim(); if (!g || !v) return; // 改名字：連到客戶或服務件的，連那邊的名字一起改
+    const src = g.who?.type === 'client' ? Vault.get('clients', g.who.id) : g.who?.type === 'call' ? Vault.get('calls', g.who.id) : null;
+    if (src) { src.name = v; Vault.put(g.who.type === 'client' ? 'clients' : 'calls', src); } g.who = { ...(g.who || {}), name: v }; Vault.put('gifts', g); return; }
   if (ds.gg && e.target.value === '__edit') { App.render(); openGiftGroupEditor(); return; }
   if (ds.gg) { const [gid, f] = ds.gg.split(':'); const g = Vault.get('gifts', gid); if (!g) return; g[f] = e.target.value.trim(); Vault.put('gifts', g); if (f === 'group') App.render(); return; }
   if (ds.gwho) { // 改類型：名字跟客戶或服務件一樣就自動連過去，不一樣就只標類型
