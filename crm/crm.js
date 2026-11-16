@@ -1012,21 +1012,24 @@ const GIFT_TYPES = [['client', '現有客戶'], ['call', '服務件'], ['other',
 const gevents = () => Vault.all('gevents').sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 const giftsOf = (evId) => Vault.all('gifts').filter((g) => g.eventId === evId);
 const giftWho = (g) => (g.who?.type === 'client' ? Vault.get('clients', g.who.id)?.name : g.who?.type === 'call' ? Vault.get('calls', g.who.id)?.name : '') || g.who?.name || '未填';
-function giftTableHTML(all, ev) { // 像試算表：一列一個人，一欄一個品項，直接改數量；服務件合成一列只看總數
+function giftTableHTML(all, ev) { // 像試算表：一列一個人，一欄一個品項，直接改數量；服務件合成一列，點開可在下面展開
   const fold = S.gtype === '全部', svc = fold ? all.filter((g) => g.who?.type === 'call') : [], list = fold ? all.filter((g) => g.who?.type !== 'call') : all;
   const items = giftItemsSorted(ev.items || []); const cats = []; items.forEach((it) => { const c = it.cat || '未分類'; const last = cats[cats.length - 1]; last && last.c === c ? last.n++ : cats.push({ c, n: 1 }); });
   const tot = (id) => all.reduce((a, g) => a + (g.items?.[id] || 0), 0), stot = (id) => svc.reduce((a, g) => a + (g.items?.[id] || 0), 0);
-  return `<div class="ktablewrap"><table class="ktable gsheet"><thead>
-   <tr><th rowspan="2" class="gstick">名字</th><th rowspan="2">類型</th><th rowspan="2">分類</th>${cats.map((c) => `<th colspan="${c.n}" class="gcath">${esc(c.c)}</th>`).join('')}<th rowspan="2">送法</th><th rowspan="2">已送</th><th rowspan="2">備註</th></tr>
-   <tr>${items.map((it) => `<th class="gith">${giftThumb(it)}<div>${esc(it.name || it.code || '品項')}</div></th>`).join('')}</tr></thead><tbody>
-   ${list.map((g) => `<tr class="${g.status === '已送' ? 'gdone' : ''}"><td class="gstick"><button class="linkbtn" data-gopen="${g.id}">${esc(giftWho(g))}</button></td><td><select class="gcell gtype" data-gwho="${g.id}">${GIFT_TYPES.map(([t, l]) => `<option value="${t}"${(g.who?.type || 'other') === t ? ' selected' : ''}>${l}</option>`).join('')}</select></td>
-     <td><select class="gcell gw" data-gg="${g.id}:group">${['', ...giftGroups(), ...(g.group && !giftGroups().includes(g.group) ? [g.group] : [])].map((x) => `<option${(g.group || '') === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}<option value="__edit">✎ 編修分類…</option></select></td>
-     ${items.map((it) => `<td><input class="gcell gn" inputmode="numeric" data-gq2="${g.id}:${it.id}" value="${g.items?.[it.id] || ''}"></td>`).join('')}
-     <td><select class="gcell" data-gg="${g.id}:method">${['', '當面', '寄送', '放管理室'].map((m) => `<option${(g.method || '') === m ? ' selected' : ''}>${m}</option>`).join('')}</select></td>
+  const row = (g, sub) => `<tr class="${g.status === '已送' ? 'gdone' : ''}${sub ? ' gsvcrow' : ''}"><td class="gstick"><button class="linkbtn" data-gopen="${g.id}">${sub ? '　' : ''}${esc(giftWho(g))}</button></td>
      <td style="text-align:center"><input type="checkbox" class="gchk" data-gdone="${g.id}"${g.status === '已送' ? ' checked' : ''}></td>
-     <td><input class="gcell gw2" data-gg="${g.id}:note" value="${esc(g.note)}"></td></tr>`).join('')}
-   ${fold && calls().length ? `<tr class="gsvc"><td class="gstick"><button class="linkbtn" data-act="kgiftgo">服務件（${svc.length} 位）›</button></td><td class="sub">服務件</td><td></td>${items.map((it) => `<td style="text-align:center">${stot(it.id) || ''}</td>`).join('')}<td></td><td style="text-align:center">${svc.filter((g) => g.status === '已送').length}/${svc.length}</td><td class="sub">自動加總，到服務件專區的「🎁 送禮」表填</td></tr>` : ''}
-   <tr class="gtot"><td class="gstick">合計</td><td></td><td></td>${items.map((it) => `<td>${tot(it.id) || ''}</td>`).join('')}<td></td><td>${all.filter((g) => g.status === '已送').length}/${all.length}</td><td></td></tr>
+     <td><select class="gcell gtype" data-gwho="${g.id}">${GIFT_TYPES.map(([t, l]) => `<option value="${t}"${(g.who?.type || 'other') === t ? ' selected' : ''}>${l}</option>`).join('')}</select></td>
+     <td><select class="gcell gw" data-gg="${g.id}:group">${['', ...giftGroups(), ...(g.group && !giftGroups().includes(g.group) ? [g.group] : [])].map((x) => `<option${(g.group || '') === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}<option value="__edit">✎ 編修分類…</option></select></td>
+     <td><select class="gcell" data-gg="${g.id}:method">${['', '當面', '寄送', '放管理室'].map((m) => `<option${(g.method || '') === m ? ' selected' : ''}>${m}</option>`).join('')}</select></td>
+     ${items.map((it) => `<td><input class="gcell gn" inputmode="numeric" data-gq2="${g.id}:${it.id}" value="${g.items?.[it.id] || ''}"></td>`).join('')}
+     <td><input class="gcell gw2" data-gg="${g.id}:note" value="${esc(g.note)}"></td></tr>`;
+  return `<div class="ktablewrap"><table class="ktable gsheet"><thead>
+   <tr><th rowspan="2" class="gstick">名字</th><th rowspan="2">已送</th><th rowspan="2">類型</th><th rowspan="2">分類</th><th rowspan="2">送法</th>${cats.map((c) => `<th colspan="${c.n}" class="gcath">${esc(c.c)}</th>`).join('')}<th rowspan="2">備註</th></tr>
+   <tr>${items.map((it) => `<th class="gith">${giftThumb(it)}<div>${esc(it.name || it.code || '品項')}</div></th>`).join('')}</tr></thead><tbody>
+   ${list.map((g) => row(g)).join('')}
+   ${fold && calls().length ? `<tr class="gsvc"><td class="gstick"><button class="linkbtn" data-act="gsvctog">${S.gsvcOpen ? '▾' : '▸'} 服務件（${svc.length} 位）</button></td><td style="text-align:center">${svc.filter((g) => g.status === '已送').length}/${svc.length}</td><td class="sub">服務件</td><td></td><td></td>${items.map((it) => `<td style="text-align:center">${stot(it.id) || ''}</td>`).join('')}<td class="sub">${S.gsvcOpen ? '' : '點左邊展開'}　<button class="linkbtn" data-act="kgiftgo">到服務件送禮表 ›</button></td></tr>
+   ${S.gsvcOpen ? svc.map((g) => row(g, true)).join('') : ''}` : ''}
+   <tr class="gtot"><td class="gstick">合計</td><td>${all.filter((g) => g.status === '已送').length}/${all.length}</td><td></td><td></td><td></td>${items.map((it) => `<td>${tot(it.id) || ''}</td>`).join('')}<td></td></tr>
   </tbody></table></div><div class="sub" style="margin-top:6px">格子可以直接改，改完點別的地方就會存。點名字可以打開完整資料。</div>`;
 }
 function giftThumb(it, edit) { // 品項小圖；編修時點一下可以換圖
@@ -2284,6 +2287,7 @@ app.addEventListener('click', async (e) => {
     case 'hhopen': S.hhOpen = true; S.hhq = ''; App.render(); { const el = document.getElementById('khhsec'); if (el) { el.open = true; el.scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => $('kHhQ')?.focus(), 300); } } break;
     case 'ksmsmark': { const k = curCall(); if (!k) break; const cl = S.kcur?.k === k.id ? (k.logs || []).find((l) => l.id === S.kcur.l) : null; if (cl?.sms) { delete cl.sms; Vault.put('calls', k); } else kMarkSms(k, '手機傳的'); App.render(); break; }
     case 'ksms': { const k = curCall(); if (k) openSmsPicker(k); break; }
+    case 'gsvctog': S.gsvcOpen = !S.gsvcOpen; App.render(); break;
     case 'kcol': S.kcolHide = !S.kcolHide; try { localStorage.setItem('crm-kcolhide', S.kcolHide ? '1' : '0'); } catch (e) {} App.render(); break;
     case 'kfold': S.kfold = !S.kfold; try { localStorage.setItem('crm-kfold', S.kfold ? '1' : '0'); } catch (e) {} App.render(); break;
     case 'kphoto': openCallPhoto(null); break;

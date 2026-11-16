@@ -745,3 +745,4 @@ details.sec>summary{cursor:pointer}
 .smsgo{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}
 textarea.smsbody{width:100%;box-sizing:border-box;border:1px solid var(--line,#ddd);border-radius:8px;padding:6px 8px;font:inherit;font-size:13.5px;resize:vertical;max-height:none;background:var(--card,#fff)}
 #smsChips .chips{margin:4px 0}
+.gsheet tr.gsvcrow td{background:var(--soft,#f7f4ec)}
