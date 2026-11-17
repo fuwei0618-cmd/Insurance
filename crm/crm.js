@@ -1167,7 +1167,7 @@ function openGiftEditor(g, preset) { // 新增或修改一筆送禮
     const keep = () => { rec.group = $('gwGroup').value.trim(); rec.note = $('gwNote').value.trim(); if ($('gwName')) rec.who.name = $('gwName').value.trim(); };
     $('gwX').onclick = () => { ov.innerHTML = ''; };
     $('gwEv').onchange = (e) => { keep(); if (e.target.value !== rec.eventId) { rec.eventId = e.target.value; rec.items = {}; } draw(); };
-    if ($('gwQ')) { $('gwQ').oninput = () => { keep(); const v = $('gwQ').value; draw(); const el = $('gwQ'); el.focus(); el.setSelectionRange(v.length, v.length); }; }
+    if ($('gwQ')) { const redo = () => { keep(); const v = $('gwQ').value; draw(); const el = $('gwQ'); el.focus(); el.setSelectionRange(v.length, v.length); }; $('gwQ').oninput = (e) => { if (e.isComposing) return; redo(); }; $('gwQ').addEventListener('compositionend', redo); } // 注音選字中不要重畫，不然會疊字
     ov.querySelectorAll('[data-gwt]').forEach((b) => (b.onclick = () => { keep(); rec.who = { type: b.dataset.gwt, id: '', name: '' }; draw(); }));
     ov.querySelectorAll('[data-gwp]').forEach((b) => (b.onclick = () => { keep(); const x = Vault.get(t === 'client' ? 'clients' : 'calls', b.dataset.gwp); rec.who = { type: t, id: x.id, name: x.name || '' }; $('gwQ').value = ''; draw(); }));
     ov.querySelectorAll('[data-gq]').forEach((b) => (b.onclick = () => { keep(); const [id, dlt] = b.dataset.gq.split(':'); rec.items[id] = Math.max(0, (rec.items[id] || 0) + +dlt); draw(); }));
