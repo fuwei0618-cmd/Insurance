@@ -626,6 +626,37 @@ const cfBody = (pr) => { const F = CALL_FLOW;
    <div class="cfcheat">${F.cheats.map(([h, rows, foot]) => `<div class="cfcard"><h3>${esc(h)}</h3><table>${rows.map(([a, b]) => b == null ? `<tr class="cfgh"><th colspan="2">${esc(a.slice(1))}</th></tr>` : `<tr><td>${esc(a)}</td><td>→ ${esc(b)}</td></tr>`).join('')}</table><div class="cffoot">${cfEm(foot)}</div></div>`).join('')}</div>
    ${F.folds.map(([h, l]) => pr ? `<div class="cffold"><b>${esc(h)}</b><ul>${l.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` : `<details class="cffold"><summary>${esc(h)}</summary><ul>${l.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>`).join('')}`; };
 const CALL_HEART = { goal: '今天的目標：約到 2 個願意見面聊的人', prayer: '請讓我今天打的每一通電話，都遇到願意好好說話的人。讓我聽得到他們真正需要的東西，說出口的話剛剛好，不多也不少。結果交給祢，我只負責把每一通打好。' };
+const KSVC_KINDS = ['保全變更', '理賠', '繳費', '契約變更', '其他'];
+function kSvcSectionHTML(k) { // 服務件幫忙辦的事（保全、理賠…）＋ 照片、PDF 備份；不用轉成客戶
+  const L = (k.services || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  return `<details class="sec" data-dk="ksvc"${L.length ? ' open' : ''}><summary><h2 style="display:inline">辦理紀錄</h2> <span class="sub">${L.length ? L.length + ' 筆' : '幫他辦保全、理賠時，資料和照片放這裡'}</span></summary>
+   ${L.map((r) => `<div class="ksvcit"><div class="ksvch"><b>${esc(fmtDay(r.date))}</b> <span class="pill p-go">${esc(r.kind || '')}</span><span style="flex:1"></span><button class="linkbtn" data-ksvc="${r.id}">編輯</button></div>${r.note ? `<div class="ksvcn">${esc(r.note)}</div>` : ''}${(r.files || []).length ? `<div class="nimgs">${r.files.map((f, i) => `<button class="nimg${f.type === 'pdf' ? ' pdfmini' : ''}" data-ksvcv="${r.id}:${i}">${f.type === 'pdf' ? 'PDF' : `<img data-fid="${f.fileId}" alt="">`}</button>`).join('')}</div>` : ''}</div>`).join('')}
+   <div class="actions"><button class="btn" data-ksvc="">＋ 新增辦理紀錄</button></div></details>`;
+}
+function kSvcView(f) { Files.url(f.fileId).then((u) => { if (!u) { toast('檔案還沒下載下來，等一下再試'); return; } const v = document.createElement('div'); v.innerHTML = `<div class="ov" style="z-index:30"><div class="ovhead"><h2>${esc(f.name || '')}</h2><button class="btn pri">關閉</button></div>${f.type === 'pdf' ? `<iframe src="${u}" style="flex:1;width:100%;border:0;background:#fff"></iframe>` : `<div class="ovbody" style="justify-content:center"><img src="${u}" style="max-width:100%;height:auto"></div>`}</div>`; document.body.appendChild(v); v.querySelector('button').onclick = () => v.remove(); }); }
+function openKSvc(k, id) {
+  const old = (k.services || []).find((x) => x.id === id), r = old ? JSON.parse(JSON.stringify(old)) : { id: uid(), date: localDay(), kind: '保全變更', note: '', files: [] }, added = [];
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${old ? '編輯' : '新增'}辦理紀錄 · ${esc(k.name || '')}</h2>${old ? '<button class="btn danger" id="svDel">刪除</button>' : ''}<button class="btn" id="svX">取消</button><button class="btn pri" id="svOk">儲存</button></div>
+   <div class="ovbody" style="flex-direction:column;max-width:760px;margin:0 auto;width:100%">
+    <div class="grid2"><label class="f">日期<input type="date" id="svDate" value="${esc(r.date)}"></label><label class="f">項目<select id="svKind">${KSVC_KINDS.map((x) => `<option${x === r.kind ? ' selected' : ''}>${x}</option>`).join('')}</select></label></div>
+    <label class="f">辦了什麼<textarea id="svNote" class="grow" rows="3" placeholder="例：變更收費地址、受益人改成女兒；11/20 送件">${esc(r.note)}</textarea></label>
+    <div class="sec"><h2>照片、PDF 備份 <span class="sub">申請書、證件影本會加密存在你的雲端硬碟</span></h2><div class="nimgs edit" id="svFiles"></div>
+     <div class="actions"><label class="btn">＋ 加照片或 PDF<input type="file" id="svAdd" accept="image/*,application/pdf,.pdf" multiple hidden></label><button class="btn" id="svPaste">📋 貼上</button></div></div></div></div>`;
+  const draw = () => { const box = $('svFiles'); box.innerHTML = r.files.map((f, i) => `<div class="nimgwrap"><button class="nimg${f.type === 'pdf' ? ' pdfmini' : ''}" data-v="${i}">${f.type === 'pdf' ? 'PDF' : `<img data-fid="${f.fileId}" alt="">`}</button><button class="nimgdel" data-d="${i}" aria-label="移除">✕</button></div>`).join('') || '<span class="sub">還沒有附件</span>';
+    box.querySelectorAll('img[data-fid]').forEach(async (im) => { const u = await Files.url(im.dataset.fid).catch(() => null); if (u && im.isConnected) im.src = u; });
+    box.querySelectorAll('[data-v]').forEach((b) => (b.onclick = () => kSvcView(r.files[+b.dataset.v])));
+    box.querySelectorAll('[data-d]').forEach((b) => (b.onclick = () => { const [f] = r.files.splice(+b.dataset.d, 1); if (f) Files.remove(f.fileId); draw(); })); };
+  const addFiles = async (fs) => { for (const f of fs) { const pdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name || ''); if (!pdf && !/^image\//.test(f.type)) continue;
+    const blob = pdf ? new Blob([await f.arrayBuffer()], { type: 'application/pdf' }) : await shrink(f); if (!blob) continue;
+    const fileId = await Files.add(blob, f.name || '辦理資料'); added.push(fileId); r.files.push({ fileId, name: f.name || '辦理資料', type: pdf ? 'pdf' : 'img' }); draw(); } };
+  draw();
+  $('svAdd').onchange = (e) => { const fs = [...e.target.files]; e.target.value = ''; addFiles(fs); };
+  $('svPaste').onclick = async () => { const fs = await clipFiles(); if (fs.length) addFiles(fs); };
+  ov.onpaste = (e) => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); addFiles(fs); } };
+  $('svX').onclick = () => { added.forEach((id) => Files.remove(id)); ov.onpaste = null; ov.innerHTML = ''; };
+  if (old) $('svDel').onclick = (e) => { const b = e.currentTarget; if (!b.dataset.confirm) { b.dataset.confirm = 1; b.textContent = '再按一次確定刪除'; setTimeout(() => { if (b.isConnected) { delete b.dataset.confirm; b.textContent = '刪除'; } }, 4000); return; } r.files.forEach((f) => Files.remove(f.fileId)); k.services = k.services.filter((x) => x.id !== r.id); Vault.put('calls', k); ov.onpaste = null; ov.innerHTML = ''; App.render(); toast('已刪除'); };
+  $('svOk').onclick = () => { r.date = $('svDate').value || localDay(); r.kind = $('svKind').value; r.note = $('svNote').value.trim(); k.services = [...(k.services || []).filter((x) => x.id !== r.id), r]; Vault.put('calls', k); ov.onpaste = null; ov.innerHTML = ''; App.render(); toast('辦理紀錄已儲存'); };
+}
 function kMarkSms(k, title) { // 「已傳簡訊」記在這通電話上；還沒點結果就先當作「未接」
   let cl = S.kcur?.k === k.id ? (k.logs || []).find((l) => l.id === S.kcur.l) : null;
   if (!cl) { kSetResult(k, '未接'); cl = (k.logs || []).find((l) => l.id === S.kcur?.l); }
@@ -897,6 +928,7 @@ function callDetailHTML() { // 一張「這通電話」卡從上點到下；很�
    <label class="f">備註／線索 <span class="sub">總表看得到</span><textarea id="kf_note" class="grow" data-kf="note" rows="2" placeholder="例：LINE 說要 2 本；最近換工作；女兒要結婚…">${esc(k.note)}</textarea></label>
    <div class="grid2"><label class="f">下次聯絡<input type="date" id="kf_nextDate" data-kf="nextDate" value="${esc(k.nextDate)}"></label><label class="f">約訪日期<input type="date" id="kf_visitDate" data-kf="visitDate" value="${esc(k.visitDate)}"></label></div>
    <div class="actions kcardgo"><button class="tag${k.met ? ' on' : ''}" data-kchk="met">${k.met ? '✓ ' : ''}已見面</button><span class="sub">每一格點了就自動存好</span><span style="flex:1"></span>${S.kcalling ? '<button class="btn pri" data-act="knext">下一位 ›</button>' : ''}</div></div>
+  ${kSvcSectionHTML(k)}
   <details class="sec" data-dk="kchk"><summary><h2 style="display:inline">電話裡要確認的</h2> <span class="sub">${CALL_CHECKS.filter(([key]) => k[key]).length}／${CALL_CHECKS.length}</span></summary>
    <div class="tags">${CALL_CHECKS.map(([key, l]) => `<button class="tag${k[key] ? ' on' : ''}" data-kchk="${key}">${k[key] ? '✓ ' : ''}${l}</button>`).join('')}</div>
    <label class="f">職業類別／工作<input id="kf_job" data-kf="job" value="${esc(k.job)}" placeholder="例如：第一類、辦公室行政"></label>
@@ -2210,6 +2242,8 @@ app.addEventListener('click', async (e) => {
   if (d.ksel) { if (S.ktable) { S.ktable = false; S.kfromTable = true; } S.ksel = d.ksel; S.kres = ''; S.showDetail = true; App.render(); return; }
   if (d.gocall) { S.view = 'calls'; S.ksel = d.gocall; S.kres = ''; S.showDetail = true; App.render(); return; }
   if (d.kst) { S.kst = d.kst; App.render(); return; }
+  if (d.ksvc != null) { const k = curCall(); if (k) openKSvc(k, d.ksvc); return; }
+  if (d.ksvcv) { const k = curCall(); const [rid, i] = d.ksvcv.split(':'); const f = (k?.services || []).find((x) => x.id === rid)?.files?.[+i]; if (f) kSvcView(f); return; }
   if (d.kvs) { const k = curCall(); if (k) { const a = new Set(k.visitSlots || []); a.has(d.kvs) ? a.delete(d.kvs) : a.add(d.kvs); k.visitSlots = VSLOTS.filter((v) => a.has(v)); Vault.put('calls', k); App.render(); } return; }
   if (d.kgw != null) { const k = curCall(); if (k) { k.giftWith = d.kgw || ''; if (k.giftWith) { k.giftTbd = false; k.giftQty = ''; k.giftSkip = false; } Vault.put('calls', k); App.render(); } return; }
   if (d.kres) { const k = curCall(); if (!k) return; const o = kSetResult(k, d.kres); App.render(); toast(o.removed ? '已取消這筆結果' : `已記錄：${d.kres}` + (o.hn ? `；同戶 ${o.hn} 位也標成已聯絡` : '')); return; }

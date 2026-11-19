@@ -747,3 +747,4 @@ textarea.smsbody{width:100%;box-sizing:border-box;border:1px solid var(--line,#d
 #smsChips .chips{margin:4px 0}
 .gsheet tr.gsvcrow td{background:var(--soft,#f7f4ec)}
 .gname{display:inline-flex;align-items:center;gap:2px}.gsheet input.gnm{width:9em;font-weight:600;text-align:left}
+.ksvcit{border:1px solid var(--line,#ddd);border-radius:10px;padding:8px 12px;margin:6px 0;background:var(--card,#fff)}.ksvch{display:flex;align-items:center;gap:8px}.ksvcn{white-space:pre-wrap;font-size:14px;margin-top:4px}
