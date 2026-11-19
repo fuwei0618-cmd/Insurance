@@ -634,14 +634,14 @@ function kSvcSectionHTML(k) { // 服務件幫忙辦的事（保全、理賠…�
    <div class="actions"><button class="btn" data-ksvc="">＋ 新增辦理紀錄</button></div></details>`;
 }
 function kSvcView(f) { Files.url(f.fileId).then((u) => { if (!u) { toast('檔案還沒下載下來，等一下再試'); return; } const v = document.createElement('div'); v.innerHTML = `<div class="ov" style="z-index:30"><div class="ovhead"><h2>${esc(f.name || '')}</h2><button class="btn pri">關閉</button></div>${f.type === 'pdf' ? `<iframe src="${u}" style="flex:1;width:100%;border:0;background:#fff"></iframe>` : `<div class="ovbody" style="justify-content:center"><img src="${u}" style="max-width:100%;height:auto"></div>`}</div>`; document.body.appendChild(v); v.querySelector('button').onclick = () => v.remove(); }); }
-function openKSvc(k, id) {
-  const old = (k.services || []).find((x) => x.id === id), r = old ? JSON.parse(JSON.stringify(old)) : { id: uid(), date: localDay(), kind: '保全變更', note: '', files: [] }, added = [];
+function openKSvc(k, id, draft, addedIn) {
+  const old = (k.services || []).find((x) => x.id === id), r = draft || (old ? JSON.parse(JSON.stringify(old)) : { id: uid(), date: localDay(), kind: '保全變更', note: '', files: [] }), added = addedIn || [];
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${old ? '編輯' : '新增'}辦理紀錄 · ${esc(k.name || '')}</h2>${old ? '<button class="btn danger" id="svDel">刪除</button>' : ''}<button class="btn" id="svX">取消</button><button class="btn pri" id="svOk">儲存</button></div>
    <div class="ovbody" style="flex-direction:column;max-width:760px;margin:0 auto;width:100%">
     <div class="grid2"><label class="f">日期<input type="date" id="svDate" value="${esc(r.date)}"></label><label class="f">項目<select id="svKind">${KSVC_KINDS.map((x) => `<option${x === r.kind ? ' selected' : ''}>${x}</option>`).join('')}</select></label></div>
     <label class="f">辦了什麼<textarea id="svNote" class="grow" rows="3" placeholder="例：變更收費地址、受益人改成女兒；11/20 送件">${esc(r.note)}</textarea></label>
     <div class="sec"><h2>照片、PDF 備份 <span class="sub">申請書、證件影本會加密存在你的雲端硬碟</span></h2><div class="nimgs edit" id="svFiles"></div>
-     <div class="actions"><label class="btn">＋ 加照片或 PDF<input type="file" id="svAdd" accept="image/*,application/pdf,.pdf" multiple hidden></label><button class="btn" id="svPaste">📋 貼上</button></div></div></div></div>`;
+     <div class="actions"><button class="btn pri" id="svScan">📷 掃描文件</button><label class="btn">＋ 加照片或 PDF<input type="file" id="svAdd" accept="image/*,application/pdf,.pdf" multiple hidden></label><button class="btn" id="svPaste">📋 貼上</button></div><div class="sub">「掃描文件」會把拍歪的文件拉正、裁掉背景、字變清楚；已經拍好的照片也可以在裡面選「從相簿選」。</div></div></div></div>`;
   const draw = () => { const box = $('svFiles'); box.innerHTML = r.files.map((f, i) => `<div class="nimgwrap"><button class="nimg${f.type === 'pdf' ? ' pdfmini' : ''}" data-v="${i}">${f.type === 'pdf' ? 'PDF' : `<img data-fid="${f.fileId}" alt="">`}</button><button class="nimgdel" data-d="${i}" aria-label="移除">✕</button></div>`).join('') || '<span class="sub">還沒有附件</span>';
     box.querySelectorAll('img[data-fid]').forEach(async (im) => { const u = await Files.url(im.dataset.fid).catch(() => null); if (u && im.isConnected) im.src = u; });
     box.querySelectorAll('[data-v]').forEach((b) => (b.onclick = () => kSvcView(r.files[+b.dataset.v])));
@@ -651,6 +651,9 @@ function openKSvc(k, id) {
     const fileId = await Files.add(blob, f.name || '辦理資料'); added.push(fileId); r.files.push({ fileId, name: f.name || '辦理資料', type: pdf ? 'pdf' : 'img' }); draw(); } };
   draw();
   $('svAdd').onchange = (e) => { const fs = [...e.target.files]; e.target.value = ''; addFiles(fs); };
+  $('svScan').onclick = () => { r.date = $('svDate').value || r.date; r.kind = $('svKind').value; r.note = $('svNote').value; ov.onpaste = null; const back = () => openKSvc(k, id, r, added);
+    openScanner(k, { names: [r.kind === '理賠' ? '理賠申請書' : '保全申請書', '附件'], filter: 'gray', onCancel: back,
+      onDone: async (pages) => { for (const p of pages) { const fileId = await Files.add(p.blob, p.name || '掃描'); added.push(fileId); r.files.push({ fileId, name: p.name || '掃描', type: 'img' }); if (p.url) URL.revokeObjectURL(p.url); } back(); } }); };
   $('svPaste').onclick = async () => { const fs = await clipFiles(); if (fs.length) addFiles(fs); };
   ov.onpaste = (e) => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); addFiles(fs); } };
   $('svX').onclick = () => { added.forEach((id) => Files.remove(id)); ov.onpaste = null; ov.innerHTML = ''; };
