@@ -2245,7 +2245,10 @@ app.addEventListener('click', async (e) => {
   if (d.gimg) { giftItemImage(d.gimg); return; }
   if (d.gst) { S.gst = d.gst; App.render(); return; }
   if (d.gtog) { const g = Vault.get('gifts', d.gtog); if (!g) return; g.status = g.status === '已送' ? '預備' : '已送'; g.doneDate = g.status === '已送' ? localDay() : ''; Vault.put('gifts', g); App.render(); toast(g.status === '已送' ? '已標成已送' : '改回預備'); return; }
-  if (d.gopen) { openGiftEditor(Vault.get('gifts', d.gopen)); return; }
+  if (d.gopen) { const g = Vault.get('gifts', d.gopen); // 服務件、客戶：直接跳到他的資料頁；親友才打開送禮編輯
+    if (g?.who?.type === 'call' && Vault.get('calls', g.who.id)) { S.view = 'calls'; S.ktable = false; S.kfromTable = false; S.ksel = g.who.id; S.showDetail = true; App.render(); window.scrollTo(0, 0); return; }
+    if (g?.who?.type === 'client' && Vault.get('clients', g.who.id)) { S.view = 'clients'; S.csel = g.who.id; S.showDetail = true; App.render(); window.scrollTo(0, 0); return; }
+    openGiftEditor(g); return; }
   if (d.gnew) { const [type, id] = d.gnew.split(':'); const nm = type === 'call' ? Vault.get('calls', id)?.name : Vault.get('clients', id)?.name; openGiftEditor(null, { type, id, name: nm || '' }); return; }
   if (d.gidel) { const ev = Vault.get('gevents', S.gev); if (!ev) return; if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = '刪？'; return; } ev.items = ev.items.filter((x) => x.id !== d.gidel); Vault.put('gevents', ev); App.render(); return; }
   if (d.ksel) { if (S.ktable) { S.ktable = false; S.kfromTable = true; } S.ksel = d.ksel; S.kres = ''; S.showDetail = true; App.render(); return; }
