@@ -601,7 +601,7 @@ function callSlots(k) { // 三個時段：上午、下午、晚上，各打過�
   (k.logs || []).filter((l) => l.at).forEach((l) => { const h = new Date(l.at).getHours(), s = h < 12 ? '上午' : h < 18 ? '下午' : '晚上'; if (l.result === '同戶已聯絡') return; if (!NO_ANSWER.includes(l.result)) m[s] = 'ok'; else if (!m[s]) m[s] = 'no'; });
   return m;
 }
-function callGift(k) { const gs = Vault.all('gifts').filter((g) => g.who?.type === 'call' && g.who?.id === k.id); if (gs.length) return gs.every((g) => g.status === '已送') ? '已送' : '預備'; return k.giftWith ? '同戶一份' : k.giftSkip ? '不送' : +k.giftQty > 0 ? '要' : k.giftTbd ? '待問' : ''; }
+function callGift(k) { const gs = Vault.all('gifts').filter((g) => g.who?.type === 'call' && g.who?.id === k.id); if (gs.length) return gs.every((g) => g.status === '已送') ? '已送' : '預備'; return k.giftWith ? '同戶一份' : k.giftSkip ? '不送' : +k.giftQty > 0 || k.giftTbd ? '要' : ''; }
 const CALL_FLOW = { // 服務件流程：上面三欄照時間排，中間小抄，下面收起來的設定與後續
   cols: [
     ['打之前', ['一通電話**只做三件事**：顧關係、聽一個線索、約見面。**不在電話裡賣東西。**', '**先在「標記」點年齡組**（從 60以上往下），再按「📞 開始打電話」，只帶這一組。', '**一次只打一區**，之後排拜訪才順。', '看一眼他的功課：住址、保單、年齡組。', '已加 LINE 的：**先傳 LINE 再打**：「年底準備了年曆想送您，什麼時間方便打給您？」']],
@@ -755,7 +755,12 @@ function kgRec(callId) { // 找這位在目前活動的送禮紀錄，沒有就�
   if (!g && k) g = Vault.put('gifts', { eventId: S.gev, who: { type: 'call', id: callId, name: k.name || '' }, group: '', items: {}, method: '', status: '預備', note: '' });
   return g;
 }
-function kgTidy(g) { if (g && !Object.keys(g.items || {}).length && !g.method && g.status !== '已送' && !g.note) Vault.del('gifts', g.id); else if (g) Vault.put('gifts', g); }
+function kgWants(k) { return !!k && !k.giftSkip && !k.giftWith && (k.giftTbd || +k.giftQty > 0); }
+function kgTidy(g) { const k = g?.who?.type === 'call' ? Vault.get('calls', g.who.id) : null; if (g && !kgWants(k) && !Object.keys(g.items || {}).length && !g.method && g.status !== '已送' && !g.note) Vault.del('gifts', g.id); else if (g) Vault.put('gifts', g); }
+function kgSync(k) { // 勾了「要」年曆：送禮專區就有他一列；取消或不送、而且沒填任何東西：拿掉
+  if (!S.gev || !Vault.get('gevents', S.gev)) S.gev = gevents()[0]?.id || null; if (!S.gev || !k) return;
+  if (kgWants(k)) kgRec(k.id); else { const g = giftsOf(S.gev).find((x) => x.who?.type === 'call' && x.who.id === k.id); if (g) kgTidy(g); }
+}
 const AREA_ORDER = ['桃園區', '八德區', '龜山區', '蘆竹區', '大園區', '觀音區', '新屋區', '楊梅區', '平鎮區', '中壢區', '龍潭區', '大溪區', '復興區', '林口區', '鶯歌區', '樹林區', '三峽區', '新莊區', '泰山區', '五股區', '板橋區', '土城區', '淡水區']; // 桃園由市區往外繞一圈，再接新北
 const kArea = (k) => k.area || areaOf(k.addr) || '';
 const areaRank = (a) => { const i = AREA_ORDER.indexOf(a); return i < 0 ? (a ? 100 : 999) : i; };
@@ -788,7 +793,7 @@ function openCallTagImport() { // 主管給的名單：貼序號或姓名，一�
 }
 const VSLOTS = ['平日上午', '平日下午', '平日晚上', '假日']; // 客戶願意被拜訪的時段
 const vslotChips = () => VSLOTS.filter((v) => calls().some((k) => (k.visitSlots || []).includes(v))).map((v) => '可拜訪・' + v);
-const kMarkOkFn = (hhs) => (k) => (S.kmark.startsWith('可拜訪・') ? (k.visitSlots || []).includes(S.kmark.slice(4)) : false) || (k.tags || []).includes(S.kmark) || ({ 全部: true, 已傳簡訊: !!k.smsSent || (k.logs || []).some((l) => l.sms), 待補結果: !k.other && !(k.logs || []).length && !!(k.level || k.note || k.giftTbd || +k.giftQty > 0 || k.giftSkip || k.giftWith || k.lineMsg || k.met || k.visitDate), '已加 LINE': !!k.line, 年曆未回: !!k.line && lmsg(k) === '年曆未回', 'LINE 從沒回': !!k.line && lmsg(k) === '從沒回', 年曆待問: callGift(k) === '待問', '未加 LINE': !k.line, 沒電話: !hasTel(k), 退件: !!k.mailBack, 不追蹤: !!k.other, 家戶待確認: hhPending(hhs.get(hhKey(k))) })[S.kmark];
+const kMarkOkFn = (hhs) => (k) => (S.kmark.startsWith('可拜訪・') ? (k.visitSlots || []).includes(S.kmark.slice(4)) : false) || (k.tags || []).includes(S.kmark) || ({ 全部: true, 已傳簡訊: !!k.smsSent || (k.logs || []).some((l) => l.sms), 待補結果: !k.other && !(k.logs || []).length && !!(k.level || k.note || k.giftTbd || +k.giftQty > 0 || k.giftSkip || k.giftWith || k.lineMsg || k.met || k.visitDate), '已加 LINE': !!k.line, 年曆未回: !!k.line && lmsg(k) === '年曆未回', 'LINE 從沒回': !!k.line && lmsg(k) === '從沒回', 年曆待問: !!k.giftTbd && !(+k.giftQty > 0) && !Vault.all('gifts').some((g) => g.who?.type === 'call' && g.who?.id === k.id && Object.keys(g.items || {}).length), '未加 LINE': !k.line, 沒電話: !hasTel(k), 退件: !!k.mailBack, 不追蹤: !!k.other, 家戶待確認: hhPending(hhs.get(hhKey(k))) })[S.kmark];
 const hasTel = (k) => /\d{6,}/.test((k.phone || '') + ' ' + (k.home || '').replace(/\D/g, '')) || /\d{6,}/.test((k.phone || '').replace(/\D/g, '')); // 沒電話的不帶進撥打
 const kFilterOk = () => { const all = calls(), mk = kMarkOkFn(callHouseholds(all)); return (k) => (S.kar === '全部' || kArea(k) === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && mk(k); }; // 開始打電話也照總表上點的標記、地區、分級
 const kQueue = () => { const ok = kFilterOk(); return calls().filter((k) => !k.other && hasTel(k) && ['未打', '未接'].includes(callProg(k)) && ok(k)).sort((a, b) => callRank(a) - callRank(b) || ageRank(a) - ageRank(b) || areaSort(kArea(a), kArea(b)) || addrCmp(a, b)); };
@@ -1143,6 +1148,7 @@ function giftCounts(ev) {
 }
 function giftsHTML() {
   const evs = gevents(); if (!evs.some((x) => x.id === S.gev)) S.gev = evs[0]?.id || null; const ev = Vault.get('gevents', S.gev);
+  if (ev) calls().filter((k) => kgWants(k) && !giftsOf(ev.id).some((g) => g.who?.type === 'call' && g.who.id === k.id)).forEach((k) => kgRec(k.id)); // 之前勾了「要」但還沒進送禮表的，補進來
   const head = `<div class="colhead"><h1>送禮專區 <span style="display:flex;gap:6px"><button class="btn" data-act="newgevent">＋ 新活動</button></span></h1>
    <div class="chips">${evs.map((x) => `<button class="chip${x.id === S.gev ? ' on' : ''}" data-gev="${x.id}">${esc(x.name || '未命名')}</button>`).join('')}</div></div>`;
   if (!ev) return head + `<div class="empty">還沒有活動。按「＋ 新活動」，例如「2027 年曆」。年曆、中秋、拜訪、出國伴手禮都可以用，下一次可以從舊活動複製品項。</div>`;
@@ -2248,7 +2254,7 @@ app.addEventListener('click', async (e) => {
   if (d.ksvc != null) { const k = curCall(); if (k) openKSvc(k, d.ksvc); return; }
   if (d.ksvcv) { const k = curCall(); const [rid, i] = d.ksvcv.split(':'); const f = (k?.services || []).find((x) => x.id === rid)?.files?.[+i]; if (f) kSvcView(f); return; }
   if (d.kvs) { const k = curCall(); if (k) { const a = new Set(k.visitSlots || []); a.has(d.kvs) ? a.delete(d.kvs) : a.add(d.kvs); k.visitSlots = VSLOTS.filter((v) => a.has(v)); Vault.put('calls', k); App.render(); } return; }
-  if (d.kgw != null) { const k = curCall(); if (k) { k.giftWith = d.kgw || ''; if (k.giftWith) { k.giftTbd = false; k.giftQty = ''; k.giftSkip = false; } Vault.put('calls', k); App.render(); } return; }
+  if (d.kgw != null) { const k = curCall(); if (k) { k.giftWith = d.kgw || ''; if (k.giftWith) { k.giftTbd = false; k.giftQty = ''; k.giftSkip = false; } Vault.put('calls', k); kgSync(k); App.render(); } return; }
   if (d.kres) { const k = curCall(); if (!k) return; const o = kSetResult(k, d.kres); App.render(); toast(o.removed ? '已取消這筆結果' : `已記錄：${d.kres}` + (o.hn ? `；同戶 ${o.hn} 位也標成已聯絡` : '')); return; }
   if (d.kdel) { const k = curCall(); if (k && armConfirm(b, '刪？')) { k.logs = (k.logs || []).filter((x) => x.id !== d.kdel); Vault.put('calls', k); App.render(); } return; }
   if (d.ccat) { S.ccat = d.ccat; App.render(); return; }
@@ -2437,7 +2443,7 @@ app.addEventListener('change', (e) => {
   const kgm = e.target.dataset?.kgm; if (kgm) { const g = kgRec(kgm); if (!g) return; g.method = e.target.value; kgTidy(g); App.render(); return; }
   const kgd = e.target.dataset?.kgd; if (kgd) { const g = kgRec(kgd); if (!g) return; g.status = e.target.checked ? '已送' : '預備'; g.doneDate = e.target.checked ? localDay() : ''; kgTidy(g); App.render(); return; }
   const kln = e.target.dataset?.klognote; if (kln) { const k = curCall(); const l = k && (k.logs || []).find((x) => x.id === kln); if (l) { l.note = e.target.value.trim(); Vault.put('calls', k); App.render(); } return; }
-  const kte = e.target.dataset?.kte; if (kte) { const k = Vault.get('calls', kte); if (!k) return; const f = e.target.dataset.kfield; k[f] = e.target.type === 'checkbox' ? e.target.checked : f === 'name' || f === 'hh' ? e.target.value.trim() : e.target.value; if (f === 'hh') k.hhOk = !!k.hh; if (f === 'giftQty') { k.giftQty = String(k.giftQty).replace(/\D/g, ''); if (+k.giftQty > 0) { k.giftTbd = true; k.giftSkip = false; } } if (f === 'giftTbd' && !k.giftTbd) k.giftQty = ''; if (f === 'giftTbd' && k.giftTbd) k.giftSkip = false; if (f === 'giftSkip' && k.giftSkip) { k.giftTbd = false; k.giftQty = ''; } Vault.put('calls', k); if (e.target.type === 'checkbox' || e.target.tagName === 'SELECT' || f === 'visitDate' || f === 'giftQty') App.render(); return; }
+  const kte = e.target.dataset?.kte; if (kte) { const k = Vault.get('calls', kte); if (!k) return; const f = e.target.dataset.kfield; k[f] = e.target.type === 'checkbox' ? e.target.checked : f === 'name' || f === 'hh' ? e.target.value.trim() : e.target.value; if (f === 'hh') k.hhOk = !!k.hh; if (f === 'giftQty') { k.giftQty = String(k.giftQty).replace(/\D/g, ''); if (+k.giftQty > 0) { k.giftTbd = true; k.giftSkip = false; } } if (f === 'giftTbd' && !k.giftTbd) k.giftQty = ''; if (f === 'giftTbd' && k.giftTbd) k.giftSkip = false; if (f === 'giftSkip' && k.giftSkip) { k.giftTbd = false; k.giftQty = ''; } Vault.put('calls', k); if (['giftTbd', 'giftQty', 'giftSkip'].includes(f)) kgSync(k); if (e.target.type === 'checkbox' || e.target.tagName === 'SELECT' || f === 'visitDate' || f === 'giftQty') App.render(); return; }
   const kf = e.target.dataset?.kf; if (kf) { const k = curCall(); if (!k) return; k[kf] = kf === 'name' ? e.target.value.trim() : e.target.value; Vault.put('calls', k); if (['status', 'nextDate', 'visitDate', 'otherWhy'].includes(kf)) App.render(); return; } // 打字的欄位不重畫，鍵盤才不會收起來
   const cf = e.target.dataset?.cf; const cl = curClient();
   if (cf && cl) {
