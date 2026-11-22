@@ -802,3 +802,9 @@ details.cfb>summary{cursor:pointer;margin-bottom:4px}
 .kgiftmore{margin:-4px 0 8px 0;padding-left:var(--klabw,72px)}
 .kgiftmore>summary{cursor:pointer;font-size:13px}
 .sec .sec{margin:8px 0;box-shadow:none;border:1px solid var(--line,#e5e2da)}
+
+.cftab{width:100%;border-collapse:collapse;margin:4px 0 8px;font-size:13px;line-height:1.45}
+.cftab th,.cftab td{border:1px solid #e2ded3;padding:4px 6px;text-align:left;vertical-align:top}
+.cftab th{background:#f3efe4;font-weight:700;white-space:nowrap}
+.cftab td:first-child{white-space:nowrap;color:#555}
+@media print{#printArea .cftab{font-size:7.5pt}#printArea .cftab th,#printArea .cftab td{padding:1.5pt 3pt}}

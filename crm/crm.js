@@ -712,41 +712,50 @@ function cfDefaultBlocks() { // 流程頁預設內容：改成一塊一塊，可
   return B;
 }
 const CF_CLUE = { title: '從確認資料問線索', w: 2, text: `#確認資料＝問線索（每個人都適用）
-地址 → 「還住這邊嗎？是自己的房子嗎？」搬家、買房：**住宅險、房貸保障**
-職業 → 「還在○○上班嗎？」換工作：**職業類別要改**；開店：**頭家壓箱保**；快退休：**每年有錢領**
-家戶 → 「年曆寄給您，還是家裡其他人收？家裡幾個人住？」結婚、小孩：**保單整理**
-受益人 → 電話裡不問，當見面理由：「要本人簽名，見面時順便更新」
+要確認的 | 順口多問半句 | 他如果說… | 再提
+地址 | 「還住這邊嗎？是自己的房子嗎？」 | 搬家、買房 | **住宅險、房貸保障**
+職業 | 「還在○○上班嗎？」 | 換工作、開店、快退休 | **職業類別要改**；**頭家壓箱保**；**每年有錢領**
+家戶 | 「年曆寄給您，還是家裡其他人收？家裡幾個人住？」 | 結婚、小孩、跟爸媽住 | **保單整理**
+受益人 | 電話裡不問 | — | 當見面理由：「要本人簽名，見面時順便更新」
 #照年齡多問一句
-20-29 → 「這張是爸媽幫您保的吧？現在自己在工作了嗎？」騎車通勤：**意外**；剛出社會：**實支**
-30-44 → 「這幾年家裡有新成員嗎？」結婚、小孩、房貸：**保單整理**
-45-59 → 「爸媽身體都還好嗎？」爸媽年紀大：**長照**；快退休：**每年有錢領**
-60以上 → 「最近還常出門走走嗎？」常出門：**意外升級**；有孫子：**存錢給孫**
+年齡 | 從資料看到 | 多問一句 | 線索 → 提什麼
+20-29 | 保單多是爸媽保的 | 「這張是爸媽幫您保的吧？現在自己在工作了嗎？」 | 騎車通勤 → **意外**；剛出社會 → **實支**
+30-44 | 保單買很多年了 | 「這幾年家裡有新成員嗎？」 | 結婚、小孩、房貸 → **保單整理**
+45-59 | 多是醫療險 | 「爸媽身體都還好嗎？」 | 爸媽年紀大 → **長照**；快退休 → **每年有錢領**
+60以上 | 有「意外險升級」標籤 | 「最近還常出門走走嗎？」 | 常出門 → **意外升級**；孫子 → **存錢給孫**
 #聽到就記，不急著講
 寫進「備註／線索」，只說：「這個我幫您整理一下，**送年曆時順便跟您說**。」
-什麼都沒聽到 → 「我幫您把保單**免費整理成一張表**，送年曆時帶給您。」` };
+什麼都沒聽到：「我幫您把保單**免費整理成一張表**，送年曆時帶給您。」` };
 function cfMigrate() { // 一次性：把「聽到線索提什麼」「年齡挑話題」換成合併版，其他區塊不動
   const st = Vault.get('settings', 'cflow'); if (!st?.blocks || st.mig1) return;
   const old = ['聽到線索提什麼', '年齡挑話題'], i = st.blocks.findIndex((b) => old.includes((b.title || '').trim()));
   const blocks = st.blocks.filter((b) => !old.includes((b.title || '').trim())); if (i >= 0) blocks.splice(Math.min(i, blocks.length), 0, { id: uid(), ...CF_CLUE });
   Vault.put('settings', { ...st, blocks, mig1: true });
 }
+function cfMigrate2() { // 線索那塊改成表格版
+  const st = Vault.get('settings', 'cflow'); if (!st?.blocks || st.mig2) return;
+  st.blocks.forEach((b) => { if ((b.title || '').trim() === CF_CLUE.title) { b.text = CF_CLUE.text; delete b.html; b.w = Math.max(b.w || 1, 2); } });
+  Vault.put('settings', { ...st, mig2: true });
+}
 const cfBlocks = () => Vault.get('settings', 'cflow')?.blocks || cfDefaultBlocks();
-const cfLines = (t) => String(t || '').split('\n').map((x) => x.trim()).filter(Boolean).map((x) => x.startsWith('#') ? `<div class="cfh">${cfEm(x.slice(1).trim())}</div>`
+const cfTables = (rows, cell) => { const out = []; let tb = null; rows.forEach((r) => { if (r.includes('|')) { const cs = r.split('|').map((c) => c.trim()); if (!tb) { tb = []; out.push(tb); } tb.push(cs); } else { tb = null; out.push(r); } });
+  return out.map((x) => (Array.isArray(x) ? `<table class="cftab">${x.map((cs, i) => `<tr>${cs.map((c) => `<${i ? 'td' : 'th'}>${cell(c)}</${i ? 'td' : 'th'}>`).join('')}</tr>`).join('')}</table>` : x)); };
+const cfLines = (t) => cfTables(String(t || '').split('\n').map((x) => x.trim()).filter(Boolean), cfEm).map((x) => x.startsWith('<table') ? x : x.startsWith('#') ? `<div class="cfh">${cfEm(x.slice(1).trim())}</div>`
   : x.includes('→') && x.split('→')[0].trim().length <= 16 ? (([a, ...r]) => `<div class="cfr"><span>${cfEm(a.trim())}</span><span>→ ${cfEm(r.join('→').trim())}</span></div>`)(x.split('→'))
   : /^[①②③④⑤⑥⑦⑧⑨⑩0-9]/.test(x) ? `<div class="cfn">${cfEm(x)}</div>` : `<div class="cfl">${cfEm(x)}</div>`).join('');
 function cfClean(html) { // 只留粗體、顏色、換行，其他格式拿掉
   const d = new DOMParser().parseFromString(`<div>${html || ''}</div>`, 'text/html').body.firstChild;
   const walk = (n) => [...n.childNodes].map((c) => { if (c.nodeType === 3) return esc(c.textContent); if (c.nodeType !== 1) return ''; const t = c.tagName.toLowerCase(), inner = walk(c);
-    if (t === 'br') return '<br>'; if (t === 'div' || t === 'p') return `<div>${inner || '<br>'}</div>`;
+    if (t === 'br') return '<br>'; if (['table', 'tbody', 'thead', 'tr', 'td', 'th'].includes(t)) return t === 'tbody' || t === 'thead' ? inner : t === 'table' ? `<table class="cftab">${inner}</table>` : `<${t}>${inner}</${t}>`; if (t === 'div' || t === 'p') return `<div>${inner || '<br>'}</div>`;
     const col = (c.getAttribute('color') || c.style?.color || '').replace(/[^#a-z0-9(), .]/gi, ''), bold = ['b', 'strong'].includes(t) || /bold|[6-9]00/.test(c.style?.fontWeight || ''), und = t === 'u' || /underline/.test(c.style?.textDecoration || c.style?.textDecorationLine || '');
     let o = inner; if (col) o = `<span style="color:${col}">${o}</span>`; if (bold) o = `<b>${o}</b>`; if (und) o = `<u>${o}</u>`; return o; }).join('');
   return walk(d);
 }
-const cfPlainHtml = (t) => String(t || '').split('\n').map((x) => `<div>${x.trim() ? (x.trim().startsWith('#') ? `<b>${cfEm(x.trim().replace(/^#\s*/, ''))}</b>` : cfEm(x.trim())).replace(/<b class="cfk">(.*?)<\/b>/g, '<b><span style="color:#C0392B">$1</span></b>') : '<br>'}</div>`).join('');
+const cfPlainHtml = (t) => cfTables(String(t || '').split('\n'), (c) => cfEm(c).replace(/<b class="cfk">(.*?)<\/b>/g, '<b><span style="color:#C0392B">$1</span></b>')).map((x) => x.startsWith('<table') ? x : `<div>${x.trim() ? (x.trim().startsWith('#') ? `<b>${cfEm(x.trim().replace(/^#\s*/, ''))}</b>` : cfEm(x.trim())).replace(/<b class="cfk">(.*?)<\/b>/g, '<b><span style="color:#C0392B">$1</span></b>') : '<br>'}</div>`).join('');
 const cfRichBody = (b) => (b.html != null ? `<div class="cfrich">${cfClean(b.html)}</div>` : cfLines(b.text));
 const cfView = (pr) => `<div class="cfgridx">${cfBlocks().map((b) => b.fold && !pr ? `<details class="cfb w${b.w || 1}"><summary><h2>${esc(b.title)}</h2></summary>${cfRichBody(b)}</details>` : `<div class="cfb w${b.w || 1}"><h2>${esc(b.title)}</h2>${cfRichBody(b)}</div>`).join('')}</div>`;
 function openCallFlow() {
-  cfMigrate();
+  cfMigrate(); cfMigrate2();
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>服務件流程</h2><button class="btn" id="cfE">✎ 排版</button><button class="btn" id="cfP">🖨 印一頁 A4</button><button class="btn pri" id="cfX">關閉</button></div>
   <div class="ovbody cfone" style="flex-direction:column;margin:0 auto;width:100%">
    <div class="cfheart">🎯 <b>${esc(CALL_HEART.goal)}</b>　🙏 ${esc(CALL_HEART.prayer)}</div>
@@ -784,7 +793,7 @@ function editCallFlow() { // 原地排版：畫面跟平常一樣，直接改字
   $('cfC').onclick = openCallFlow;
   $('cfRe').onclick = (e) => { const x = e.currentTarget; if (!x.dataset.ok) { x.dataset.ok = 1; x.textContent = '再按一次還原'; return; } Vault.del('settings', 'cflow'); openCallFlow(); toast('已還原成預設'); };
   $('cfS').onclick = () => { const out = [...G.querySelectorAll('.cfeb2')].map((el) => ({ id: el.dataset.id, title: el.querySelector('.cfet').value.trim(), html: cfClean(el.querySelector('.cfex').innerHTML), text: el.querySelector('.cfex').innerText, w: +(el.className.match(/\bw(\d)\b/) || [0, 1])[1], fold: el.classList.contains('folded') })).filter((b) => b.title || b.text.trim());
-    Vault.put('settings', { id: 'cflow', blocks: out }); openCallFlow(); toast('排版已儲存'); };
+    Vault.put('settings', { id: 'cflow', blocks: out, mig1: true, mig2: true }); openCallFlow(); toast('排版已儲存'); };
 }
 function printCallFlow() { // 一頁 A4：只印流程，不印 app 畫面
   let pa = document.getElementById('printArea'); if (!pa) { pa = document.createElement('div'); pa.id = 'printArea'; document.body.appendChild(pa); }
@@ -1046,10 +1055,8 @@ function callDetailHTML() { // 一張「這通電話」卡從上點到下；很�
    <label class="f">行政區<input id="kf_area" data-kf="area" value="${esc(k.area)}" placeholder="例如：桃園區"></label>
    <label class="f">方便聯絡時段<input id="kf_slot" data-kf="slot" value="${esc(k.slot)}" placeholder="例如：平日晚上"></label></div>
    <label class="f">地址<input id="kf_addr" data-kf="addr" value="${esc(k.addr)}"></label>
-   <label class="f">家戶<input id="kf_hh" data-kf="hh" value="${esc(k.hh)}" placeholder="同一戶的人打一樣的名字，例如：王家"></label>
-   <div class="tags"><button class="tag${k.line ? ' on' : ''}" data-kchk="line">已加 LINE</button><button class="tag${k.hhOk ? ' on' : ''}" data-kchk="hhOk">${k.hhOk ? '✓ ' : ''}家戶電話確認過</button><button class="tag${k.mailBack ? ' on' : ''}" data-kchk="mailBack">寄信退件</button><button class="tag${k.other ? ' on' : ''}" data-kchk="other">${k.other ? '✓ ' : ''}不追蹤</button></div>
-   ${(k.tags || []).length ? `<div class="tags">${k.tags.map((t) => `<span class="tag on" style="cursor:default">${esc(t)} <button class="linkbtn" data-ktagdel="${esc(t)}" aria-label="拿掉標籤">✕</button></span>`).join('')}</div>` : ''}
-   <label class="f">家戶（同住家人、保單上的人）<input id="kf_house" data-kf="house" value="${esc(k.house)}"></label>
+   <div class="tags"><button class="tag${k.hhOk ? ' on' : ''}" data-kchk="hhOk">${k.hhOk ? '✓ ' : ''}家戶電話確認過</button></div>
+   <label class="f">家人備註（同住的人、保單上的人）<input id="kf_house" data-kf="house" value="${esc(k.house)}"></label>
    <label class="f">住址觀察<input id="kf_addrNote" data-kf="addrNote" value="${esc(k.addrNote)}" placeholder="例如：電梯大樓、透天、社區"></label>
    <label class="f">保單概況<textarea id="kf_policy" class="grow" data-kf="policy" rows="2" placeholder="有哪些保單、繳費狀況…">${esc(k.policy)}</textarea></label>
    ${callHHSectionHTML(k)}
