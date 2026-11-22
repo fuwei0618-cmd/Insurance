@@ -771,10 +771,10 @@ function editCallFlow() { // 原地排版：畫面跟平常一樣，直接改字
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>流程排版</h2><button class="btn" id="cfRe">還原預設</button><button class="btn" id="cfC">取消</button><button class="btn pri" id="cfS">完成</button></div>
   <div class="ovbody cfone" style="flex-direction:column;margin:0 auto;width:100%">
    <div class="note">直接點字修改。按住左上角 <b>⠿</b> 拖到想放的位置。選取文字，再按上面的按鈕改粗細、顏色。</div>
-   <div class="cffmt" id="cfFmt"><span class="sub">選取文字後：</span><button data-fx="bold"><b>粗體</b></button><button data-fx="underline"><u>底線</u></button><button data-fx="#C0392B" style="color:#C0392B">紅</button><button data-fx="#2E6FB5" style="color:#2E6FB5">藍</button><button data-fx="#4E7A3A" style="color:#4E7A3A">綠</button><button data-fx="#D9822B" style="color:#D9822B">橘</button><button data-fx="#888888" style="color:#888">灰</button><button data-fx="clear">清除格式</button></div>
+   <div class="cffmt" id="cfFmt"><span class="sub">選取文字後：</span><button data-fx="bold"><b>粗體</b></button><button data-fx="underline"><u>底線</u></button><button data-fx="#C0392B" style="color:#C0392B">紅</button><button data-fx="#2E6FB5" style="color:#2E6FB5">藍</button><button data-fx="#4E7A3A" style="color:#4E7A3A">綠</button><button data-fx="#D9822B" style="color:#D9822B">橘</button><button data-fx="#888888" style="color:#888">灰</button><button data-fx="clear">清除格式</button><span class="sub" style="margin-left:8px">插入：</span>${'①②③④⑤⑥⑦⑧⑨⑩→✓'.split('').map((c) => `<button data-ins="${c}">${c}</button>`).join('')}</div>
    <div class="cfgridx cfediting" id="cfG">${B.map(blk).join('')}<button class="cfb cfadd" id="cfAdd">＋ 新增一塊</button></div></div></div>`;
   const G = $('cfG');
-  $('cfFmt').onpointerdown = (e) => { const x = e.target.closest('[data-fx]'); if (!x) return; e.preventDefault(); const f = x.dataset.fx; // 按鈕不搶走游標，選取才不會不見
+  $('cfFmt').onpointerdown = (e) => { const ins = e.target.closest('[data-ins]'); if (ins) { e.preventDefault(); document.execCommand('insertText', false, ins.dataset.ins); return; } const x = e.target.closest('[data-fx]'); if (!x) return; e.preventDefault(); const f = x.dataset.fx; // 按鈕不搶走游標，選取才不會不見
     if (f === 'bold' || f === 'underline') document.execCommand(f); else if (f === 'clear') document.execCommand('removeFormat'); else document.execCommand('foreColor', false, f); };
   const wire = (el) => {
     const t = el.querySelector('.cfex');
