@@ -720,9 +720,10 @@ function kqAnswersHTML(k) { // 記錄分頁：問卷答案（題目改過或刪�
   const C = Object.entries(k.clues || {}).filter(([, a]) => (a.sel || []).length || a.note); if (!C.length) return '';
   return `<div class="sec kqans"><h2>問到的線索</h2>${C.map(([, a]) => `<div><b>${esc(a.t || '')}</b>：${(a.sel || []).map((x) => esc(x[0]) + (x[1] ? `<span class="sub">（${esc(x[1])}）</span>` : '')).join('、')}${a.note ? `${(a.sel || []).length ? '；' : ''}${esc(a.note)}` : ''}</div>`).join('')}</div>`;
 }
-function kqTemplateHTML() { // 流程頁：問卷題目一覽
+function kqTemplateHTML() { // 流程頁：問卷一覽，一題一張小卡
   const Q = clueQ(), grp = (kind) => Q.qs.filter((q) => q.kind === kind);
-  return ['base', 'age', 'hear'].filter((x) => grp(x).length).map((kind) => `<div class="cfh">${KQKIND[kind]}</div><table class="cftab"><tr><th>題目</th><th>怎麼問</th><th>他如果說 → 見面可聊</th></tr>${grp(kind).map((q) => `<tr><td>${esc(q.title)}</td><td>${cfEm(q.ask || '')}</td><td>${q.opts.map(([l, h]) => `${esc(l)}${h ? ` → <b class="cfk">${esc(h)}</b>` : ''}`).join('<br>')}</td></tr>`).join('')}</table>`).join('') + (Q.foot ? `<div class="kclue3">${String(Q.foot).split('\n').map((x) => `<div>${cfEm(x)}</div>`).join('')}</div>` : '');
+  const card = (q) => `<div class="kqc"><div class="kqct">${esc(q.title)}</div><div class="kqca">${cfEm(q.ask || '')}</div>${q.opts.map(([l, h]) => `<div class="kqco"><span class="kqcl">${esc(l)}</span>${h ? `<span class="kqch">${esc(h)}</span>` : ''}</div>`).join('')}</div>`;
+  return ['base', 'age', 'hear'].filter((x) => grp(x).length).map((kind) => `<div class="kqg kqg-${kind}"><div class="kqgt">${KQKIND[kind]}</div><div class="kqcs">${grp(kind).map(card).join('')}</div></div>`).join('') + (Q.foot ? `<div class="kclue3">${String(Q.foot).split('\n').map((x) => `<div>${cfEm(x)}</div>`).join('')}</div>` : '');
 }
 const KQAG = ['20-29', '30-44', '45-59', '60以上'];
 const kqEdRow = (q) => `<div class="kqed" data-qid="${esc(q.id)}"><div class="cfebh"><select class="qk">${Object.entries(KQKIND).map(([v, l]) => `<option value="${v}"${q.kind === v ? ' selected' : ''}>${l}</option>`).join('')}</select><select class="qa"${q.kind === 'age' ? '' : ' style="display:none"'}>${KQAG.map((a) => `<option${q.age === a ? ' selected' : ''}>${a}</option>`).join('')}</select><input class="qt" value="${esc(q.title)}" placeholder="題目"><span style="flex:1"></span><button type="button" class="btn sm" data-qmv="-1">↑</button><button type="button" class="btn sm" data-qmv="1">↓</button><button type="button" class="btn sm danger" data-qrm>✕</button></div>

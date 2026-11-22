@@ -888,3 +888,18 @@ details.cfb>summary{cursor:pointer;margin-bottom:4px}
 .kqed .qt{font:inherit;font-weight:700;border:1px solid #ddd;border-radius:6px;padding:3px 6px;width:9em}
 .kqed select{font:inherit;font-size:13px;border:1px solid #ddd;border-radius:6px;padding:2px 4px}
 .kqed .qq,.kqed .qo,.cfqed .qfoot{display:block;width:100%;box-sizing:border-box;font:inherit;font-size:13px;border:1px solid #ddd;border-radius:6px;padding:4px 6px;margin-top:4px;background:#fff}
+
+/* 問卷一覽：小卡片 */
+.kqg{margin:6px 0 10px}
+.kqgt{font-weight:700;font-size:13px;margin-bottom:4px}
+.kqcs{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px}
+.kqc{border:1px solid #e5dfcc;border-radius:8px;padding:6px 8px;background:#fff;font-size:12.5px;line-height:1.45}
+.kqg-base .kqc{border-top:3px solid #5f7d4a}.kqg-age .kqc{border-top:3px solid #e0b43c}.kqg-hear .kqc{border-top:3px solid #c0392b}
+.kqg-hear .kqcs{grid-template-columns:1fr}.kqg-hear .kqc{display:flex;flex-wrap:wrap;gap:2px 14px;align-items:baseline}.kqg-hear .kqct,.kqg-hear .kqca{width:100%}
+.kqct{font-weight:700;font-size:13.5px}
+.kqca{color:#555;margin:1px 0 4px}
+.kqco{margin:2px 0}
+.kqcl{display:inline-block;border:1px solid #ddd;border-radius:999px;padding:0 7px;margin-right:4px;background:#faf8f2}
+.kqch{color:#c0392b;font-weight:700}
+@media print{#printArea .kqcs{grid-template-columns:repeat(4,1fr)}#printArea .kqc{font-size:7pt;padding:2pt 3pt}}
+.kqg-hear .kqct{display:none}
