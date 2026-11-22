@@ -1018,6 +1018,7 @@ const PTYPES = ['醫療', '意外', '壽險', '癌症', '重大傷病', '長照'
 const kAgeOpts = () => { const cnt = new Map(); calls().forEach((o) => (o.tags || []).filter(isAgeTag).forEach((t) => { const n = ageNorm(t); const m = cnt.get(n) || new Map(); m.set(t, (m.get(t) || 0) + 1); cnt.set(n, m); }));
   ['20-29', '30-44', '45-59', '60以上'].forEach((n) => { if (!cnt.has(n)) cnt.set(n, new Map([[n, 0]])); });
   return [...cnt].map(([n, m]) => [n, [...m].sort((a, b) => b[1] - a[1])[0][0]]).sort((a, b) => parseInt(a[0], 10) - parseInt(b[0], 10)); };
+const PTB = (x) => { const k = curCall(); return `<button class="tag sm${(k?.ptypes || []).includes(x) ? ' on' : ''}" data-kpt="${x}">${x}</button>`; };
 const kTab = () => S.kdtab || (S.kcalling ? 'call' : 'rec');
 const ageNorm = (x) => String(x || '').replace(/\s|歲/g, '').replace(/[~～－]/g, '-');
 function kCallPrepHTML(k, logs) { // 電訪分頁：流程模板套進這個人的資料
@@ -1041,10 +1042,13 @@ function kCallPrepHTML(k, logs) { // 電訪分頁：流程模板套進這個人�
     midHTML = m.innerHTML + (okC ? '' : confBox) + (okA ? '' : ageBox) + tailBox;
   }
   return `<div class="kprep">
-   <div class="sec kpbox kpre"><div class="kprow"><b>打之前</b>
-    <span class="klab">年齡</span>${kAgeOpts().map(([n, raw]) => `<button class="tag sm${age === n ? ' on' : ''}" data-kage="${esc(raw)}">${esc(n)}</button>`).join('')}<i class="kpsep"></i>
-    <span class="klab">已有</span>${PTYPES.map((x) => `<button class="tag sm${(k.ptypes || []).includes(x) ? ' on' : ''}" data-kpt="${x}">${x}</button>`).join('')}<i class="kpsep"></i>
-    <span class="klab">要確認</span><button class="tag sm${k.needBen ? ' on' : ''}" data-kchk="needBen">受益人</button><button class="tag sm${k.needJob ? ' on' : ''}" data-kchk="needJob">職業類別</button>${pre ? `<button class="linkbtn" data-act="kpretip">${S.kpretip ? '收起提醒' : '提醒'}</button>` : ''}</div>
+   <div class="sec kpbox kpre"><div class="kpgrid">
+    <div class="kpleft"><div class="kprow"><b class="kph">打之前</b><span class="klab">年齡</span>${kAgeOpts().map(([n, raw]) => `<button class="tag sm${age === n ? ' on' : ''}" data-kage="${esc(raw)}">${esc(n)}</button>`).join('')}</div>
+     <div class="kprow"><b class="kph"></b><span class="klab">要確認</span><button class="tag sm${k.needBen ? ' on' : ''}" data-kchk="needBen">受益人</button><button class="tag sm${k.needJob ? ' on' : ''}" data-kchk="needJob">職業類別</button>${pre ? `<button class="linkbtn" data-act="kpretip">${S.kpretip ? '收起提醒' : '提醒'}</button>` : ''}</div>
+     <div class="kprow"><b class="kph"></b><span class="klab">備註</span><input class="kpnote" id="kf_prepNote" data-kf="prepNote" value="${esc(k.prepNote)}" placeholder="打之前想到的，例如：保單快滿期"></div></div>
+    <div class="kptri"><span class="klab">已有</span><div class="kptri3"><div>${['長照'].map(PTB).join('')}<b>失能</b></div><div>${['重大傷病', '癌症'].map(PTB).join('')}</div><div>${['醫療', '意外'].map(PTB).join('')}<b>實支實付</b></div></div></div>
+    <div class="kpside">${['壽險', '儲蓄／年金', '投資型'].map(PTB).join('')}</div>
+   </div>
     ${pre && S.kpretip ? `<div class="kpretip">${cfRichBody(pre)}</div>` : ''}</div>
    <div class="sec kpbox kmid"><h2>電話中</h2><div class="kopen">開口：「請問是 <b>${esc(k.name || '')}</b> 嗎？」</div>${midHTML}</div>
   </div>`;

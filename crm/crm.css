@@ -854,3 +854,15 @@ details.cfb>summary{cursor:pointer;margin-bottom:4px}
 .ktop .dhead input.title{flex:0 0 auto;font-size:19px}
 .ktop .kdtabs{margin:0 0 0 auto}
 .ktop .pill{order:0}
+
+.kprow{margin:2px 0}.kph{display:inline-block;width:3.6em;margin-right:4px!important}
+.kpnote{flex:1;min-width:12em;border:1px solid var(--line,#ddd);border-radius:8px;padding:4px 8px;font:inherit;font-size:13.5px;background:var(--card,#fff)}
+
+/* 打之前：左邊基本、中間健康險金三角、右邊壽險儲蓄投資 */
+.kpgrid{display:grid;grid-template-columns:auto auto auto;gap:6px 18px;align-items:center;justify-content:start}
+.kptri{display:flex;gap:8px;align-items:flex-start}
+.kptri3{display:flex;flex-direction:column;align-items:center;gap:4px}
+.kptri3>div{display:flex;gap:4px;align-items:center}
+.kptri3 b{font-size:13px;margin-left:6px;color:var(--accent,#5f7d4a)}
+.kpside{display:flex;flex-direction:column;gap:4px;align-items:flex-start;border-left:1px solid #e5e2da;padding-left:14px}
+@media (max-width:900px){.kpgrid{grid-template-columns:1fr}.kpside{flex-direction:row;border-left:0;padding-left:0}}
