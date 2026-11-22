@@ -792,3 +792,13 @@ details.cfb>summary{cursor:pointer;margin-bottom:4px}
 .cffmt{position:sticky;top:0;z-index:5;display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:var(--bg,#f6f4ee);padding:6px 0;margin-bottom:8px}
 .cffmt button{font:inherit;font-size:14px;border:1px solid #ccc;background:#fff;border-radius:8px;padding:4px 12px;cursor:pointer;font-weight:700}
 @media print{#printArea .cfrich div{margin:0}#printArea .cfrich span{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+
+/* 紀錄頁精簡 */
+.khist0{margin:2px 0 8px;font-size:14px;color:var(--muted,#777)}
+.khist{margin:2px 0 8px;font-size:14px;background:#f4f1e8;border-radius:10px;padding:6px 10px}
+.khist>summary{cursor:pointer;list-style:none;line-height:1.7}
+.khist>summary::-webkit-details-marker{display:none}
+.khist[open]>summary .linkbtn{display:none}
+.kgiftmore{margin:-4px 0 8px 0;padding-left:var(--klabw,72px)}
+.kgiftmore>summary{cursor:pointer;font-size:13px}
+.sec .sec{margin:8px 0;box-shadow:none;border:1px solid var(--line,#e5e2da)}
