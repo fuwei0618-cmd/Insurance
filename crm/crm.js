@@ -584,9 +584,9 @@ function caseDetailHTML() {
 const calls = () => Vault.all('calls');
 const curCall = () => Vault.get('calls', S.ksel);
 const CALL_ST = ['待撥', '再聯絡', '已約訪', '結案'];
-const RESULTS = [['未接', '再聯絡'], ['已接・聊過', '再聯絡'], ['同戶已聯絡', '再聯絡'], ['約訪成功', '已約訪'], ['請我再打', '再聯絡'], ['拒絕', '結案'], ['空號／錯號', '結案']];
+const RESULTS = [['未接', '再聯絡'], ['已接・聊過', '再聯絡'], ['同戶已聯絡', '再聯絡'], ['約訪成功', '已約訪'], ['請我再打', '再聯絡'], ['拒絕', '結案'], ['空號／錯號', '結案'], ['其他', '再聯絡']];
 const noCmp = (a, b) => { const x = parseInt(a.no, 10), y = parseInt(b.no, 10); return (isNaN(x) ? 1e9 : x) - (isNaN(y) ? 1e9 : y) || (a.name || '').localeCompare(b.name || '', 'zh-Hant'); };
-const NO_ANSWER = ['未接', '空號／錯號'];
+const NO_ANSWER = ['未接', '空號／錯號', '其他']; // 「其他」：講不清楚、斷線…下一輪再打
 const PROGS = ['未打', '未接', '已接通', '已排訪', '已見面', '不經營'];
 function callProg(k) { // 這個人走到哪一關
   const logs = k.logs || [];
@@ -718,8 +718,8 @@ function cfClean(html) { // 只留粗體、顏色、換行，其他格式拿掉
   const d = new DOMParser().parseFromString(`<div>${html || ''}</div>`, 'text/html').body.firstChild;
   const walk = (n) => [...n.childNodes].map((c) => { if (c.nodeType === 3) return esc(c.textContent); if (c.nodeType !== 1) return ''; const t = c.tagName.toLowerCase(), inner = walk(c);
     if (t === 'br') return '<br>'; if (t === 'div' || t === 'p') return `<div>${inner || '<br>'}</div>`;
-    const col = (c.getAttribute('color') || c.style?.color || '').replace(/[^#a-z0-9(), .]/gi, ''), bold = ['b', 'strong'].includes(t) || /bold|[6-9]00/.test(c.style?.fontWeight || '');
-    let o = inner; if (col) o = `<span style="color:${col}">${o}</span>`; if (bold) o = `<b>${o}</b>`; return o; }).join('');
+    const col = (c.getAttribute('color') || c.style?.color || '').replace(/[^#a-z0-9(), .]/gi, ''), bold = ['b', 'strong'].includes(t) || /bold|[6-9]00/.test(c.style?.fontWeight || ''), und = t === 'u' || /underline/.test(c.style?.textDecoration || c.style?.textDecorationLine || '');
+    let o = inner; if (col) o = `<span style="color:${col}">${o}</span>`; if (bold) o = `<b>${o}</b>`; if (und) o = `<u>${o}</u>`; return o; }).join('');
   return walk(d);
 }
 const cfPlainHtml = (t) => String(t || '').split('\n').map((x) => `<div>${x.trim() ? (x.trim().startsWith('#') ? `<b>${cfEm(x.trim().replace(/^#\s*/, ''))}</b>` : cfEm(x.trim())).replace(/<b class="cfk">(.*?)<\/b>/g, '<b><span style="color:#C0392B">$1</span></b>') : '<br>'}</div>`).join('');
@@ -741,11 +741,11 @@ function editCallFlow() { // 原地排版：畫面跟平常一樣，直接改字
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>流程排版</h2><button class="btn" id="cfRe">還原預設</button><button class="btn" id="cfC">取消</button><button class="btn pri" id="cfS">完成</button></div>
   <div class="ovbody cfone" style="flex-direction:column;margin:0 auto;width:100%">
    <div class="note">直接點字修改。按住左上角 <b>⠿</b> 拖到想放的位置。選取文字，再按上面的按鈕改粗細、顏色。</div>
-   <div class="cffmt" id="cfFmt"><span class="sub">選取文字後：</span><button data-fx="bold"><b>粗體</b></button><button data-fx="#C0392B" style="color:#C0392B">紅</button><button data-fx="#2E6FB5" style="color:#2E6FB5">藍</button><button data-fx="#4E7A3A" style="color:#4E7A3A">綠</button><button data-fx="#D9822B" style="color:#D9822B">橘</button><button data-fx="#888888" style="color:#888">灰</button><button data-fx="clear">清除格式</button></div>
+   <div class="cffmt" id="cfFmt"><span class="sub">選取文字後：</span><button data-fx="bold"><b>粗體</b></button><button data-fx="underline"><u>底線</u></button><button data-fx="#C0392B" style="color:#C0392B">紅</button><button data-fx="#2E6FB5" style="color:#2E6FB5">藍</button><button data-fx="#4E7A3A" style="color:#4E7A3A">綠</button><button data-fx="#D9822B" style="color:#D9822B">橘</button><button data-fx="#888888" style="color:#888">灰</button><button data-fx="clear">清除格式</button></div>
    <div class="cfgridx cfediting" id="cfG">${B.map(blk).join('')}<button class="cfb cfadd" id="cfAdd">＋ 新增一塊</button></div></div></div>`;
   const G = $('cfG');
   $('cfFmt').onpointerdown = (e) => { const x = e.target.closest('[data-fx]'); if (!x) return; e.preventDefault(); const f = x.dataset.fx; // 按鈕不搶走游標，選取才不會不見
-    if (f === 'bold') document.execCommand('bold'); else if (f === 'clear') document.execCommand('removeFormat'); else document.execCommand('foreColor', false, f); };
+    if (f === 'bold' || f === 'underline') document.execCommand(f); else if (f === 'clear') document.execCommand('removeFormat'); else document.execCommand('foreColor', false, f); };
   const wire = (el) => {
     const t = el.querySelector('.cfex');
     el.querySelectorAll('[data-w]').forEach((x) => (x.onclick = () => { el.className = el.className.replace(/\bw\d\b/, 'w' + x.dataset.w); el.querySelectorAll('[data-w]').forEach((y) => y.classList.toggle('on', y === x)); }));
@@ -2333,7 +2333,7 @@ app.addEventListener('click', async (e) => {
   if (d.knext != null) { const k = curCall(); if (k) { const n = +d.knext; k.nextDate = n ? localDay(new Date(Date.now() + n * 864e5)) : ''; Vault.put('calls', k); App.render(); toast(n ? `下次聯絡：${fmtDay(k.nextDate)}，之前撥打會先跳過` : '已清除下次聯絡'); } return; }
   if (d.kvs) { const k = curCall(); if (k) { const a = new Set(k.visitSlots || []); a.has(d.kvs) ? a.delete(d.kvs) : a.add(d.kvs); k.visitSlots = VSLOTS.filter((v) => a.has(v)); Vault.put('calls', k); App.render(); } return; }
   if (d.kgw != null) { const k = curCall(); if (k) { k.giftWith = d.kgw || ''; if (k.giftWith) { k.giftTbd = false; k.giftQty = ''; k.giftSkip = false; } Vault.put('calls', k); kgSync(k); App.render(); } return; }
-  if (d.kres) { const k = curCall(); if (!k) return; const o = kSetResult(k, d.kres); App.render(); toast(o.removed ? '已取消這筆結果' : `已記錄：${d.kres}` + (o.hn ? `；同戶 ${o.hn} 位也標成已聯絡` : '')); return; }
+  if (d.kres) { const k = curCall(); if (!k) return; const o = kSetResult(k, d.kres); App.render(); if (d.kres === '其他' && !o.removed) setTimeout(() => document.querySelector('[data-klognote]')?.focus(), 60); toast(o.removed ? '已取消這筆結果' : d.kres === '其他' ? '已記錄：其他，在「這通」寫一下發生什麼事' : `已記錄：${d.kres}` + (o.hn ? `；同戶 ${o.hn} 位也標成已聯絡` : '')); return; }
   if (d.kdel) { const k = curCall(); if (k && armConfirm(b, '刪？')) { k.logs = (k.logs || []).filter((x) => x.id !== d.kdel); Vault.put('calls', k); App.render(); } return; }
   if (d.ccat) { S.ccat = d.ccat; App.render(); return; }
   if (d.csel) { S.ccat = '全部'; S.csel = d.csel; S.showDetail = true; S.showIds = false; App.render(); return; }
