@@ -584,7 +584,7 @@ function caseDetailHTML() {
 const calls = () => Vault.all('calls');
 const curCall = () => Vault.get('calls', S.ksel);
 const CALL_ST = ['待撥', '再聯絡', '已約訪', '結案'];
-const RESULTS = [['未接', '再聯絡'], ['已接・聊過', '再聯絡'], ['約訪成功', '已約訪'], ['請我再打', '再聯絡'], ['拒絕', '結案'], ['空號／錯號', '結案']];
+const RESULTS = [['未接', '再聯絡'], ['已接・聊過', '再聯絡'], ['同戶已聯絡', '再聯絡'], ['約訪成功', '已約訪'], ['請我再打', '再聯絡'], ['拒絕', '結案'], ['空號／錯號', '結案']];
 const noCmp = (a, b) => { const x = parseInt(a.no, 10), y = parseInt(b.no, 10); return (isNaN(x) ? 1e9 : x) - (isNaN(y) ? 1e9 : y) || (a.name || '').localeCompare(b.name || '', 'zh-Hant'); };
 const NO_ANSWER = ['未接', '空號／錯號'];
 const PROGS = ['未打', '未接', '已接通', '已排訪', '已見面', '不經營'];
