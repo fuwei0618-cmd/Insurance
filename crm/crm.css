@@ -907,3 +907,13 @@ details.cfb>summary{cursor:pointer;margin-bottom:4px}
 .kqvseg{display:flex;gap:4px;align-items:center;margin:0 0 6px}
 .kqtab td{font-size:12.5px}.kqtab .kqcl{margin:1px 2px 1px 0}
 .kqtab tr.kqr-base td:first-child{border-left:3px solid #5f7d4a}.kqtab tr.kqr-age td:first-child{border-left:3px solid #e0b43c}.kqtab tr.kqr-hear td:first-child{border-left:3px solid #c0392b}
+
+/* 金字塔：證券、產險在上，人身由④往下到①醫療 */
+.kqpyr td,.kqpyr th{font-size:12.5px;vertical-align:top}
+.kqpyr td:first-child{white-space:nowrap}
+.kqpyr .kqcl{display:inline-block;margin:1px 2px 1px 0}.kqpyr .kqcl i{font-style:normal;color:#999;font-size:11px}
+.kqpyr tr.kqp-醫療 td{background:#eef5ea}.kqpyr tr.kqp-重傷 td{background:#f4f8f0}.kqpyr tr.kqp-長照 td{background:#f9fbf6}
+.kqpyr tr.kqp-產險 td{background:#f1f5fa}.kqpyr tr.kqp-證券 td{background:#f7f3fa}
+.kqpyr tr.kqp-醫療 td:first-child{border-left:4px solid #5f7d4a}.kqpyr tr.kqp-重傷 td:first-child{border-left:4px solid #86a46e}.kqpyr tr.kqp-長照 td:first-child{border-left:4px solid #adc69a}.kqpyr tr.kqp-壽儲 td:first-child{border-left:4px solid #d3e2c6}
+.kqpyr tr.kqp-服務 td{border-top:2px solid #ccc;color:#555}
+.kqpyr .kqcl{white-space:nowrap}

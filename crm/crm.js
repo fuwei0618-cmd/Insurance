@@ -720,12 +720,19 @@ function kqAnswersHTML(k) { // 記錄分頁：問卷答案（題目改過或刪�
   const C = Object.entries(k.clues || {}).filter(([, a]) => (a.sel || []).length || a.note); if (!C.length) return '';
   return `<div class="sec kqans"><h2>問到的線索</h2>${C.map(([, a]) => `<div><b>${esc(a.t || '')}</b>：${(a.sel || []).map((x) => esc(x[0]) + (x[1] ? `<span class="sub">（${esc(x[1])}）</span>` : '')).join('、')}${a.note ? `${(a.sel || []).length ? '；' : ''}${esc(a.note)}` : ''}</div>`).join('')}</div>`;
 }
+const KQPYR = [ // 由上往下畫，最底層是醫療；用「見面可聊」的字自動分類
+  ['證券', '（三）證券投資', /證券|股票/], ['產險', '（二）產險：住宅、車、旅行、店家', /車險|強制|旅綜|旅平|住宅|火險|地震|頭家|壓箱|寵物|責任/],
+  ['壽儲', '④ 壽險・儲蓄・投資・傳承', /壽險|存錢|儲蓄|年金|投資型|傳承|給孫|教育/], ['長照', '③ 長照（失能）', /長照|失能/], ['重傷', '② 重大傷病・癌症', /癌|重大傷病|保一種病/], ['醫療', '① 醫療・意外（實支實付）', /實支|醫療|意外/],
+  ['服務', '服務：資料更新、保單整理', /保單整理|更新|團保|職業類別/]];
 function kqTemplateHTML() { // 流程頁：問卷一覽，一題一張小卡
   const Q = clueQ(), grp = (kind) => Q.qs.filter((q) => q.kind === kind);
   const card = (q) => `<div class="kqc"><div class="kqct">${esc(q.title)}</div><div class="kqca">${cfEm(q.ask || '')}</div>${q.opts.map(([l, h]) => `<div class="kqco"><span class="kqcl">${esc(l)}</span>${h ? `<span class="kqch">${esc(h)}</span>` : ''}</div>`).join('')}</div>`;
-  const V = S.kqv || '分組', seg = `<div class="kqvseg"><span class="sub">檢視</span>${['總表', '分組', '依商品'].map((v) => `<button class="tag sm${V === v ? ' on' : ''}" data-kqv="${v}">${v}</button>`).join('')}</div>`;
+  const V = S.kqv || '金字塔', seg = `<div class="kqvseg"><span class="sub">檢視</span>${['金字塔', '總表', '分組'].map((v) => `<button class="tag sm${V === v ? ' on' : ''}" data-kqv="${v}">${v}</button>`).join('')}</div>`;
   const foot = Q.foot ? `<div class="kclue3">${String(Q.foot).split('\n').map((x) => `<div>${cfEm(x)}</div>`).join('')}</div>` : '';
   if (V === '總表') return seg + `<table class="cftab kqtab"><tr><th>類型</th><th>題目</th><th>怎麼問</th><th>他如果說 → 見面可聊</th></tr>${Q.qs.map((q) => `<tr class="kqr-${q.kind}"><td>${esc({ base: '每個人', age: '照年齡', hear: '聽到才點' }[q.kind] || '')}</td><td><b>${esc(q.title)}</b></td><td>${cfEm(q.ask || '')}</td><td>${q.opts.map(([l, h]) => `<span class="kqcl">${esc(l)}</span>${h ? `<span class="kqch">${esc(h)}</span>` : ''}`).join('　')}</td></tr>`).join('')}</table>` + foot;
+  if (V === '金字塔') { const cols = [...Q.qs.filter((q) => q.kind === 'base').map((q) => [q.title, [q]]), ['照年齡', Q.qs.filter((q) => q.kind === 'age')], ['聽到才點', Q.qs.filter((q) => q.kind === 'hear')]].filter(([, qs]) => qs.length);
+    const cell = (re, qs) => qs.flatMap((q) => q.opts.filter(([, h]) => re.test(h || '')).map(([l]) => `<span class="kqcl">${q.kind === 'age' ? `<i>${esc(q.age || q.title)}</i> ` : ''}${esc(l)}</span>`)).join('');
+    return seg + `<div class="sub" style="margin:2px 0 4px">由下往上看：最底層先補醫療；聽到客戶說的話，對到那一層，就知道見面可以聊什麼</div><div class="scroll"><table class="cftab kqpyr"><tr><th>見面可聊</th>${cols.map(([t]) => `<th>${esc(t)}</th>`).join('')}</tr>${KQPYR.map(([k, lab, re]) => `<tr class="kqp-${k}"><td><b>${esc(lab)}</b></td>${cols.map(([, qs]) => `<td>${cell(re, qs)}</td>`).join('')}</tr>`).join('')}</table></div>` + foot; }
   if (V === '依商品') { const m = new Map(); Q.qs.forEach((q) => q.opts.forEach(([l, h]) => String(h || '').split(/[、；;]|→/).map((x) => x.replace(/（[^）]*）|\([^)]*\)/g, '').trim()).filter(Boolean).forEach((pr) => { if (!m.has(pr)) m.set(pr, []); m.get(pr).push(`${q.kind === 'hear' ? '' : q.title + '：'}${l}`); })));
     return seg + `<div class="sub" style="margin:2px 0 4px">想聊某個商品，看他回答什麼會帶到它</div><table class="cftab kqtab"><tr><th>見面可聊</th><th>哪些回答會帶到</th></tr>${[...m].sort((a, b) => b[1].length - a[1].length).map(([pr, ls]) => `<tr><td><b class="cfk">${esc(pr)}</b></td><td>${ls.map((x) => `<span class="kqcl">${esc(x)}</span>`).join(' ')}</td></tr>`).join('')}</table>` + foot; }
   return seg + ['base', 'age', 'hear'].filter((x) => grp(x).length).map((kind) => `<div class="kqg kqg-${kind}"><div class="kqgt">${KQKIND[kind]}</div><div class="kqcs">${grp(kind).map(card).join('')}</div></div>`).join('') + (Q.foot ? `<div class="kclue3">${String(Q.foot).split('\n').map((x) => `<div>${cfEm(x)}</div>`).join('')}</div>` : '');
