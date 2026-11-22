@@ -724,6 +724,18 @@ function kqTemplateHTML() { // 流程頁：問卷題目一覽
   const Q = clueQ(), grp = (kind) => Q.qs.filter((q) => q.kind === kind);
   return ['base', 'age', 'hear'].filter((x) => grp(x).length).map((kind) => `<div class="cfh">${KQKIND[kind]}</div><table class="cftab"><tr><th>題目</th><th>怎麼問</th><th>他如果說 → 見面可聊</th></tr>${grp(kind).map((q) => `<tr><td>${esc(q.title)}</td><td>${cfEm(q.ask || '')}</td><td>${q.opts.map(([l, h]) => `${esc(l)}${h ? ` → <b class="cfk">${esc(h)}</b>` : ''}`).join('<br>')}</td></tr>`).join('')}</table>`).join('') + (Q.foot ? `<div class="kclue3">${String(Q.foot).split('\n').map((x) => `<div>${cfEm(x)}</div>`).join('')}</div>` : '');
 }
+const KQAG = ['20-29', '30-44', '45-59', '60以上'];
+const kqEdRow = (q) => `<div class="kqed" data-qid="${esc(q.id)}"><div class="cfebh"><select class="qk">${Object.entries(KQKIND).map(([v, l]) => `<option value="${v}"${q.kind === v ? ' selected' : ''}>${l}</option>`).join('')}</select><select class="qa"${q.kind === 'age' ? '' : ' style="display:none"'}>${KQAG.map((a) => `<option${q.age === a ? ' selected' : ''}>${a}</option>`).join('')}</select><input class="qt" value="${esc(q.title)}" placeholder="題目"><span style="flex:1"></span><button type="button" class="btn sm" data-qmv="-1">↑</button><button type="button" class="btn sm" data-qmv="1">↓</button><button type="button" class="btn sm danger" data-qrm>✕</button></div>
+  <input class="qq" value="${esc(q.ask)}" placeholder="怎麼問，例如：「還住這邊嗎？」"><textarea class="qo" rows="${Math.max(2, q.opts.length)}" placeholder="一行一個選項：選項 → 見面可聊">${esc(q.opts.map(([l, h]) => (h ? `${l} → ${h}` : l)).join('\n'))}</textarea></div>`;
+function kqEdWire(root) { // 排版裡的問卷：上下移、刪除、改類型
+  root.onclick = (e) => { const b = e.target.closest('button'); if (!b) return; const row = b.closest('.kqed');
+    if (b.dataset.qmv && row) { const sib = b.dataset.qmv === '-1' ? row.previousElementSibling : row.nextElementSibling; if (sib?.classList.contains('kqed')) b.dataset.qmv === '-1' ? sib.before(row) : sib.after(row); }
+    else if ('qrm' in b.dataset && row) { if (!b.dataset.ok) { b.dataset.ok = 1; b.textContent = '確定刪？'; return; } row.remove(); }
+    else if ('qadd' in b.dataset) { b.insertAdjacentHTML('beforebegin', kqEdRow({ id: 'q_' + uid(), kind: 'base', title: '', ask: '', opts: [] })); b.previousElementSibling.querySelector('.qt').focus(); } };
+  root.onchange = (e) => { if (e.target.classList.contains('qk')) e.target.closest('.kqed').querySelector('.qa').style.display = e.target.value === 'age' ? '' : 'none'; };
+}
+function kqEdRead(root) { return { foot: root.querySelector('.qfoot')?.value || '', qs: [...root.querySelectorAll('.kqed')].map((el) => { const kind = el.querySelector('.qk').value, age = kind === 'age' ? el.querySelector('.qa').value : '';
+  return { id: el.dataset.qid, kind, age, title: el.querySelector('.qt').value.trim() || age, ask: el.querySelector('.qq').value.trim(), opts: el.querySelector('.qo').value.split('\n').map((x) => x.trim()).filter(Boolean).map((x) => { const [l, ...h] = x.split(/\s*→\s*/); return [l.trim(), h.join(' → ').trim()]; }) }; }).filter((q) => q.title) }; }
 function editClueQ() { // 問卷題目編輯：改這裡不會動到已經填好的客戶答案
   const Q = JSON.parse(JSON.stringify(clueQ())), AG = ['20-29', '30-44', '45-59', '60以上'];
   const row = (q, i) => `<div class="cfeb" data-i="${i}"><div class="cfebh"><select class="qk">${Object.entries(KQKIND).map(([v, l]) => `<option value="${v}"${q.kind === v ? ' selected' : ''}>${l}</option>`).join('')}</select><select class="qa"${q.kind === 'age' ? '' : ' style="display:none"'}>${AG.map((a) => `<option${q.age === a ? ' selected' : ''}>${a}</option>`).join('')}</select><input class="cfet qt" value="${esc(q.title)}" placeholder="題目，例如：地址"><span style="flex:1"></span><button class="btn sm" data-mv="-1"${i ? '' : ' disabled'}>↑</button><button class="btn sm" data-mv="1"${i < Q.qs.length - 1 ? '' : ' disabled'}>↓</button><button class="btn sm danger" data-rm>✕</button></div>
@@ -803,20 +815,20 @@ function cfClean(html) { // 只留粗體、顏色、換行，其他格式拿掉
 }
 const cfPlainHtml = (t) => cfTables(String(t || '').split('\n'), (c) => cfEm(c).replace(/<b class="cfk">(.*?)<\/b>/g, '<b><span style="color:#C0392B">$1</span></b>')).map((x) => x.startsWith('<table') ? x : `<div>${x.trim() ? (x.trim().startsWith('#') ? `<b>${cfEm(x.trim().replace(/^#\s*/, ''))}</b>` : cfEm(x.trim())).replace(/<b class="cfk">(.*?)<\/b>/g, '<b><span style="color:#C0392B">$1</span></b>') : '<br>'}</div>`).join('');
 const cfRichBody = (b) => (b.html != null ? `<div class="cfrich">${cfClean(b.html)}</div>` : cfLines(b.text));
-const cfView = (pr) => `<div class="cfgridx">${cfBlocks().map((b) => b.q ? `<div class="cfb w${b.w || 2}"><h2>${esc(b.title)} <span class="sub">按上面「✎ 問卷題目」修改</span></h2>${kqTemplateHTML()}</div>` : b.fold && !pr ? `<details class="cfb w${b.w || 1}"><summary><h2>${esc(b.title)}</h2></summary>${cfRichBody(b)}</details>` : `<div class="cfb w${b.w || 1}"><h2>${esc(b.title)}</h2>${cfRichBody(b)}</div>`).join('')}</div>`;
+const cfView = (pr) => `<div class="cfgridx">${cfBlocks().map((b) => b.q ? `<div class="cfb w${b.w || 2}"><h2>${esc(b.title)} <span class="sub">按「✎ 排版」直接改</span></h2>${kqTemplateHTML()}</div>` : b.fold && !pr ? `<details class="cfb w${b.w || 1}"><summary><h2>${esc(b.title)}</h2></summary>${cfRichBody(b)}</details>` : `<div class="cfb w${b.w || 1}"><h2>${esc(b.title)}</h2>${cfRichBody(b)}</div>`).join('')}</div>`;
 function openCallFlow() {
   cfMigrate(); cfMigrate2(); cfMigrate3();
-  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>服務件流程</h2><button class="btn" id="cfE">✎ 排版</button><button class="btn" id="cfQ">✎ 問卷題目</button><button class="btn" id="cfP">🖨 印一頁 A4</button><button class="btn pri" id="cfX">關閉</button></div>
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>服務件流程</h2><button class="btn" id="cfE">✎ 排版</button><button class="btn" id="cfP">🖨 印一頁 A4</button><button class="btn pri" id="cfX">關閉</button></div>
   <div class="ovbody cfone" style="flex-direction:column;margin:0 auto;width:100%">
    <div class="cfheart">🎯 <b>${esc(CALL_HEART.goal)}</b>　🙏 ${esc(CALL_HEART.prayer)}</div>
    ${cfView(false)}</div></div>`;
   $('cfX').onclick = () => { ov.innerHTML = ''; document.body.classList.remove('printing'); const pa = document.getElementById('printArea'); if (pa) pa.className = ''; };
-  $('cfP').onclick = printCallFlow; $('cfE').onclick = () => editCallFlow(); $('cfQ').onclick = editClueQ;
+  $('cfP').onclick = printCallFlow; $('cfE').onclick = () => editCallFlow();
 }
 function editCallFlow() { // 原地排版：畫面跟平常一樣，直接改字；按住 ⠿ 拖曳換位置；窄／中／整行調寬度
   const B = JSON.parse(JSON.stringify(cfBlocks())), W = [[1, '窄'], [2, '中'], [3, '整行']];
   const blk = (b) => `<div class="cfb w${b.w || 1} cfeb2${b.fold ? ' folded' : ''}" data-id="${b.id || uid()}"${b.q ? ' data-q="1"' : ''}><div class="cfbar"><span class="cfdrag" title="按住拖曳">⠿</span><input class="cfet" value="${esc(b.title)}" placeholder="標題"></div>
-    ${b.q ? '<div class="cfex sub" style="border:0">問卷：題目到流程頁「✎ 問卷題目」改。這裡可以拖位置、改寬度。</div>' : `<div class="cfex cfrich" contenteditable="true">${b.html != null ? cfClean(b.html) : cfPlainHtml(b.text)}</div>`}
+    ${b.q ? `<div class="cfex cfqed"><div class="sub">一題一格；選項一行一個，寫「選項 → 見面可聊」。改題目不會動到客戶已經填好的答案。</div>${clueQ().qs.map(kqEdRow).join('')}<button type="button" class="btn sm" data-qadd>＋ 新增一題</button><label class="f">最下面的提醒<textarea class="qfoot" rows="2">${esc(clueQ().foot || '')}</textarea></label></div>` : `<div class="cfex cfrich" contenteditable="true">${b.html != null ? cfClean(b.html) : cfPlainHtml(b.text)}</div>`}
     <div class="cftools">${W.map(([v, l]) => `<button class="cfw${(b.w || 1) === v ? ' on' : ''}" data-w="${v}">${l}</button>`).join('')}<button class="cff${b.fold ? ' on' : ''}" data-f>收起來</button><span style="flex:1"></span><button class="cfrm" data-rm>刪除</button></div></div>`;
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>流程排版</h2><button class="btn" id="cfRe">還原預設</button><button class="btn" id="cfC">取消</button><button class="btn pri" id="cfS">完成</button></div>
   <div class="ovbody cfone" style="flex-direction:column;margin:0 auto;width:100%">
@@ -838,11 +850,11 @@ function editCallFlow() { // 原地排版：畫面跟平常一樣，直接改字
       const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); el.classList.remove('dragging'); void sy; };
       window.addEventListener('pointermove', mv, { passive: false }); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up); };
   };
-  G.querySelectorAll('.cfeb2').forEach(wire);
+  G.querySelectorAll('.cfeb2').forEach(wire); G.querySelectorAll('.cfqed').forEach(kqEdWire);
   $('cfAdd').onclick = () => { const d = document.createElement('div'); d.innerHTML = blk({ id: uid(), title: '新的一塊', text: '', w: 1 }); const el = d.firstElementChild; $('cfAdd').before(el); wire(el); el.querySelector('.cfet').select(); };
   $('cfC').onclick = openCallFlow;
   $('cfRe').onclick = (e) => { const x = e.currentTarget; if (!x.dataset.ok) { x.dataset.ok = 1; x.textContent = '再按一次還原'; return; } Vault.del('settings', 'cflow'); openCallFlow(); toast('已還原成預設'); };
-  $('cfS').onclick = () => { const out = [...G.querySelectorAll('.cfeb2')].map((el) => el.dataset.q ? { id: el.dataset.id, title: el.querySelector('.cfet').value.trim() || '問線索', q: true, text: 'q', w: +(el.className.match(/\bw(\d)\b/) || [0, 2])[1], fold: el.classList.contains('folded') } : ({ id: el.dataset.id, title: el.querySelector('.cfet').value.trim(), html: cfClean(el.querySelector('.cfex').innerHTML), text: el.querySelector('.cfex').innerText, w: +(el.className.match(/\bw(\d)\b/) || [0, 1])[1], fold: el.classList.contains('folded') })).filter((b) => b.title || b.text.trim());
+  $('cfS').onclick = () => { const qe = G.querySelector('.cfqed'); if (qe) Vault.put('settings', { id: 'clueq', ...kqEdRead(qe) }); const out = [...G.querySelectorAll('.cfeb2')].map((el) => el.dataset.q ? { id: el.dataset.id, title: el.querySelector('.cfet').value.trim() || '問線索', q: true, text: 'q', w: +(el.className.match(/\bw(\d)\b/) || [0, 2])[1], fold: el.classList.contains('folded') } : ({ id: el.dataset.id, title: el.querySelector('.cfet').value.trim(), html: cfClean(el.querySelector('.cfex').innerHTML), text: el.querySelector('.cfex').innerText, w: +(el.className.match(/\bw(\d)\b/) || [0, 1])[1], fold: el.classList.contains('folded') })).filter((b) => b.title || b.text.trim());
     Vault.put('settings', { id: 'cflow', blocks: out, mig1: true, mig2: true, mig3: true }); openCallFlow(); toast('排版已儲存'); };
 }
 function printCallFlow() { // 一頁 A4：只印流程，不印 app 畫面
