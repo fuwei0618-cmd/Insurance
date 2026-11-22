@@ -1021,12 +1021,24 @@ function kCallPrepHTML(k, logs) { // 電訪分頁：流程模板套進這個人�
   const age = (k.tags || []).filter(isAgeTag).map(ageNorm)[0] || '', last = logs[0];
   const facts = [['年齡', age || '未標'], ['地址', k.addr || ''], ['職業', k.job || ''], ['保單', k.policy || ''], ['備註', k.note || ''], ['上次', last ? `${String(last.date || '').slice(5).replace('-', '/')} ${last.result}${last.note ? '（' + last.note + '）' : ''}` : '還沒打過'], ['住址觀察', k.addrNote || '']].filter(([, v]) => v);
   const pre = find(/^打之前/), mid = find(/^電話中/), clue = find(/線索/);
-  const clueHTML = clue ? (() => { const d = new DOMParser().parseFromString(`<div>${cfRichBody(clue)}</div>`, 'text/html').body.firstChild;
-    d.querySelectorAll('tr').forEach((tr) => { const c = ageNorm(tr.cells[0]?.textContent); if (/^\d{2}(-\d{2}|以上)$/.test(c) && age && c !== age) tr.remove(); else if (age && c === age) tr.classList.add('kmine'); }); return d.innerHTML; })() : '';
+  const dom = (h) => new DOMParser().parseFromString(`<div>${h}</div>`, 'text/html').body.firstChild;
+  let midHTML = mid ? cfRichBody(mid) : '';
+  if (clue) { // 問線索拆開塞進電話中：確認資料表放在②後面，他的年齡那一句放在③後面，「聽到就記」放最後
+    const c = dom(cfRichBody(clue)), tabs = [...c.querySelectorAll('table')];
+    const conf = tabs.find((t) => ![...t.rows].some((tr) => /^\d{2}(-\d{2}|以上)$/.test(ageNorm(tr.cells[0]?.textContent))));
+    const ageTr = tabs.flatMap((t) => [...t.rows]).find((tr) => age && ageNorm(tr.cells[0]?.textContent) === age);
+    const lastTab = tabs[tabs.length - 1], tail = []; let n = lastTab?.nextElementSibling; while (n) { tail.push(n.outerHTML); n = n.nextElementSibling; }
+    const ageBox = ageTr ? `<div class="kclue">🎯 <b>${esc(age)}</b>${ageTr.cells[1] ? `<span class="sub">　${ageTr.cells[1].innerHTML}</span>` : ''}<div>多問一句：<b>${ageTr.cells[2]?.innerHTML || ''}</b></div><div>線索 → ${ageTr.cells[3]?.innerHTML || ''}</div></div>` : '';
+    const confBox = conf ? `<details class="kclue2" data-dk="kpconf" open><summary class="sub">確認資料時順口多問（點一下收起）</summary>${conf.outerHTML}</details>` : '';
+    const tailBox = tail.length ? `<div class="kclue3">${tail.join('')}</div>` : '';
+    const m = dom(midHTML), kids = [...(m.querySelector('.cfrich') || m).children], at = (ch) => kids.find((x) => x.textContent.trim().startsWith(ch));
+    const put = (ch, html) => { if (!html) return false; const el = at(ch); if (!el) return false; el.insertAdjacentHTML('beforebegin', html); return true; };
+    const okC = put('③', confBox), okA = put('④', ageBox);
+    midHTML = m.innerHTML + (okC ? '' : confBox) + (okA ? '' : ageBox) + tailBox;
+  }
   return `<div class="kprep">
-   <div class="sec kpbox"><h2>打之前 <span class="sub">${esc(k.name || '')}</span></h2><div class="kfacts">${facts.map(([a, v]) => `<div><span class="sub">${a}</span> ${esc(v)}</div>`).join('')}</div>${pre ? `<details class="kpmore" data-dk="kppre"><summary class="sub">打之前提醒</summary>${cfRichBody(pre)}</details>` : ''}</div>
-   ${mid ? `<div class="sec kpbox"><h2>電話中</h2><div class="kopen">開口：「請問是 <b>${esc(k.name || '')}</b> 嗎？」</div>${cfRichBody(mid)}</div>` : ''}
-   ${clue ? `<div class="sec kpbox"><h2>問線索${age ? ` <span class="sub">${esc(age)} 那一列已標出</span>` : ''}</h2>${clueHTML}</div>` : ''}
+   <div class="sec kpbox kpre"><h2>打之前</h2><div class="kfacts">${facts.map(([a, v]) => `<div><span class="sub">${a}</span> ${esc(v)}</div>`).join('')}</div>${pre ? `<details class="kpmore" data-dk="kppre"><summary class="sub">打之前提醒</summary>${cfRichBody(pre)}</details>` : ''}</div>
+   <div class="sec kpbox kmid"><h2>電話中</h2><div class="kopen">開口：「請問是 <b>${esc(k.name || '')}</b> 嗎？」</div>${midHTML}</div>
   </div>`;
 }
 function kCallMoreHTML() { // 電訪分頁最下面：其他小抄收起來
