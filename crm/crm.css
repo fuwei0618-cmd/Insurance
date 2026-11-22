@@ -770,3 +770,18 @@ details.cfb>summary{cursor:pointer;margin-bottom:4px}
 @media print{#printArea .cfgridx{display:grid;grid-template-columns:repeat(3,1fr);gap:5pt}#printArea .cfb{border:1px solid #999;border-radius:4pt;padding:4pt 6pt;font-size:8.2pt;line-height:1.32}#printArea .cfb h2{font-size:10pt}#printArea .cfh{font-size:8pt;margin:3pt 0 0}}
 
 .smsgo .lineb{background:#06c755;color:#fff;border-color:#06c755}
+
+/* 流程原地排版 */
+.cfediting .cfeb2{position:relative;padding-top:8px}
+.cfediting .cfeb2.dragging{opacity:.45;outline:2px dashed var(--pri,#5b7a4a)}
+.cfbar{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.cfdrag{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;font-size:18px;color:#888;padding:4px 6px;border-radius:6px;background:#f2f0ea}
+.cfediting .cfet{flex:1;min-width:0;font:inherit;font-size:15px;font-weight:700;border:1px dashed transparent;border-radius:6px;padding:3px 6px;background:transparent}
+.cfediting .cfet:focus,.cfediting .cfex:focus{border-color:#bbb;background:#fffdf7;outline:none}
+.cfediting .cfex{width:100%;box-sizing:border-box;font:inherit;font-size:13.5px;line-height:1.55;border:1px dashed #ddd;border-radius:6px;padding:4px 6px;resize:none;overflow:hidden;background:transparent}
+.cftools{display:flex;gap:4px;align-items:center;margin-top:6px;flex-wrap:wrap}
+.cftools button{font:inherit;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:999px;padding:2px 10px;cursor:pointer;color:#555}
+.cftools button.on{background:#5b7a4a;color:#fff;border-color:#5b7a4a}
+.cftools .cfrm{color:#b44;border-color:#e6c4c4}
+.cfeb2.folded{background:#f7f6f2}
+.cfadd{border:2px dashed #ccc;background:transparent;color:#777;font:inherit;font-size:15px;min-height:80px;cursor:pointer}

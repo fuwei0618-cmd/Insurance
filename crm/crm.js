@@ -723,22 +723,34 @@ function openCallFlow() {
   $('cfX').onclick = () => { ov.innerHTML = ''; document.body.classList.remove('printing'); const pa = document.getElementById('printArea'); if (pa) pa.className = ''; };
   $('cfP').onclick = printCallFlow; $('cfE').onclick = () => editCallFlow();
 }
-function editCallFlow(draft) { // 手動排版：改標題、內容、寬度、順序，新增或刪掉一塊
-  const B = draft || JSON.parse(JSON.stringify(cfBlocks()));
-  const W = [[1, '三分之一寬'], [2, '三分之二寬'], [3, '整行']];
+function editCallFlow() { // 原地排版：畫面跟平常一樣，直接改字；按住 ⠿ 拖曳換位置；窄／中／整行調寬度
+  const B = JSON.parse(JSON.stringify(cfBlocks())), W = [[1, '窄'], [2, '中'], [3, '整行']];
+  const blk = (b) => `<div class="cfb w${b.w || 1} cfeb2${b.fold ? ' folded' : ''}" data-id="${b.id || uid()}"><div class="cfbar"><span class="cfdrag" title="按住拖曳">⠿</span><input class="cfet" value="${esc(b.title)}" placeholder="標題"></div>
+    <textarea class="cfex" rows="3" placeholder="一行一項">${esc(b.text)}</textarea>
+    <div class="cftools">${W.map(([v, l]) => `<button class="cfw${(b.w || 1) === v ? ' on' : ''}" data-w="${v}">${l}</button>`).join('')}<button class="cff${b.fold ? ' on' : ''}" data-f>收起來</button><span style="flex:1"></span><button class="cfrm" data-rm>刪除</button></div></div>`;
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>流程排版</h2><button class="btn" id="cfRe">還原預設</button><button class="btn" id="cfC">取消</button><button class="btn pri" id="cfS">完成</button></div>
-  <div class="ovbody" style="flex-direction:column;max-width:900px;margin:0 auto;width:100%">
-   <div class="note">一行一項。<b>**這樣**</b> 會變紅色粗體；<b>#</b> 開頭是小標題；中間有 <b>→</b> 會排成對照；①、② 開頭不加點。排在前面的就在畫面上面，寬度決定一排放幾塊（一排三格）。</div>
-   ${B.map((b, i) => `<div class="cfeb" data-i="${i}"><div class="cfebh"><input class="cfet" value="${esc(b.title)}" placeholder="區塊標題"><select class="cfew">${W.map(([v, l]) => `<option value="${v}"${(b.w || 1) === v ? ' selected' : ''}>${l}</option>`).join('')}</select><label class="sub"><input type="checkbox" class="cfef"${b.fold ? ' checked' : ''}> 收起來</label><span style="flex:1"></span><button class="btn sm" data-mv="-1"${i ? '' : ' disabled'}>↑</button><button class="btn sm" data-mv="1"${i < B.length - 1 ? '' : ' disabled'}>↓</button><button class="btn sm danger" data-rm>✕</button></div><textarea class="cfex grow" rows="${Math.min(14, Math.max(3, String(b.text || '').split('\n').length + 1))}">${esc(b.text)}</textarea></div>`).join('')}
-   <div class="actions"><button class="btn" id="cfAdd">＋ 新增一塊</button></div></div></div>`;
-  const read = () => ov.querySelectorAll('.cfeb').forEach((el) => { const b = B[+el.dataset.i]; b.title = el.querySelector('.cfet').value.trim(); b.w = +el.querySelector('.cfew').value; b.fold = el.querySelector('.cfef').checked; b.text = el.querySelector('.cfex').value; });
-  ov.querySelectorAll('.cfeb').forEach((el) => { const i = +el.dataset.i;
-    el.querySelectorAll('[data-mv]').forEach((x) => (x.onclick = () => { read(); const j = i + +x.dataset.mv; [B[i], B[j]] = [B[j], B[i]]; editCallFlow(B); }));
-    el.querySelector('[data-rm]').onclick = (e) => { const x = e.currentTarget; if (!x.dataset.ok) { x.dataset.ok = 1; x.textContent = '確定刪？'; return; } read(); B.splice(i, 1); editCallFlow(B); }; });
-  $('cfAdd').onclick = () => { read(); B.push({ id: uid(), title: '新的一塊', text: '', w: 1 }); editCallFlow(B); setTimeout(() => ov.querySelector('.cfeb:last-of-type .cfet')?.select(), 50); };
+  <div class="ovbody cfone" style="flex-direction:column;margin:0 auto;width:100%">
+   <div class="note">直接點字修改。按住左上角 <b>⠿</b> 拖到想放的位置。<b>**這樣**</b>＝紅字；<b>#</b> 開頭＝小標題；中間有 <b>→</b>＝對照。</div>
+   <div class="cfgridx cfediting" id="cfG">${B.map(blk).join('')}<button class="cfb cfadd" id="cfAdd">＋ 新增一塊</button></div></div></div>`;
+  const G = $('cfG'), grow = (t) => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; };
+  const wire = (el) => {
+    const t = el.querySelector('.cfex'); grow(t); t.oninput = () => grow(t);
+    el.querySelectorAll('[data-w]').forEach((x) => (x.onclick = () => { el.className = el.className.replace(/\bw\d\b/, 'w' + x.dataset.w); el.querySelectorAll('[data-w]').forEach((y) => y.classList.toggle('on', y === x)); grow(t); }));
+    el.querySelector('[data-f]').onclick = (e) => { e.currentTarget.classList.toggle('on'); el.classList.toggle('folded'); };
+    el.querySelector('[data-rm]').onclick = (e) => { const x = e.currentTarget; if (!x.dataset.ok) { x.dataset.ok = 1; x.textContent = '再按一次刪除'; setTimeout(() => { if (x.isConnected) { delete x.dataset.ok; x.textContent = '刪除'; } }, 3000); return; } el.remove(); };
+    el.querySelector('.cfdrag').onpointerdown = (e) => { e.preventDefault(); el.classList.add('dragging'); const sy = window.scrollY;
+      const mv = (ev) => { ev.preventDefault(); el.style.visibility = 'hidden'; const tg = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.cfeb2, .cfadd'); el.style.visibility = '';
+        if (tg && tg !== el && G.contains(tg)) { if (tg.classList.contains('cfadd')) tg.before(el); else { const all = [...G.children]; all.indexOf(el) < all.indexOf(tg) ? tg.after(el) : tg.before(el); } }
+        const body = ov.querySelector('.ovbody'); if (body) { if (ev.clientY < 90) body.scrollTop -= 12; else if (ev.clientY > window.innerHeight - 60) body.scrollTop += 12; } };
+      const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); el.classList.remove('dragging'); void sy; };
+      window.addEventListener('pointermove', mv, { passive: false }); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up); };
+  };
+  G.querySelectorAll('.cfeb2').forEach(wire);
+  $('cfAdd').onclick = () => { const d = document.createElement('div'); d.innerHTML = blk({ id: uid(), title: '新的一塊', text: '', w: 1 }); const el = d.firstElementChild; $('cfAdd').before(el); wire(el); el.querySelector('.cfet').select(); };
   $('cfC').onclick = openCallFlow;
   $('cfRe').onclick = (e) => { const x = e.currentTarget; if (!x.dataset.ok) { x.dataset.ok = 1; x.textContent = '再按一次還原'; return; } Vault.del('settings', 'cflow'); openCallFlow(); toast('已還原成預設'); };
-  $('cfS').onclick = () => { read(); Vault.put('settings', { id: 'cflow', blocks: B.filter((b) => b.title || b.text.trim()) }); openCallFlow(); toast('排版已儲存'); };
+  $('cfS').onclick = () => { const out = [...G.querySelectorAll('.cfeb2')].map((el) => ({ id: el.dataset.id, title: el.querySelector('.cfet').value.trim(), text: el.querySelector('.cfex').value, w: +(el.className.match(/\bw(\d)\b/) || [0, 1])[1], fold: el.classList.contains('folded') })).filter((b) => b.title || b.text.trim());
+    Vault.put('settings', { id: 'cflow', blocks: out }); openCallFlow(); toast('排版已儲存'); };
 }
 function printCallFlow() { // 一頁 A4：只印流程，不印 app 畫面
   let pa = document.getElementById('printArea'); if (!pa) { pa = document.createElement('div'); pa.id = 'printArea'; document.body.appendChild(pa); }
