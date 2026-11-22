@@ -903,3 +903,7 @@ details.cfb>summary{cursor:pointer;margin-bottom:4px}
 .kqch{color:#c0392b;font-weight:700}
 @media print{#printArea .kqcs{grid-template-columns:repeat(4,1fr)}#printArea .kqc{font-size:7pt;padding:2pt 3pt}}
 .kqg-hear .kqct{display:none}
+
+.kqvseg{display:flex;gap:4px;align-items:center;margin:0 0 6px}
+.kqtab td{font-size:12.5px}.kqtab .kqcl{margin:1px 2px 1px 0}
+.kqtab tr.kqr-base td:first-child{border-left:3px solid #5f7d4a}.kqtab tr.kqr-age td:first-child{border-left:3px solid #e0b43c}.kqtab tr.kqr-hear td:first-child{border-left:3px solid #c0392b}

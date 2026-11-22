@@ -723,7 +723,12 @@ function kqAnswersHTML(k) { // 記錄分頁：問卷答案（題目改過或刪�
 function kqTemplateHTML() { // 流程頁：問卷一覽，一題一張小卡
   const Q = clueQ(), grp = (kind) => Q.qs.filter((q) => q.kind === kind);
   const card = (q) => `<div class="kqc"><div class="kqct">${esc(q.title)}</div><div class="kqca">${cfEm(q.ask || '')}</div>${q.opts.map(([l, h]) => `<div class="kqco"><span class="kqcl">${esc(l)}</span>${h ? `<span class="kqch">${esc(h)}</span>` : ''}</div>`).join('')}</div>`;
-  return ['base', 'age', 'hear'].filter((x) => grp(x).length).map((kind) => `<div class="kqg kqg-${kind}"><div class="kqgt">${KQKIND[kind]}</div><div class="kqcs">${grp(kind).map(card).join('')}</div></div>`).join('') + (Q.foot ? `<div class="kclue3">${String(Q.foot).split('\n').map((x) => `<div>${cfEm(x)}</div>`).join('')}</div>` : '');
+  const V = S.kqv || '分組', seg = `<div class="kqvseg"><span class="sub">檢視</span>${['總表', '分組', '依商品'].map((v) => `<button class="tag sm${V === v ? ' on' : ''}" data-kqv="${v}">${v}</button>`).join('')}</div>`;
+  const foot = Q.foot ? `<div class="kclue3">${String(Q.foot).split('\n').map((x) => `<div>${cfEm(x)}</div>`).join('')}</div>` : '';
+  if (V === '總表') return seg + `<table class="cftab kqtab"><tr><th>類型</th><th>題目</th><th>怎麼問</th><th>他如果說 → 見面可聊</th></tr>${Q.qs.map((q) => `<tr class="kqr-${q.kind}"><td>${esc({ base: '每個人', age: '照年齡', hear: '聽到才點' }[q.kind] || '')}</td><td><b>${esc(q.title)}</b></td><td>${cfEm(q.ask || '')}</td><td>${q.opts.map(([l, h]) => `<span class="kqcl">${esc(l)}</span>${h ? `<span class="kqch">${esc(h)}</span>` : ''}`).join('　')}</td></tr>`).join('')}</table>` + foot;
+  if (V === '依商品') { const m = new Map(); Q.qs.forEach((q) => q.opts.forEach(([l, h]) => String(h || '').split(/[、；;]|→/).map((x) => x.replace(/（[^）]*）|\([^)]*\)/g, '').trim()).filter(Boolean).forEach((pr) => { if (!m.has(pr)) m.set(pr, []); m.get(pr).push(`${q.kind === 'hear' ? '' : q.title + '：'}${l}`); })));
+    return seg + `<div class="sub" style="margin:2px 0 4px">想聊某個商品，看他回答什麼會帶到它</div><table class="cftab kqtab"><tr><th>見面可聊</th><th>哪些回答會帶到</th></tr>${[...m].sort((a, b) => b[1].length - a[1].length).map(([pr, ls]) => `<tr><td><b class="cfk">${esc(pr)}</b></td><td>${ls.map((x) => `<span class="kqcl">${esc(x)}</span>`).join(' ')}</td></tr>`).join('')}</table>` + foot; }
+  return seg + ['base', 'age', 'hear'].filter((x) => grp(x).length).map((kind) => `<div class="kqg kqg-${kind}"><div class="kqgt">${KQKIND[kind]}</div><div class="kqcs">${grp(kind).map(card).join('')}</div></div>`).join('') + (Q.foot ? `<div class="kclue3">${String(Q.foot).split('\n').map((x) => `<div>${cfEm(x)}</div>`).join('')}</div>` : '');
 }
 const KQAG = ['20-29', '30-44', '45-59', '60以上'];
 const kqEdRow = (q) => `<div class="kqed" data-qid="${esc(q.id)}"><div class="cfebh"><select class="qk">${Object.entries(KQKIND).map(([v, l]) => `<option value="${v}"${q.kind === v ? ' selected' : ''}>${l}</option>`).join('')}</select><select class="qa"${q.kind === 'age' ? '' : ' style="display:none"'}>${KQAG.map((a) => `<option${q.age === a ? ' selected' : ''}>${a}</option>`).join('')}</select><input class="qt" value="${esc(q.title)}" placeholder="題目"><span style="flex:1"></span><button type="button" class="btn sm" data-qmv="-1">↑</button><button type="button" class="btn sm" data-qmv="1">↓</button><button type="button" class="btn sm danger" data-qrm>✕</button></div>
@@ -824,7 +829,7 @@ function openCallFlow() {
    <div class="cfheart">🎯 <b>${esc(CALL_HEART.goal)}</b>　🙏 ${esc(CALL_HEART.prayer)}</div>
    ${cfView(false)}</div></div>`;
   $('cfX').onclick = () => { ov.innerHTML = ''; document.body.classList.remove('printing'); const pa = document.getElementById('printArea'); if (pa) pa.className = ''; };
-  $('cfP').onclick = printCallFlow; $('cfE').onclick = () => editCallFlow();
+  $('cfP').onclick = printCallFlow; $('cfE').onclick = () => editCallFlow(); ov.querySelectorAll('[data-kqv]').forEach((b) => (b.onclick = () => { S.kqv = b.dataset.kqv; const sc = ov.querySelector('.ovbody')?.scrollTop; openCallFlow(); const bd = ov.querySelector('.ovbody'); if (bd && sc) bd.scrollTop = sc; }));
 }
 function editCallFlow() { // 原地排版：畫面跟平常一樣，直接改字；按住 ⠿ 拖曳換位置；窄／中／整行調寬度
   const B = JSON.parse(JSON.stringify(cfBlocks())), W = [[1, '窄'], [2, '中'], [3, '整行']];
