@@ -709,9 +709,13 @@ const CLUEQ_DEFAULT = { foot: '電話裡只問、只聽、只記，**不提商�
   { id: 'q_a30', kind: 'age', age: '30-44', title: '30-44', ask: '「這幾年家裡有新成員嗎？」', opts: [['結婚', '保單整理'], ['有小孩', '保單整理、小孩的保障'], ['買房、房貸', '壽險（房貸保障）、住宅險']] },
   { id: 'q_a45', kind: 'age', age: '45-59', title: '45-59', ask: '「爸媽身體都還好嗎？」', opts: [['爸媽年紀大', '長照（失能）'], ['爸媽住院過', '實支實付、長照'], ['快退休', '年金（退休後每年領）']] },
   { id: 'q_a60', kind: 'age', age: '60以上', title: '60以上', ask: '「最近還常出門走走嗎？」', opts: [['常出門', '意外升級'], ['有孫子', '存錢給孫'], ['身體有狀況', '長照（失能）']] },
-  { id: 'q_hear', kind: 'hear', title: '聽到才點', ask: '客戶自己提到才點，不主動問', opts: [['家人住院、自費貴', '實支實付'], ['朋友得癌', '癌症、重大傷病'], ['家裡經濟支柱', '壽險、癌症、重大傷病'], ['定存到期、領年終', '存錢'], ['想存錢又怕生病', '存錢＋保一種病'], ['在玩股票', '證券'], ['自己開店', '頭家壓箱保']] }] };
-const clueQ = () => Vault.get('settings', 'clueq') || CLUEQ_DEFAULT;
-const KQKIND = { base: '每個人都問', age: '照年齡（只出現他那組）', hear: '聽到才點' };
+  { id: 'q_hear', kind: 'hear', title: '保障', ask: '聽到才點：身體、家人的擔心', opts: [['家人住院、自費貴', '實支實付'], ['朋友得癌', '癌症、重大傷病'], ['家裡經濟支柱', '壽險、癌症、重大傷病']] },
+  { id: 'q_hear2', kind: 'hear', title: '理財', ask: '聽到才點：錢的規劃', opts: [['定存到期、領年終', '存錢'], ['想存錢又怕生病', '存錢＋保一種病'], ['在玩股票', '證券'], ['自己開店', '頭家壓箱保']] }] };
+const clueQ = () => { const q = Vault.get('settings', 'clueq'); if (!q) return CLUEQ_DEFAULT;
+  if (!q.hear2) { const h = q.qs.find((x) => x.id === 'q_hear'); if (h && !q.qs.some((x) => x.id === 'q_hear2')) { const money = /定存|年終|存錢|股票|開店|錢/; const m = h.opts.filter(([l, x]) => money.test(l + (x || ''))); // 聽到才點分成保障、理財
+      h.opts = h.opts.filter((o) => !m.includes(o)); h.title = '保障'; h.ask = '聽到才點：身體、家人的擔心'; q.qs.splice(q.qs.indexOf(h) + 1, 0, { id: 'q_hear2', kind: 'hear', title: '理財', ask: '聽到才點：錢的規劃', opts: m }); }
+    q.hear2 = true; Vault.put('settings', q); } return q; };
+const KQKIND = { base: '每個人都問', age: '照年齡（只出現他那組）', hear: '聽到才點（保障、理財）' };
 function kqRowHTML(k, q) { // 客戶頁：一題一列，點選＋自己打字
   const a = (k.clues || {})[q.id] || {}, sel = (a.sel || []).map((x) => x[0]), hints = (a.sel || []).map((x) => x[1]).filter(Boolean);
   return `<div class="kq"><div class="kqh"><b>${esc(q.title)}</b> <span class="kqask">${cfEm(q.ask || '')}</span></div><div class="kqo">${q.opts.map(([l]) => `<button class="tag sm${sel.includes(l) ? ' on' : ''}" data-kq="${q.id}" data-ko="${esc(l)}">${esc(l)}</button>`).join('')}<input class="kqn" data-kqn="${q.id}" value="${esc(a.note || '')}" placeholder="其他／補充"></div>${hints.length ? `<div class="kqhint">見面可聊：${hints.map(esc).join('；')}</div>` : ''}</div>`;
@@ -731,7 +735,7 @@ function kqTemplateHTML() { // 流程頁：問卷一覽，一題一張小卡
   const foot = Q.foot ? `<div class="kclue3">${String(Q.foot).split('\n').map((x) => `<div>${cfEm(x)}</div>`).join('')}</div>` : '';
   if (V === '總表') return seg + `<table class="cftab kqtab"><tr><th>類型</th><th>題目</th><th>怎麼問</th><th>他如果說 → 見面可聊</th></tr>${Q.qs.map((q) => `<tr class="kqr-${q.kind}"><td>${esc({ base: '每個人', age: '照年齡', hear: '聽到才點' }[q.kind] || '')}</td><td><b>${esc(q.title)}</b></td><td>${cfEm(q.ask || '')}</td><td>${q.opts.map(([l, h]) => `<span class="kqcl">${esc(l)}</span>${h ? `<span class="kqch">${esc(h)}</span>` : ''}`).join('　')}</td></tr>`).join('')}</table>` + foot;
   if (V === '金字塔') { // 表頭兩層：基本資料（地址、職業…）｜照年齡（各組一欄）｜聽到才點
-    const G = [['基本資料', Q.qs.filter((q) => q.kind === 'base').map((q) => [q.title, q])], ['照年齡', Q.qs.filter((q) => q.kind === 'age').map((q) => [q.age || q.title, q])], ['聽到才點', Q.qs.filter((q) => q.kind === 'hear').map((q) => ['', q])]].filter(([, c]) => c.length);
+    const G = [['基本資料', Q.qs.filter((q) => q.kind === 'base').map((q) => [q.title, q])], ['照年齡', Q.qs.filter((q) => q.kind === 'age').map((q) => [q.age || q.title, q])], ['聽到才點', Q.qs.filter((q) => q.kind === 'hear').map((q) => [q.title, q])]].filter(([, c]) => c.length);
     const cols = G.flatMap(([g, c]) => c.map(([t, q], i) => ({ g, t, q, first: i === 0 })));
     const cell = (re, q) => q.opts.filter(([, h]) => re.test(h || '')).map(([l]) => `<span class="kqcl">${esc(l)}</span>`).join('');
     const sub = G.every(([g, c]) => c.length === 1 && !c[0][0]);
@@ -872,7 +876,7 @@ function editCallFlow() { // 原地排版：畫面跟平常一樣，直接改字
   $('cfAdd').onclick = () => { const d = document.createElement('div'); d.innerHTML = blk({ id: uid(), title: '新的一塊', text: '', w: 1 }); const el = d.firstElementChild; $('cfAdd').before(el); wire(el); el.querySelector('.cfet').select(); };
   $('cfC').onclick = openCallFlow;
   $('cfRe').onclick = (e) => { const x = e.currentTarget; if (!x.dataset.ok) { x.dataset.ok = 1; x.textContent = '再按一次還原'; return; } Vault.del('settings', 'cflow'); openCallFlow(); toast('已還原成預設'); };
-  $('cfS').onclick = () => { const qe = G.querySelector('.cfqed'); if (qe) Vault.put('settings', { id: 'clueq', ...kqEdRead(qe) }); const out = [...G.querySelectorAll('.cfeb2')].map((el) => el.dataset.q ? { id: el.dataset.id, title: el.querySelector('.cfet').value.trim() || '問線索', q: true, text: 'q', w: +(el.className.match(/\bw(\d)\b/) || [0, 2])[1], fold: el.classList.contains('folded') } : ({ id: el.dataset.id, title: el.querySelector('.cfet').value.trim(), html: cfClean(el.querySelector('.cfex').innerHTML), text: el.querySelector('.cfex').innerText, w: +(el.className.match(/\bw(\d)\b/) || [0, 1])[1], fold: el.classList.contains('folded') })).filter((b) => b.title || b.text.trim());
+  $('cfS').onclick = () => { const qe = G.querySelector('.cfqed'); if (qe) Vault.put('settings', { id: 'clueq', ...kqEdRead(qe), hear2: true }); const out = [...G.querySelectorAll('.cfeb2')].map((el) => el.dataset.q ? { id: el.dataset.id, title: el.querySelector('.cfet').value.trim() || '問線索', q: true, text: 'q', w: +(el.className.match(/\bw(\d)\b/) || [0, 2])[1], fold: el.classList.contains('folded') } : ({ id: el.dataset.id, title: el.querySelector('.cfet').value.trim(), html: cfClean(el.querySelector('.cfex').innerHTML), text: el.querySelector('.cfex').innerText, w: +(el.className.match(/\bw(\d)\b/) || [0, 1])[1], fold: el.classList.contains('folded') })).filter((b) => b.title || b.text.trim());
     Vault.put('settings', { id: 'cflow', blocks: out, mig1: true, mig2: true, mig3: true }); openCallFlow(); toast('排版已儲存'); };
 }
 function printCallFlow() { // 一頁 A4：只印流程，不印 app 畫面

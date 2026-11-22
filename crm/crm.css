@@ -902,7 +902,7 @@ details.cfb>summary{cursor:pointer;margin-bottom:4px}
 .kqcl{display:inline-block;border:1px solid #ddd;border-radius:999px;padding:0 7px;margin-right:4px;background:#faf8f2}
 .kqch{color:#c0392b;font-weight:700}
 @media print{#printArea .kqcs{grid-template-columns:repeat(4,1fr)}#printArea .kqc{font-size:7pt;padding:2pt 3pt}}
-.kqg-hear .kqct{display:none}
+.kqg-hear .kqcs{grid-template-columns:repeat(2,minmax(0,1fr))}
 
 .kqvseg{display:flex;gap:4px;align-items:center;margin:0 0 6px}
 .kqtab td{font-size:12.5px}.kqtab .kqcl{margin:1px 2px 1px 0}
