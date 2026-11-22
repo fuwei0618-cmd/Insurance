@@ -706,9 +706,29 @@ function cfDefaultBlocks() { // 流程頁預設內容：改成一塊一塊，可
   add('聊天話題鉤子', '紅利（民國 93 年前的保單）\n職業變更\n受益人\n理賠抵繳');
   add('見面待做', '未訪件 App');
   add('分級', 'A → VIP，高度優先\nB → 有預算、有促約機會\nC-1 → 有關鍵人物，預算不夠\nC-2 → 關係好，觀念還沒到\nC-3 → 排斥、忙、沒需求，用寄的');
-  F.cheats.forEach(([h, rows, foot]) => add(h, rows.map((r) => (r.length === 1 ? r[0] : r[0] + ' → ' + r[1])).join('\n') + (foot ? '\n' + foot : '')));
+  add(CF_CLUE.title, CF_CLUE.text, { w: 2 });
+  F.cheats.filter(([h]) => !['聽到線索提什麼', '年齡挑話題'].includes(h)).forEach(([h, rows, foot]) => add(h, rows.map((r) => (r.length === 1 ? r[0] : r[0] + ' → ' + r[1])).join('\n') + (foot ? '\n' + foot : '')));
   F.folds.forEach(([h, l]) => add(h, l.join('\n'), { fold: true }));
   return B;
+}
+const CF_CLUE = { title: '從確認資料問線索', w: 2, text: `#確認資料＝問線索（每個人都適用）
+地址 → 「還住這邊嗎？是自己的房子嗎？」搬家、買房：**住宅險、房貸保障**
+職業 → 「還在○○上班嗎？」換工作：**職業類別要改**；開店：**頭家壓箱保**；快退休：**每年有錢領**
+家戶 → 「年曆寄給您，還是家裡其他人收？家裡幾個人住？」結婚、小孩：**保單整理**
+受益人 → 電話裡不問，當見面理由：「要本人簽名，見面時順便更新」
+#照年齡多問一句
+20-29 → 「這張是爸媽幫您保的吧？現在自己在工作了嗎？」騎車通勤：**意外**；剛出社會：**實支**
+30-44 → 「這幾年家裡有新成員嗎？」結婚、小孩、房貸：**保單整理**
+45-59 → 「爸媽身體都還好嗎？」爸媽年紀大：**長照**；快退休：**每年有錢領**
+60以上 → 「最近還常出門走走嗎？」常出門：**意外升級**；有孫子：**存錢給孫**
+#聽到就記，不急著講
+寫進「備註／線索」，只說：「這個我幫您整理一下，**送年曆時順便跟您說**。」
+什麼都沒聽到 → 「我幫您把保單**免費整理成一張表**，送年曆時帶給您。」` };
+function cfMigrate() { // 一次性：把「聽到線索提什麼」「年齡挑話題」換成合併版，其他區塊不動
+  const st = Vault.get('settings', 'cflow'); if (!st?.blocks || st.mig1) return;
+  const old = ['聽到線索提什麼', '年齡挑話題'], i = st.blocks.findIndex((b) => old.includes((b.title || '').trim()));
+  const blocks = st.blocks.filter((b) => !old.includes((b.title || '').trim())); if (i >= 0) blocks.splice(Math.min(i, blocks.length), 0, { id: uid(), ...CF_CLUE });
+  Vault.put('settings', { ...st, blocks, mig1: true });
 }
 const cfBlocks = () => Vault.get('settings', 'cflow')?.blocks || cfDefaultBlocks();
 const cfLines = (t) => String(t || '').split('\n').map((x) => x.trim()).filter(Boolean).map((x) => x.startsWith('#') ? `<div class="cfh">${cfEm(x.slice(1).trim())}</div>`
@@ -726,6 +746,7 @@ const cfPlainHtml = (t) => String(t || '').split('\n').map((x) => `<div>${x.trim
 const cfRichBody = (b) => (b.html != null ? `<div class="cfrich">${cfClean(b.html)}</div>` : cfLines(b.text));
 const cfView = (pr) => `<div class="cfgridx">${cfBlocks().map((b) => b.fold && !pr ? `<details class="cfb w${b.w || 1}"><summary><h2>${esc(b.title)}</h2></summary>${cfRichBody(b)}</details>` : `<div class="cfb w${b.w || 1}"><h2>${esc(b.title)}</h2>${cfRichBody(b)}</div>`).join('')}</div>`;
 function openCallFlow() {
+  cfMigrate();
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>服務件流程</h2><button class="btn" id="cfE">✎ 排版</button><button class="btn" id="cfP">🖨 印一頁 A4</button><button class="btn pri" id="cfX">關閉</button></div>
   <div class="ovbody cfone" style="flex-direction:column;margin:0 auto;width:100%">
    <div class="cfheart">🎯 <b>${esc(CALL_HEART.goal)}</b>　🙏 ${esc(CALL_HEART.prayer)}</div>
