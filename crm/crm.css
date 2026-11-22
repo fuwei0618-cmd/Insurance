@@ -812,7 +812,7 @@ details.cfb>summary{cursor:pointer;margin-bottom:4px}
 /* 電訪分頁 */
 .kdtabs{margin:4px 0 10px}
 .kdtabs .btn{font-size:15px;padding:6px 18px}
-.kprep{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:10px;margin-bottom:10px;align-items:start}
+.kprep{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
 .kprep .kpbox{margin:0;font-size:14px;line-height:1.6}
 .kfacts>div{margin:2px 0}.kfacts .sub{display:inline-block;min-width:4em}
 .kopen{background:#f3efe4;border-radius:8px;padding:6px 10px;margin:4px 0 8px}
@@ -820,8 +820,14 @@ details.cfb>summary{cursor:pointer;margin-bottom:4px}
 .cftab tr.kmine td{background:#fff6d6}
 @media (max-width:900px){.kprep{grid-template-columns:1fr}}
 
-.kpre{position:sticky;top:120px}
+.kpre{padding:8px 12px}
 .kclue{background:#fff6d6;border-left:4px solid #e0b43c;border-radius:8px;padding:6px 10px;margin:6px 0 10px}
 .kclue2{margin:4px 0 10px}.kclue2>summary{cursor:pointer;margin-bottom:4px}
 .kclue2 .cftab{font-size:12.5px}
 .kclue3{border-top:1px dashed #ddd;margin-top:10px;padding-top:6px;font-size:13px}
+
+.kprow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:3px 0}
+.kprow>b{margin-right:6px}.kprow>.sub{margin-right:10px}
+.kprow .klab{min-width:4.5em;font-size:13px;color:var(--muted,#777)}
+.tag.sm{padding:3px 10px;font-size:13px}
+.kpretip{border-top:1px dashed #ddd;margin-top:6px;padding-top:6px;font-size:13px;line-height:1.55}

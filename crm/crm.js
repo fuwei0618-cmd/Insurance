@@ -1014,6 +1014,10 @@ function callListHTML() {
   ${areas.length ? `<div class="chips subchips"><span class="sub" style="align-self:center">地區</span>${['全部', ...areas].map((x) => `<button class="chip${S.kar === x ? ' on' : ''}" data-kar="${esc(x)}">${esc(x)} <span class="cnt">${x === '全部' ? all.length : all.filter((k) => kArea(k) === x).length}</span></button>`).join('')}</div>` : ''}</div>
   <div class="list">${list.length ? list.map((k) => { const l = logsOf(k)[0], due = k.nextDate && k.status !== '結案' && k.nextDate <= today; return `<button class="item${k.id === S.ksel ? ' on' : ''}" data-ksel="${k.id}"><span class="t"><span>${k.no ? `<span class="kno">${esc(k.no)}</span>` : ''}${esc(k.name || '未填姓名')}</span><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></span><span class="s">${k.level ? `<b class="lvl lv-${esc(k.level)}">${esc(k.level)}</b> ` : ''}${k.area ? esc(k.area) + ' · ' : ''}${l ? `上次 ${fmtDay(l.date).slice(5)} ${esc(l.result)}` : '還沒打過'}${k.nextDate && k.status !== '結案' ? ` · <span class="${due ? 'due' : ''}">下次 ${fmtDay(k.nextDate).slice(5)}</span>` : ''}${k.source ? ' · ' + esc(k.source) : ''}</span></button>`; }).join('') : `<div class="empty">${all.length ? '沒有符合的對象。' : '還沒有服務件名單。按「匯入名單」一次貼上很多人，或「＋ 新增」一個一個加。'}</div>`}</div></section>`;
 }
+const PTYPES = ['醫療', '意外', '壽險', '癌症', '重大傷病', '長照', '儲蓄／年金', '投資型'];
+const kAgeOpts = () => { const cnt = new Map(); calls().forEach((o) => (o.tags || []).filter(isAgeTag).forEach((t) => { const n = ageNorm(t); const m = cnt.get(n) || new Map(); m.set(t, (m.get(t) || 0) + 1); cnt.set(n, m); }));
+  ['20-29', '30-44', '45-59', '60以上'].forEach((n) => { if (!cnt.has(n)) cnt.set(n, new Map([[n, 0]])); });
+  return [...cnt].map(([n, m]) => [n, [...m].sort((a, b) => b[1] - a[1])[0][0]]).sort((a, b) => parseInt(a[0], 10) - parseInt(b[0], 10)); };
 const kTab = () => S.kdtab || (S.kcalling ? 'call' : 'rec');
 const ageNorm = (x) => String(x || '').replace(/\s|歲/g, '').replace(/[~～－]/g, '-');
 function kCallPrepHTML(k, logs) { // 電訪分頁：流程模板套進這個人的資料
@@ -1037,7 +1041,11 @@ function kCallPrepHTML(k, logs) { // 電訪分頁：流程模板套進這個人�
     midHTML = m.innerHTML + (okC ? '' : confBox) + (okA ? '' : ageBox) + tailBox;
   }
   return `<div class="kprep">
-   <div class="sec kpbox kpre"><h2>打之前</h2><div class="kfacts">${facts.map(([a, v]) => `<div><span class="sub">${a}</span> ${esc(v)}</div>`).join('')}</div>${pre ? `<details class="kpmore" data-dk="kppre"><summary class="sub">打之前提醒</summary>${cfRichBody(pre)}</details>` : ''}</div>
+   <div class="sec kpbox kpre"><div class="kprow"><b>打之前</b><span class="sub">${esc(k.addr || '沒有地址')}</span><span class="sub">上次：${last ? esc(`${String(last.date || '').slice(5).replace('-', '/')} ${last.result}${last.note ? '（' + last.note + '）' : ''}`) : '還沒打過'}</span>${pre ? `<button class="linkbtn" data-act="kpretip">${S.kpretip ? '收起提醒' : '提醒'}</button>` : ''}</div>
+    <div class="kprow"><span class="klab">年齡</span>${kAgeOpts().map(([n, raw]) => `<button class="tag sm${age === n ? ' on' : ''}" data-kage="${esc(raw)}">${esc(n)}</button>`).join('')}</div>
+    <div class="kprow"><span class="klab">已有保單</span>${PTYPES.map((x) => `<button class="tag sm${(k.ptypes || []).includes(x) ? ' on' : ''}" data-kpt="${x}">${x}</button>`).join('')}</div>
+    <div class="kprow"><span class="klab">要確認</span><button class="tag sm${k.needBen ? ' on' : ''}" data-kchk="needBen">受益人</button><button class="tag sm${k.needJob ? ' on' : ''}" data-kchk="needJob">職業類別</button></div>
+    ${pre && S.kpretip ? `<div class="kpretip">${cfRichBody(pre)}</div>` : ''}</div>
    <div class="sec kpbox kmid"><h2>電話中</h2><div class="kopen">開口：「請問是 <b>${esc(k.name || '')}</b> 嗎？」</div>${midHTML}</div>
   </div>`;
 }
@@ -2365,6 +2373,8 @@ app.addEventListener('click', async (e) => {
   if (d.khhok) { const g = callHouseholds(calls()).get(d.khhok) || []; const nm = g.find((x) => x.hh)?.hh || ((g[0]?.name || '').slice(0, 1) + '家'); g.forEach((k) => { k.hh = nm; k.hhOk = true; Vault.put('calls', k); }); toast(`已確認：${nm}`); App.render(); return; }
   if (d.kar) { S.kar = d.kar; App.render(); return; }
   if (d.klv) { const k = curCall(); if (!k) return; k.level = k.level === d.klv ? '' : d.klv; Vault.put('calls', k); App.render(); return; }
+  if (d.kage) { const k = curCall(); if (!k) return; const on = (k.tags || []).includes(d.kage); k.tags = (k.tags || []).filter((t) => !isAgeTag(t)); if (!on) k.tags.push(d.kage); Vault.put('calls', k); App.render(); return; }
+  if (d.kpt) { const k = curCall(); if (!k) return; const a = k.ptypes || []; k.ptypes = a.includes(d.kpt) ? a.filter((x) => x !== d.kpt) : [...a, d.kpt]; Vault.put('calls', k); App.render(); return; }
   if (d.kchk) { const k = curCall(); if (!k) return; k[d.kchk] = !k[d.kchk]; Vault.put('calls', k); App.render(); return; }
   if (d.gev) { S.gev = d.gev; S.gedit = false; App.render(); return; }
   if (d.gtype) { S.gtype = d.gtype; App.render(); return; }
@@ -2463,6 +2473,7 @@ app.addEventListener('click', async (e) => {
     case 'hhopen': S.kdtab = 'rec'; S.hhOpen = true; S.hhq = ''; App.render(); { const el = document.getElementById('khhsec'); if (el) { el.open = true; const pd = el.parentElement?.closest('details'); if (pd) pd.open = true; el.scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => $('kHhQ')?.focus(), 300); } } break;
     case 'ksmsmark': { const k = curCall(); if (!k) break; const cl = S.kcur?.k === k.id ? (k.logs || []).find((l) => l.id === S.kcur.l) : null; if (cl?.sms) { delete cl.sms; Vault.put('calls', k); } else kMarkSms(k, '手機傳的'); App.render(); break; }
     case 'ktagpick': { const k = curCall(); if (k) openTagPicker(k); break; }
+    case 'kpretip': S.kpretip = !S.kpretip; App.render(); break;
     case 'ksms': { const k = curCall(); if (k) openSmsPicker(k); break; }
     case 'gsvctog': S.gsvcOpen = !S.gsvcOpen; App.render(); break;
     case 'kundoround': { const r = kRound(); if (r.n < 2) break; if (!armConfirm(b, `再按一次回到第 ${r.n - 1} 輪`)) break; const p = r.prev || { n: r.n - 1, start: '2026-11-01' }; Vault.put('settings', { id: 'kround', n: p.n, start: p.start, prev: p.prev || null }); S.kqSnap = null; App.render(); toast(`回到第 ${p.n} 輪了`); break; }
