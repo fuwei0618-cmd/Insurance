@@ -434,7 +434,7 @@ const linkify = (html) => html.replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href=
 
 /* ================= 狀態與畫面 ================= */
 const S = { railMini: (() => { try { return localStorage.getItem('crm-railmini') === '1'; } catch (e) { return false; } })(), ginvOpen: false, gview: 'table', kcolHide: (() => { try { return localStorage.getItem('crm-kcolhide') === '1'; } catch (e) { return false; } })(), kfold: (() => { try { return localStorage.getItem('crm-kfold') === '1'; } catch (e) { return false; } })(), ktable: true, kprog: '全部', kmark: '全部', ksort: 'no', kview: 'prog', kedit: false, kfromTable: false, kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'calls' /* 年底服務件期間：打開先到服務件總表；之後改回 'cases' */, showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
-const NAV_KEYS = ['view', 'ktable', 'kview', 'ksel', 'showDetail', 'kcalling', 'khist', 'kqSnap', 'kcur', 'kmark', 'kar', 'klv', 'kprog', 'kst', 'kfromTable', 'sel', 'csel']; // 更新或重開後回到原本的頁面（30 分鐘內）
+const NAV_KEYS = ['kdtab', 'view', 'ktable', 'kview', 'ksel', 'showDetail', 'kcalling', 'khist', 'kqSnap', 'kcur', 'kmark', 'kar', 'klv', 'kprog', 'kst', 'kfromTable', 'sel', 'csel']; // 更新或重開後回到原本的頁面（30 分鐘內）
 try { const nv = JSON.parse(localStorage.getItem('crm-nav') || 'null'); if (nv && Date.now() - nv.t < 30 * 60000) NAV_KEYS.forEach((k) => { if (k in nv) S[k] = nv[k]; }); } catch (e) { }
 const cases = () => Vault.all('cases');
 const localDay = (d = new Date()) => { const t = new Date(d); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
@@ -1014,6 +1014,25 @@ function callListHTML() {
   ${areas.length ? `<div class="chips subchips"><span class="sub" style="align-self:center">地區</span>${['全部', ...areas].map((x) => `<button class="chip${S.kar === x ? ' on' : ''}" data-kar="${esc(x)}">${esc(x)} <span class="cnt">${x === '全部' ? all.length : all.filter((k) => kArea(k) === x).length}</span></button>`).join('')}</div>` : ''}</div>
   <div class="list">${list.length ? list.map((k) => { const l = logsOf(k)[0], due = k.nextDate && k.status !== '結案' && k.nextDate <= today; return `<button class="item${k.id === S.ksel ? ' on' : ''}" data-ksel="${k.id}"><span class="t"><span>${k.no ? `<span class="kno">${esc(k.no)}</span>` : ''}${esc(k.name || '未填姓名')}</span><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></span><span class="s">${k.level ? `<b class="lvl lv-${esc(k.level)}">${esc(k.level)}</b> ` : ''}${k.area ? esc(k.area) + ' · ' : ''}${l ? `上次 ${fmtDay(l.date).slice(5)} ${esc(l.result)}` : '還沒打過'}${k.nextDate && k.status !== '結案' ? ` · <span class="${due ? 'due' : ''}">下次 ${fmtDay(k.nextDate).slice(5)}</span>` : ''}${k.source ? ' · ' + esc(k.source) : ''}</span></button>`; }).join('') : `<div class="empty">${all.length ? '沒有符合的對象。' : '還沒有服務件名單。按「匯入名單」一次貼上很多人，或「＋ 新增」一個一個加。'}</div>`}</div></section>`;
 }
+const kTab = () => S.kdtab || (S.kcalling ? 'call' : 'rec');
+const ageNorm = (x) => String(x || '').replace(/\s|歲/g, '').replace(/[~～－]/g, '-');
+function kCallPrepHTML(k, logs) { // 電訪分頁：流程模板套進這個人的資料
+  cfMigrate(); cfMigrate2(); const B = cfBlocks(), find = (re) => B.find((b) => re.test(b.title || ''));
+  const age = (k.tags || []).filter(isAgeTag).map(ageNorm)[0] || '', last = logs[0];
+  const facts = [['年齡', age || '未標'], ['地址', k.addr || ''], ['職業', k.job || ''], ['保單', k.policy || ''], ['備註', k.note || ''], ['上次', last ? `${String(last.date || '').slice(5).replace('-', '/')} ${last.result}${last.note ? '（' + last.note + '）' : ''}` : '還沒打過'], ['住址觀察', k.addrNote || '']].filter(([, v]) => v);
+  const pre = find(/^打之前/), mid = find(/^電話中/), clue = find(/線索/);
+  const clueHTML = clue ? (() => { const d = new DOMParser().parseFromString(`<div>${cfRichBody(clue)}</div>`, 'text/html').body.firstChild;
+    d.querySelectorAll('tr').forEach((tr) => { const c = ageNorm(tr.cells[0]?.textContent); if (/^\d{2}(-\d{2}|以上)$/.test(c) && age && c !== age) tr.remove(); else if (age && c === age) tr.classList.add('kmine'); }); return d.innerHTML; })() : '';
+  return `<div class="kprep">
+   <div class="sec kpbox"><h2>打之前 <span class="sub">${esc(k.name || '')}</span></h2><div class="kfacts">${facts.map(([a, v]) => `<div><span class="sub">${a}</span> ${esc(v)}</div>`).join('')}</div>${pre ? `<details class="kpmore" data-dk="kppre"><summary class="sub">打之前提醒</summary>${cfRichBody(pre)}</details>` : ''}</div>
+   ${mid ? `<div class="sec kpbox"><h2>電話中</h2><div class="kopen">開口：「請問是 <b>${esc(k.name || '')}</b> 嗎？」</div>${cfRichBody(mid)}</div>` : ''}
+   ${clue ? `<div class="sec kpbox"><h2>問線索${age ? ` <span class="sub">${esc(age)} 那一列已標出</span>` : ''}</h2>${clueHTML}</div>` : ''}
+  </div>`;
+}
+function kCallMoreHTML() { // 電訪分頁最下面：其他小抄收起來
+  const skip = /^(打之前|電話中|掛電話後|只做一次|之後)|線索|分級/; const rest = cfBlocks().filter((b) => !skip.test(b.title || ''));
+  return rest.length ? `<details class="sec" data-dk="kpmore"><summary><h2 style="display:inline">其他小抄</h2> <span class="sub">${rest.map((b) => esc(b.title)).join('、')}</span></summary><div class="cfgridx">${rest.map((b) => `<div class="cfb w${b.w || 1}"><h2>${esc(b.title)}</h2>${cfRichBody(b)}</div>`).join('')}</div></details>` : '';
+}
 function callDetailHTML() { // 一張「這通電話」卡從上點到下；很少改的收起來
   const k = curCall();
   if (!k) return '<div class="empty">從左邊選一位要撥打的對象。</div>';
@@ -1032,7 +1051,8 @@ function callDetailHTML() { // 一張「這通電話」卡從上點到下；很�
    ${k.addr ? `<div class="sub khaddr">${esc(k.addr)}${k.hh ? '・' + esc(k.hh) : ''}</div>` : ''}
    ${(() => { const oth = (callHouseholds(calls()).get(hhKey(k)) || []).filter((o) => o.id !== k.id); return `<div class="khhrow"><span class="sub">同戶</span>${oth.map((o) => { const gf = callGift(o), pg = callProg(o); return `<button class="tag" data-ksel="${o.id}">${esc(o.name || '未填')}<span class="sub">　${esc(pg)}${gf ? '・年曆' + esc(gf === '要' ? '要' : gf) : ''}</span> ›</button>`; }).join('')}<button class="linkbtn" data-act="hhopen">${oth.length ? '＋ 再連結家人' : '＋ 連結家人'}</button></div>`; })()}
    <div class="khskip"><button class="tag${k.other ? ' on' : ''}" data-kchk="other">${k.other ? '✓ ' : ''}不追蹤</button>${k.other ? `<select data-kf="otherWhy" id="kf_otherWhy2" aria-label="原因">${KSKIP.map((x) => `<option${skipWhy(k) === x ? ' selected' : ''}>${x}</option>`).join('')}</select><input data-kf="otherWho" id="kf_otherWho2" value="${esc(k.otherWho)}" placeholder="${skipWhy(k) === '同事的件' ? '哪位同事' : '補充'}">` : ''}<button class="tag${k.mailBack ? ' on' : ''}" data-kchk="mailBack">寄信退件</button></div></div>
-  <div class="sec kcard"><h2>這通電話</h2>
+  ${(() => { const tb = kTab(); return `<div class="seg2 kdtabs"><button class="btn sm${tb === 'call' ? ' pri' : ''}" data-kdtab="call">📞 電訪</button><button class="btn sm${tb === 'rec' ? ' pri' : ''}" data-kdtab="rec">📋 記錄</button></div>${tb === 'call' ? kCallPrepHTML(k, logs) : ''}`; })()}
+  <div class="sec kcard"><h2>${kTab() === 'call' ? '掛電話後' : '這通電話'}</h2>
    <div class="krow"><span class="klab">結果</span><div class="tags">${(() => { const cr = S.kcur?.k === k.id ? (k.logs || []).find((l) => l.id === S.kcur.l)?.result : ''; return RESULTS.map(([r]) => `<button class="tag${cr === r ? ' on' : ''}" data-kres="${r}">${r}</button>`).join('') + (cr ? '<span class="sub">　✓ 已記錄</span>' : ''); })()}</div></div>
    ${(() => { const cl = S.kcur?.k === k.id ? (k.logs || []).find((l) => l.id === S.kcur.l) : null; return cl ? `<div class="krow"><span class="klab">這通</span><div><button class="tag${cl.sms ? ' on' : ''}" data-act="ksmsmark">${cl.sms ? '✓ 有傳簡訊' : '💬 有傳簡訊'}</button>${cl.sms ? `<span class="sub">　${esc(cl.sms)}</span>` : ''}<input class="klnote" id="klnote_${cl.id}" data-klognote="${cl.id}" value="${esc(cl.note || '')}" placeholder="這通電話的備註，例：女兒接的，媽媽在上班，晚上再打"></div></div>` : ''; })()}
    <div class="krow"><span class="klab">分級</span><div class="tags">${LEVELS.map((x) => `<button class="tag lvtag${k.level === x ? ' on' : ''}" data-klv="${x}" title="${esc(LEVEL_TIP[x])}"><b>${x}</b> <span class="lvtip">${LEVEL_TIP[x]}</span></button>`).join('')}</div></div>
@@ -1045,7 +1065,7 @@ function callDetailHTML() { // 一張「這通電話」卡從上點到下；很�
    <label class="f">備註／線索<textarea id="kf_note" class="grow" data-kf="note" rows="2" placeholder="例：LINE 說要 2 本；最近換工作；女兒要結婚…">${esc(k.note)}</textarea></label>
    <div class="grid2"><label class="f">下次聯絡<input type="date" id="kf_nextDate" data-kf="nextDate" value="${esc(k.nextDate)}"><span class="knq">${[[1, '明天'], [3, '3 天後'], [7, '1 週後'], [14, '2 週後'], [30, '1 個月後']].map(([d, l]) => `<button type="button" class="tag sm" data-knext="${d}">${l}</button>`).join('')}${k.nextDate ? '<button type="button" class="linkbtn" data-knext="0">清除</button>' : ''}</span>${k.nextDate && k.nextDate > localDay() ? '<span class="sub">到這天之前，撥打時會先跳過他</span>' : ''}</label><label class="f">約訪日期<input type="date" id="kf_visitDate" data-kf="visitDate" value="${esc(k.visitDate)}"></label></div>
    <div class="actions kcardgo"><button class="tag${k.met ? ' on' : ''}" data-kchk="met">${k.met ? '✓ ' : ''}已見面</button><span style="flex:1"></span>${S.kcalling ? '<button class="btn pri" data-act="knext">下一位 ›</button>' : ''}</div></div>
-  ${kSvcSectionHTML(k)}
+  ${kTab() === 'call' ? kCallMoreHTML() : `${kSvcSectionHTML(k)}
   <details class="sec" data-dk="kdata"><summary><h2 style="display:inline">資料</h2> <span class="sub">聯絡、功課、家戶</span></summary><div class="grid2">
    <label class="f">手機<input id="kf_phone" data-kf="phone" inputmode="tel" value="${esc(k.phone)}"></label>
    <label class="f">住家電話<input id="kf_home" data-kf="home" inputmode="tel" value="${esc(k.home)}"></label>
@@ -1060,10 +1080,7 @@ function callDetailHTML() { // 一張「這通電話」卡從上點到下；很�
    <label class="f">住址觀察<input id="kf_addrNote" data-kf="addrNote" value="${esc(k.addrNote)}" placeholder="例如：電梯大樓、透天、社區"></label>
    <label class="f">保單概況<textarea id="kf_policy" class="grow" data-kf="policy" rows="2" placeholder="有哪些保單、繳費狀況…">${esc(k.policy)}</textarea></label>
    ${callHHSectionHTML(k)}
-   <div class="actions">${cl ? `<button class="btn sm" data-goclient="${cl.id}">看客戶資料 ›</button>` : '<button class="btn sm" data-act="tocliient">轉成客戶</button>'}<button class="btn sm danger" data-act="delcall">刪除這位</button></div></details>
-  <details class="sec script" data-dk="kscript"><summary><h2 style="display:inline">話術</h2></summary>
-   ${scs.length ? `<div class="actions" style="align-items:center"><select id="kScript" aria-label="選擇話術">${scs.map((x) => `<option value="${x.id}"${x.id === S.script ? ' selected' : ''}>${esc(x.title)}</option>`).join('')}</select><button class="linkbtn" data-act="editscript">編輯</button><button class="linkbtn" data-act="newscript">＋ 新話術</button><button class="linkbtn" data-act="samplescript">＋ 新版範例</button></div><pre class="scripttext">${esc(sc?.body || '')}</pre>${nimgsHTML(sc || {})}`
-    : `<div class="sub">還沒有話術。可以先用範例改成你自己的說法。</div><div class="actions"><button class="btn pri" data-act="samplescript">用範例開始</button><button class="btn" data-act="newscript">自己寫</button></div>`}</details>
+   <div class="actions">${cl ? `<button class="btn sm" data-goclient="${cl.id}">看客戶資料 ›</button>` : '<button class="btn sm" data-act="tocliient">轉成客戶</button>'}<button class="btn sm danger" data-act="delcall">刪除這位</button></div></details>`}
 `;
 }
 
@@ -2358,6 +2375,7 @@ app.addEventListener('click', async (e) => {
   if (d.knext != null) { const k = curCall(); if (k) { const n = +d.knext; k.nextDate = n ? localDay(new Date(Date.now() + n * 864e5)) : ''; Vault.put('calls', k); App.render(); toast(n ? `下次聯絡：${fmtDay(k.nextDate)}，之前撥打會先跳過` : '已清除下次聯絡'); } return; }
   if (d.kvs) { const k = curCall(); if (k) { const a = new Set(k.visitSlots || []); a.has(d.kvs) ? a.delete(d.kvs) : a.add(d.kvs); k.visitSlots = VSLOTS.filter((v) => a.has(v)); Vault.put('calls', k); App.render(); } return; }
   if (d.kgw != null) { const k = curCall(); if (k) { k.giftWith = d.kgw || ''; if (k.giftWith) { k.giftTbd = false; k.giftQty = ''; k.giftSkip = false; } Vault.put('calls', k); kgSync(k); App.render(); } return; }
+  if (d.kdtab) { S.kdtab = d.kdtab; App.render(); return; }
   if (d.kres) { const k = curCall(); if (!k) return; const o = kSetResult(k, d.kres); App.render(); if (d.kres === '其他' && !o.removed) setTimeout(() => document.querySelector('[data-klognote]')?.focus(), 60); toast(o.removed ? '已取消這筆結果' : d.kres === '其他' ? '已記錄：其他，在「這通」寫一下發生什麼事' : `已記錄：${d.kres}` + (o.hn ? `；同戶 ${o.hn} 位也標成已聯絡` : '')); return; }
   if (d.kdel) { const k = curCall(); if (k && armConfirm(b, '刪？')) { k.logs = (k.logs || []).filter((x) => x.id !== d.kdel); Vault.put('calls', k); App.render(); } return; }
   if (d.ccat) { S.ccat = d.ccat; App.render(); return; }
@@ -2430,7 +2448,7 @@ app.addEventListener('click', async (e) => {
       const dd = BD.draft; dd.rows = dd.rows.filter((r) => (r.name || '').trim()); const used = new Set(dd.rows.map((r) => r.cat)); Object.keys(dd.cats).forEach((k) => { if (!used.has(k) && !BINDER_SEED.cats[k]) delete dd.cats[k]; }); dd.done = (dd.done || []).filter((x) => dd.rows.some((r) => r.id === x));
       binderSave(dd); BD.edit = false; BD.draft = null; App.render(); toast('已儲存'); break; }
     case 'ktagimp': openCallTagImport(); break;
-    case 'hhopen': S.hhOpen = true; S.hhq = ''; App.render(); { const el = document.getElementById('khhsec'); if (el) { el.open = true; const pd = el.parentElement?.closest('details'); if (pd) pd.open = true; el.scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => $('kHhQ')?.focus(), 300); } } break;
+    case 'hhopen': S.kdtab = 'rec'; S.hhOpen = true; S.hhq = ''; App.render(); { const el = document.getElementById('khhsec'); if (el) { el.open = true; const pd = el.parentElement?.closest('details'); if (pd) pd.open = true; el.scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => $('kHhQ')?.focus(), 300); } } break;
     case 'ksmsmark': { const k = curCall(); if (!k) break; const cl = S.kcur?.k === k.id ? (k.logs || []).find((l) => l.id === S.kcur.l) : null; if (cl?.sms) { delete cl.sms; Vault.put('calls', k); } else kMarkSms(k, '手機傳的'); App.render(); break; }
     case 'ktagpick': { const k = curCall(); if (k) openTagPicker(k); break; }
     case 'ksms': { const k = curCall(); if (k) openSmsPicker(k); break; }

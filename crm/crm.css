@@ -808,3 +808,15 @@ details.cfb>summary{cursor:pointer;margin-bottom:4px}
 .cftab th{background:#f3efe4;font-weight:700;white-space:nowrap}
 .cftab td:first-child{white-space:nowrap;color:#555}
 @media print{#printArea .cftab{font-size:7.5pt}#printArea .cftab th,#printArea .cftab td{padding:1.5pt 3pt}}
+
+/* 電訪分頁 */
+.kdtabs{margin:4px 0 10px}
+.kdtabs .btn{font-size:15px;padding:6px 18px}
+.kprep{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.kprep .kpbox{margin:0;font-size:14px;line-height:1.6}
+.kprep .kpbox:nth-child(3){grid-column:1/-1}
+.kfacts>div{margin:2px 0}.kfacts .sub{display:inline-block;min-width:4em}
+.kopen{background:#f3efe4;border-radius:8px;padding:6px 10px;margin:4px 0 8px}
+.kpmore{margin-top:6px}.kpmore>summary{cursor:pointer}
+.cftab tr.kmine td{background:#fff6d6}
+@media (max-width:900px){.kprep{grid-template-columns:1fr}}
