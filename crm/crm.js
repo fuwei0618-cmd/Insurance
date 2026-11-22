@@ -584,7 +584,7 @@ function caseDetailHTML() {
 const calls = () => Vault.all('calls');
 const curCall = () => Vault.get('calls', S.ksel);
 const CALL_ST = ['待撥', '再聯絡', '已約訪', '結案'];
-const RESULTS = [['未接', '再聯絡'], ['已接・聊過', '再聯絡'], ['LINE 已聯絡', '再聯絡'], ['約訪成功', '已約訪'], ['請我再打', '再聯絡'], ['拒絕', '結案'], ['空號／錯號', '結案']];
+const RESULTS = [['未接', '再聯絡'], ['已接・聊過', '再聯絡'], ['約訪成功', '已約訪'], ['請我再打', '再聯絡'], ['拒絕', '結案'], ['空號／錯號', '結案']];
 const noCmp = (a, b) => { const x = parseInt(a.no, 10), y = parseInt(b.no, 10); return (isNaN(x) ? 1e9 : x) - (isNaN(y) ? 1e9 : y) || (a.name || '').localeCompare(b.name || '', 'zh-Hant'); };
 const NO_ANSWER = ['未接', '空號／錯號'];
 const PROGS = ['未打', '未接', '已接通', '已排訪', '已見面', '不經營'];
@@ -830,7 +830,7 @@ const hasTel = (k) => /\d{6,}/.test((k.phone || '') + ' ' + (k.home || '').repla
 const kFilterOk = () => { const all = calls(), mk = kMarkOkFn(callHouseholds(all)); return (k) => (S.kar === '全部' || kArea(k) === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && mk(k); }; // 開始打電話也照總表上點的標記、地區、分級
 const kRound = () => Vault.get('settings', 'kround') || { id: 'kround', n: 1, start: '2026-11-01' }; // 一輪：這一輪打過的（不管接沒接）先不再帶，整輪打完再開下一輪
 const kInRound = (k) => { const st = kRound().start; return (k.logs || []).some((l) => (l.at || l.date || '') >= st && l.result !== '同戶已聯絡'); };
-const kQueue = () => { const ok = kFilterOk(); const today = localDay(); return calls().filter((k) => !k.other && hasTel(k) && ['未打', '未接'].includes(callProg(k)) && !(k.nextDate && k.nextDate > today) && ok(k)).sort((a, b) => callRank(a) - callRank(b) || ageRank(a) - ageRank(b) || areaSort(kArea(a), kArea(b)) || addrCmp(a, b)); };
+const kQueue = () => { const ok = kFilterOk(); const today = localDay(); return calls().filter((k) => !k.other && !k.giftSkip && hasTel(k) && ['未打', '未接'].includes(callProg(k)) && /* 勾了「不送」年曆＝這位不用打 */ !(k.nextDate && k.nextDate > today) && ok(k)).sort((a, b) => callRank(a) - callRank(b) || ageRank(a) - ageRank(b) || areaSort(kArea(a), kArea(b)) || addrCmp(a, b)); };
 function kSetResult(k, r) { // 點「結果」就直接記下來；同一次再點別的會改掉，再點同一個會取消
   const cur = S.kcur?.k === k.id ? (k.logs || []).find((l) => l.id === S.kcur.l) : null, today = localDay();
   const dropHH = () => calls().forEach((o) => { if (o.id === k.id) return; const n = (o.logs || []).filter((l) => !(l.via === k.id && l.date === today)); if (n.length !== (o.logs || []).length) { o.logs = n; Vault.put('calls', o); } });
