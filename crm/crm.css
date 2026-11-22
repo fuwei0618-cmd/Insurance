@@ -757,7 +757,7 @@ textarea.smsbody{width:100%;box-sizing:border-box;border:1px solid var(--line,#d
 .cfb h2{font-size:15px;margin:0 0 6px;display:inline}
 .cfb>h2{display:block}
 details.cfb>summary{cursor:pointer;margin-bottom:4px}
-.cfl{padding-left:14px;position:relative;margin:2px 0}.cfl:before{content:'•';position:absolute;left:2px;color:var(--muted,#888)}
+.cfl{margin:2px 0}
 .cfn{margin:3px 0}
 .cfh{font-weight:700;font-size:12.5px;margin:8px 0 2px;border-bottom:1px solid var(--line,#ddd)}
 .cfr{display:grid;grid-template-columns:auto 1fr;gap:8px;border-bottom:1px dashed var(--line,#e2ddd0);padding:2px 0}.cfr span:first-child{color:var(--muted,#555);max-width:12em}
@@ -785,3 +785,10 @@ details.cfb>summary{cursor:pointer;margin-bottom:4px}
 .cftools .cfrm{color:#b44;border-color:#e6c4c4}
 .cfeb2.folded{background:#f7f6f2}
 .cfadd{border:2px dashed #ccc;background:transparent;color:#777;font:inherit;font-size:15px;min-height:80px;cursor:pointer}
+
+.cfrich div{margin:2px 0;min-height:1em}
+.cfrich b{font-weight:700}
+.cfediting .cfex{min-height:3em;overflow:visible;outline:none}
+.cffmt{position:sticky;top:0;z-index:5;display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:var(--bg,#f6f4ee);padding:6px 0;margin-bottom:8px}
+.cffmt button{font:inherit;font-size:14px;border:1px solid #ccc;background:#fff;border-radius:8px;padding:4px 12px;cursor:pointer;font-weight:700}
+@media print{#printArea .cfrich div{margin:0}#printArea .cfrich span{-webkit-print-color-adjust:exact;print-color-adjust:exact}}

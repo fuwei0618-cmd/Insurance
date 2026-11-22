@@ -714,7 +714,17 @@ const cfBlocks = () => Vault.get('settings', 'cflow')?.blocks || cfDefaultBlocks
 const cfLines = (t) => String(t || '').split('\n').map((x) => x.trim()).filter(Boolean).map((x) => x.startsWith('#') ? `<div class="cfh">${cfEm(x.slice(1).trim())}</div>`
   : x.includes('→') && x.split('→')[0].trim().length <= 16 ? (([a, ...r]) => `<div class="cfr"><span>${cfEm(a.trim())}</span><span>→ ${cfEm(r.join('→').trim())}</span></div>`)(x.split('→'))
   : /^[①②③④⑤⑥⑦⑧⑨⑩0-9]/.test(x) ? `<div class="cfn">${cfEm(x)}</div>` : `<div class="cfl">${cfEm(x)}</div>`).join('');
-const cfView = (pr) => `<div class="cfgridx">${cfBlocks().map((b) => b.fold && !pr ? `<details class="cfb w${b.w || 1}"><summary><h2>${esc(b.title)}</h2></summary>${cfLines(b.text)}</details>` : `<div class="cfb w${b.w || 1}"><h2>${esc(b.title)}</h2>${cfLines(b.text)}</div>`).join('')}</div>`;
+function cfClean(html) { // 只留粗體、顏色、換行，其他格式拿掉
+  const d = new DOMParser().parseFromString(`<div>${html || ''}</div>`, 'text/html').body.firstChild;
+  const walk = (n) => [...n.childNodes].map((c) => { if (c.nodeType === 3) return esc(c.textContent); if (c.nodeType !== 1) return ''; const t = c.tagName.toLowerCase(), inner = walk(c);
+    if (t === 'br') return '<br>'; if (t === 'div' || t === 'p') return `<div>${inner || '<br>'}</div>`;
+    const col = (c.getAttribute('color') || c.style?.color || '').replace(/[^#a-z0-9(), .]/gi, ''), bold = ['b', 'strong'].includes(t) || /bold|[6-9]00/.test(c.style?.fontWeight || '');
+    let o = inner; if (col) o = `<span style="color:${col}">${o}</span>`; if (bold) o = `<b>${o}</b>`; return o; }).join('');
+  return walk(d);
+}
+const cfPlainHtml = (t) => String(t || '').split('\n').map((x) => `<div>${x.trim() ? (x.trim().startsWith('#') ? `<b>${cfEm(x.trim().replace(/^#\s*/, ''))}</b>` : cfEm(x.trim())).replace(/<b class="cfk">(.*?)<\/b>/g, '<b><span style="color:#C0392B">$1</span></b>') : '<br>'}</div>`).join('');
+const cfRichBody = (b) => (b.html != null ? `<div class="cfrich">${cfClean(b.html)}</div>` : cfLines(b.text));
+const cfView = (pr) => `<div class="cfgridx">${cfBlocks().map((b) => b.fold && !pr ? `<details class="cfb w${b.w || 1}"><summary><h2>${esc(b.title)}</h2></summary>${cfRichBody(b)}</details>` : `<div class="cfb w${b.w || 1}"><h2>${esc(b.title)}</h2>${cfRichBody(b)}</div>`).join('')}</div>`;
 function openCallFlow() {
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>服務件流程</h2><button class="btn" id="cfE">✎ 排版</button><button class="btn" id="cfP">🖨 印一頁 A4</button><button class="btn pri" id="cfX">關閉</button></div>
   <div class="ovbody cfone" style="flex-direction:column;margin:0 auto;width:100%">
@@ -726,16 +736,19 @@ function openCallFlow() {
 function editCallFlow() { // 原地排版：畫面跟平常一樣，直接改字；按住 ⠿ 拖曳換位置；窄／中／整行調寬度
   const B = JSON.parse(JSON.stringify(cfBlocks())), W = [[1, '窄'], [2, '中'], [3, '整行']];
   const blk = (b) => `<div class="cfb w${b.w || 1} cfeb2${b.fold ? ' folded' : ''}" data-id="${b.id || uid()}"><div class="cfbar"><span class="cfdrag" title="按住拖曳">⠿</span><input class="cfet" value="${esc(b.title)}" placeholder="標題"></div>
-    <textarea class="cfex" rows="3" placeholder="一行一項">${esc(b.text)}</textarea>
+    <div class="cfex cfrich" contenteditable="true">${b.html != null ? cfClean(b.html) : cfPlainHtml(b.text)}</div>
     <div class="cftools">${W.map(([v, l]) => `<button class="cfw${(b.w || 1) === v ? ' on' : ''}" data-w="${v}">${l}</button>`).join('')}<button class="cff${b.fold ? ' on' : ''}" data-f>收起來</button><span style="flex:1"></span><button class="cfrm" data-rm>刪除</button></div></div>`;
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>流程排版</h2><button class="btn" id="cfRe">還原預設</button><button class="btn" id="cfC">取消</button><button class="btn pri" id="cfS">完成</button></div>
   <div class="ovbody cfone" style="flex-direction:column;margin:0 auto;width:100%">
-   <div class="note">直接點字修改。按住左上角 <b>⠿</b> 拖到想放的位置。<b>**這樣**</b>＝紅字；<b>#</b> 開頭＝小標題；中間有 <b>→</b>＝對照。</div>
+   <div class="note">直接點字修改。按住左上角 <b>⠿</b> 拖到想放的位置。選取文字，再按上面的按鈕改粗細、顏色。</div>
+   <div class="cffmt" id="cfFmt"><span class="sub">選取文字後：</span><button data-fx="bold"><b>粗體</b></button><button data-fx="#C0392B" style="color:#C0392B">紅</button><button data-fx="#2E6FB5" style="color:#2E6FB5">藍</button><button data-fx="#4E7A3A" style="color:#4E7A3A">綠</button><button data-fx="#D9822B" style="color:#D9822B">橘</button><button data-fx="#888888" style="color:#888">灰</button><button data-fx="clear">清除格式</button></div>
    <div class="cfgridx cfediting" id="cfG">${B.map(blk).join('')}<button class="cfb cfadd" id="cfAdd">＋ 新增一塊</button></div></div></div>`;
-  const G = $('cfG'), grow = (t) => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; };
+  const G = $('cfG');
+  $('cfFmt').onpointerdown = (e) => { const x = e.target.closest('[data-fx]'); if (!x) return; e.preventDefault(); const f = x.dataset.fx; // 按鈕不搶走游標，選取才不會不見
+    if (f === 'bold') document.execCommand('bold'); else if (f === 'clear') document.execCommand('removeFormat'); else document.execCommand('foreColor', false, f); };
   const wire = (el) => {
-    const t = el.querySelector('.cfex'); grow(t); t.oninput = () => grow(t);
-    el.querySelectorAll('[data-w]').forEach((x) => (x.onclick = () => { el.className = el.className.replace(/\bw\d\b/, 'w' + x.dataset.w); el.querySelectorAll('[data-w]').forEach((y) => y.classList.toggle('on', y === x)); grow(t); }));
+    const t = el.querySelector('.cfex');
+    el.querySelectorAll('[data-w]').forEach((x) => (x.onclick = () => { el.className = el.className.replace(/\bw\d\b/, 'w' + x.dataset.w); el.querySelectorAll('[data-w]').forEach((y) => y.classList.toggle('on', y === x)); }));
     el.querySelector('[data-f]').onclick = (e) => { e.currentTarget.classList.toggle('on'); el.classList.toggle('folded'); };
     el.querySelector('[data-rm]').onclick = (e) => { const x = e.currentTarget; if (!x.dataset.ok) { x.dataset.ok = 1; x.textContent = '再按一次刪除'; setTimeout(() => { if (x.isConnected) { delete x.dataset.ok; x.textContent = '刪除'; } }, 3000); return; } el.remove(); };
     el.querySelector('.cfdrag').onpointerdown = (e) => { e.preventDefault(); el.classList.add('dragging'); const sy = window.scrollY;
@@ -749,7 +762,7 @@ function editCallFlow() { // 原地排版：畫面跟平常一樣，直接改字
   $('cfAdd').onclick = () => { const d = document.createElement('div'); d.innerHTML = blk({ id: uid(), title: '新的一塊', text: '', w: 1 }); const el = d.firstElementChild; $('cfAdd').before(el); wire(el); el.querySelector('.cfet').select(); };
   $('cfC').onclick = openCallFlow;
   $('cfRe').onclick = (e) => { const x = e.currentTarget; if (!x.dataset.ok) { x.dataset.ok = 1; x.textContent = '再按一次還原'; return; } Vault.del('settings', 'cflow'); openCallFlow(); toast('已還原成預設'); };
-  $('cfS').onclick = () => { const out = [...G.querySelectorAll('.cfeb2')].map((el) => ({ id: el.dataset.id, title: el.querySelector('.cfet').value.trim(), text: el.querySelector('.cfex').value, w: +(el.className.match(/\bw(\d)\b/) || [0, 1])[1], fold: el.classList.contains('folded') })).filter((b) => b.title || b.text.trim());
+  $('cfS').onclick = () => { const out = [...G.querySelectorAll('.cfeb2')].map((el) => ({ id: el.dataset.id, title: el.querySelector('.cfet').value.trim(), html: cfClean(el.querySelector('.cfex').innerHTML), text: el.querySelector('.cfex').innerText, w: +(el.className.match(/\bw(\d)\b/) || [0, 1])[1], fold: el.classList.contains('folded') })).filter((b) => b.title || b.text.trim());
     Vault.put('settings', { id: 'cflow', blocks: out }); openCallFlow(); toast('排版已儲存'); };
 }
 function printCallFlow() { // 一頁 A4：只印流程，不印 app 畫面
