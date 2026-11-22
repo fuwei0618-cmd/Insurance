@@ -773,7 +773,7 @@ function callHHSectionHTML(k) {
 }
 const KSKIP = ['自己家人', '同事的件', '保經', '保單停效、解約', '其他'];
 const skipWhy = (k) => k.otherWhy || '同事的件';
-const KMARKS = ['全部', '待補結果', '已傳簡訊', '已加 LINE', '年曆未回', 'LINE 從沒回', '年曆待問', '未加 LINE', '沒電話', '退件', '不追蹤', '家戶待確認'];
+const KMARKS = ['全部', '今天打過', '待補結果', '已傳簡訊', '已加 LINE', '年曆未回', 'LINE 從沒回', '年曆待問', '未加 LINE', '沒電話', '退件', '不追蹤', '家戶待確認'];
 const LMSG = ['', '年曆未回', '已回', '從沒回'], lmsg = (k) => (k.lineMsg === '未回' ? '年曆未回' : k.lineMsg || ''); // 舊的「未回」當成年曆未回
 const klmBtn = (k) => { if (!k.line) return `<button class="klm klm-add" data-klm="${k.id}" title="點一下：已加 LINE">＋</button>`; const m = lmsg(k); return `<button class="klm klm-${({ 年曆未回: 'no', 已回: 'ok', 從沒回: 'never' })[m] || 'on'}" data-klm="${k.id}" title="點一下換：✓ → 年曆未回 → 已回 → 從沒回">${m || '✓'}</button>`; };
 function callGiftSheetHTML(list, ev, evs) { // 服務件專區裡的送禮表：一列一位，一欄一個品項，填數字就自動記到送禮專區
@@ -839,7 +839,7 @@ function openCallTagImport() { // 主管給的名單：貼序號或姓名，一�
 }
 const VSLOTS = ['平日上午', '平日下午', '平日晚上', '假日']; // 客戶願意被拜訪的時段
 const vslotChips = () => VSLOTS.filter((v) => calls().some((k) => (k.visitSlots || []).includes(v))).map((v) => '可拜訪・' + v);
-const kMarkOkFn = (hhs) => (k) => (S.kmark.startsWith('可拜訪・') ? (k.visitSlots || []).includes(S.kmark.slice(4)) : false) || (k.tags || []).includes(S.kmark) || ({ 全部: true, 已傳簡訊: !!k.smsSent || (k.logs || []).some((l) => l.sms), 待補結果: !k.other && !(k.logs || []).length && !!(k.level || k.note || k.giftTbd || +k.giftQty > 0 || k.giftSkip || k.giftWith || k.lineMsg || k.met || k.visitDate), '已加 LINE': !!k.line, 年曆未回: !!k.line && lmsg(k) === '年曆未回', 'LINE 從沒回': !!k.line && lmsg(k) === '從沒回', 年曆待問: !!k.giftTbd && !(+k.giftQty > 0) && !Vault.all('gifts').some((g) => g.who?.type === 'call' && g.who?.id === k.id && Object.keys(g.items || {}).length), '未加 LINE': !k.line, 沒電話: !hasTel(k), 退件: !!k.mailBack, 不追蹤: !!k.other, 家戶待確認: hhPending(hhs.get(hhKey(k))) })[S.kmark];
+const kMarkOkFn = (hhs) => (k) => (S.kmark.startsWith('可拜訪・') ? (k.visitSlots || []).includes(S.kmark.slice(4)) : false) || (k.tags || []).includes(S.kmark) || ({ 全部: true, 今天打過: (k.logs || []).some((l) => l.date === localDay() && l.result !== '同戶已聯絡'), 已傳簡訊: !!k.smsSent || (k.logs || []).some((l) => l.sms), 待補結果: !k.other && !(k.logs || []).length && !!(k.level || k.note || k.giftTbd || +k.giftQty > 0 || k.giftSkip || k.giftWith || k.lineMsg || k.met || k.visitDate), '已加 LINE': !!k.line, 年曆未回: !!k.line && lmsg(k) === '年曆未回', 'LINE 從沒回': !!k.line && lmsg(k) === '從沒回', 年曆待問: !!k.giftTbd && !(+k.giftQty > 0) && !Vault.all('gifts').some((g) => g.who?.type === 'call' && g.who?.id === k.id && Object.keys(g.items || {}).length), '未加 LINE': !k.line, 沒電話: !hasTel(k), 退件: !!k.mailBack, 不追蹤: !!k.other, 家戶待確認: hhPending(hhs.get(hhKey(k))) })[S.kmark];
 const hasTel = (k) => /\d{6,}/.test((k.phone || '') + ' ' + (k.home || '').replace(/\D/g, '')) || /\d{6,}/.test((k.phone || '').replace(/\D/g, '')); // 沒電話的不帶進撥打
 const kFilterOk = () => { const all = calls(), mk = kMarkOkFn(callHouseholds(all)); return (k) => (S.kar === '全部' || kArea(k) === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && mk(k); }; // 開始打電話也照總表上點的標記、地區、分級
 const kRound = () => Vault.get('settings', 'kround') || { id: 'kround', n: 1, start: '2026-11-01' }; // 一輪：這一輪打過的（不管接沒接）先不再帶，整輪打完再開下一輪
