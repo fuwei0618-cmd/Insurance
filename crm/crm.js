@@ -843,7 +843,8 @@ const hasTel = (k) => /\d{6,}/.test((k.phone || '') + ' ' + (k.home || '').repla
 const kFilterOk = () => { const all = calls(), mk = kMarkOkFn(callHouseholds(all)); return (k) => (S.kar === '全部' || kArea(k) === S.kar) && (S.klv === '全部' || (S.klv === '未分級' ? !k.level : k.level === S.klv)) && mk(k); }; // 開始打電話也照總表上點的標記、地區、分級
 const kRound = () => Vault.get('settings', 'kround') || { id: 'kround', n: 1, start: '2026-11-01' }; // 一輪：這一輪打過的（不管接沒接）先不再帶，整輪打完再開下一輪
 const kInRound = (k) => { const st = kRound().start; return (k.logs || []).some((l) => (l.at || l.date || '') >= st && l.result !== '同戶已聯絡'); };
-const kQueue = () => { const ok = kFilterOk(); const today = localDay(); return calls().filter((k) => !k.other && !k.giftSkip && hasTel(k) && ['未打', '未接'].includes(callProg(k)) && /* 勾了「不送」年曆＝這位不用打 */ !(k.nextDate && k.nextDate > today) && ok(k)).sort((a, b) => callRank(a) - callRank(b) || ageRank(a) - ageRank(b) || areaSort(kArea(a), kArea(b)) || addrCmp(a, b)); };
+const kDecided = (k) => !!(k.giftSkip || k.giftWith || k.giftTbd || +k.giftQty > 0 || (k.line && lmsg(k) === '已回')); // 年曆已經講好（要／不送／跟家人一份）或 LINE 已回＝聯絡過了，撥打時跳過
+const kQueue = () => { const ok = kFilterOk(); const today = localDay(); return calls().filter((k) => !k.other && !kDecided(k) && hasTel(k) && ['未打', '未接'].includes(callProg(k)) && /* 勾了「不送」年曆＝這位不用打 */ !(k.nextDate && k.nextDate > today) && ok(k)).sort((a, b) => callRank(a) - callRank(b) || ageRank(a) - ageRank(b) || areaSort(kArea(a), kArea(b)) || addrCmp(a, b)); };
 function kSetResult(k, r) { // 點「結果」就直接記下來；同一次再點別的會改掉，再點同一個會取消
   const cur = S.kcur?.k === k.id ? (k.logs || []).find((l) => l.id === S.kcur.l) : null, today = localDay();
   const dropHH = () => calls().forEach((o) => { if (o.id === k.id) return; const n = (o.logs || []).filter((l) => !(l.via === k.id && l.date === today)); if (n.length !== (o.logs || []).length) { o.logs = n; Vault.put('calls', o); } });
