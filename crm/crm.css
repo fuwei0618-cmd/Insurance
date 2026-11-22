@@ -846,3 +846,11 @@ details.cfb>summary{cursor:pointer;margin-bottom:4px}
 .kpsep{display:inline-block;width:1px;height:18px;background:#ddd;margin:0 6px}
 .kprep .kpbox{padding:8px 12px}
 .kopen{margin:2px 0 6px;padding:4px 10px}
+
+/* 個人頁壓縮 2 */
+.kcallbar{padding:5px 10px;margin-bottom:6px;font-size:13px}
+.ktop{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0 0 6px}
+.ktop>.dhead,.ktop>.khero{display:contents}
+.ktop .dhead input.title{flex:0 0 auto;font-size:19px}
+.ktop .kdtabs{margin:0 0 0 auto}
+.ktop .pill{order:0}
