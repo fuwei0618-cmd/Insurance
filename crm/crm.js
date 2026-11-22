@@ -700,13 +700,58 @@ function openTagPicker(k) { // 點一下就幫這位加／拿掉標籤；標籤�
   $('tgX').onclick = () => { ov.innerHTML = ''; App.render(); };
 }
 
+const CLUEQ_DEFAULT = { foot: '電話裡只問、只聽、只記，**不提商品**。聽到就說：「這個我幫您整理一下，**送年曆時順便跟您說**。」\n什麼都沒聽到：「我幫您把保單**免費整理成一張表**，送年曆時帶給您。」', qs: [
+  { id: 'q_addr', kind: 'base', title: '地址', ask: '「還住這邊嗎？是自己的房子嗎？」', opts: [['沒變', ''], ['搬家', '住址要更新'], ['買房', '住宅險、房貸保障'], ['租房', '']] },
+  { id: 'q_job', kind: 'base', title: '職業', ask: '「還在○○上班嗎？」', opts: [['沒變', ''], ['換工作', '職業類別要更新；團保可能變少 → 實支實付'], ['自己開店', '頭家壓箱保'], ['快退休', '年金（退休後每年領）'], ['已退休', '長照（失能）、存錢']] },
+  { id: 'q_home', kind: 'base', title: '家戶', ask: '「年曆寄給您，還是家裡其他人收？家裡幾個人住？」', opts: [['剛結婚', '保單整理'], ['有小孩', '保單整理、小孩的保障'], ['有房貸', '壽險（房貸保障）'], ['爸媽年紀大', '長照（失能）']] },
+  { id: 'q_car', kind: 'base', title: '交通', ask: '「平常出門是騎車還是開車？」', opts: [['騎車', '車險、強制險、意外'], ['開車', '車險、強制險'], ['大眾運輸', ''], ['常出國', '旅綜險']] },
+  { id: 'q_a20', kind: 'age', age: '20-29', title: '20-29', ask: '「這張是爸媽幫您保的吧？現在自己在工作了嗎？」', opts: [['剛出社會', '實支實付、意外'], ['還在讀書', ''], ['騎車通勤', '意外、車險']] },
+  { id: 'q_a30', kind: 'age', age: '30-44', title: '30-44', ask: '「這幾年家裡有新成員嗎？」', opts: [['結婚', '保單整理'], ['有小孩', '保單整理、小孩的保障'], ['買房、房貸', '壽險（房貸保障）、住宅險']] },
+  { id: 'q_a45', kind: 'age', age: '45-59', title: '45-59', ask: '「爸媽身體都還好嗎？」', opts: [['爸媽年紀大', '長照（失能）'], ['爸媽住院過', '實支實付、長照'], ['快退休', '年金（退休後每年領）']] },
+  { id: 'q_a60', kind: 'age', age: '60以上', title: '60以上', ask: '「最近還常出門走走嗎？」', opts: [['常出門', '意外升級'], ['有孫子', '存錢給孫'], ['身體有狀況', '長照（失能）']] },
+  { id: 'q_hear', kind: 'hear', title: '聽到才點', ask: '客戶自己提到才點，不主動問', opts: [['家人住院、自費貴', '實支實付'], ['朋友得癌', '癌症、重大傷病'], ['家裡經濟支柱', '壽險、癌症、重大傷病'], ['定存到期、領年終', '存錢'], ['想存錢又怕生病', '存錢＋保一種病'], ['在玩股票', '證券'], ['自己開店', '頭家壓箱保']] }] };
+const clueQ = () => Vault.get('settings', 'clueq') || CLUEQ_DEFAULT;
+const KQKIND = { base: '每個人都問', age: '照年齡（只出現他那組）', hear: '聽到才點' };
+function kqRowHTML(k, q) { // 客戶頁：一題一列，點選＋自己打字
+  const a = (k.clues || {})[q.id] || {}, sel = (a.sel || []).map((x) => x[0]), hints = (a.sel || []).map((x) => x[1]).filter(Boolean);
+  return `<div class="kq"><div class="kqh"><b>${esc(q.title)}</b> <span class="kqask">${cfEm(q.ask || '')}</span></div><div class="kqo">${q.opts.map(([l]) => `<button class="tag sm${sel.includes(l) ? ' on' : ''}" data-kq="${q.id}" data-ko="${esc(l)}">${esc(l)}</button>`).join('')}<input class="kqn" data-kqn="${q.id}" value="${esc(a.note || '')}" placeholder="其他／補充"></div>${hints.length ? `<div class="kqhint">見面可聊：${hints.map(esc).join('；')}</div>` : ''}</div>`;
+}
+function kqAnswersHTML(k) { // 記錄分頁：問卷答案（題目改過或刪掉也照樣留著）
+  const C = Object.entries(k.clues || {}).filter(([, a]) => (a.sel || []).length || a.note); if (!C.length) return '';
+  return `<div class="sec kqans"><h2>問到的線索</h2>${C.map(([, a]) => `<div><b>${esc(a.t || '')}</b>：${(a.sel || []).map((x) => esc(x[0]) + (x[1] ? `<span class="sub">（${esc(x[1])}）</span>` : '')).join('、')}${a.note ? `${(a.sel || []).length ? '；' : ''}${esc(a.note)}` : ''}</div>`).join('')}</div>`;
+}
+function kqTemplateHTML() { // 流程頁：問卷題目一覽
+  const Q = clueQ(), grp = (kind) => Q.qs.filter((q) => q.kind === kind);
+  return ['base', 'age', 'hear'].filter((x) => grp(x).length).map((kind) => `<div class="cfh">${KQKIND[kind]}</div><table class="cftab"><tr><th>題目</th><th>怎麼問</th><th>他如果說 → 見面可聊</th></tr>${grp(kind).map((q) => `<tr><td>${esc(q.title)}</td><td>${cfEm(q.ask || '')}</td><td>${q.opts.map(([l, h]) => `${esc(l)}${h ? ` → <b class="cfk">${esc(h)}</b>` : ''}`).join('<br>')}</td></tr>`).join('')}</table>`).join('') + (Q.foot ? `<div class="kclue3">${String(Q.foot).split('\n').map((x) => `<div>${cfEm(x)}</div>`).join('')}</div>` : '');
+}
+function editClueQ() { // 問卷題目編輯：改這裡不會動到已經填好的客戶答案
+  const Q = JSON.parse(JSON.stringify(clueQ())), AG = ['20-29', '30-44', '45-59', '60以上'];
+  const row = (q, i) => `<div class="cfeb" data-i="${i}"><div class="cfebh"><select class="qk">${Object.entries(KQKIND).map(([v, l]) => `<option value="${v}"${q.kind === v ? ' selected' : ''}>${l}</option>`).join('')}</select><select class="qa"${q.kind === 'age' ? '' : ' style="display:none"'}>${AG.map((a) => `<option${q.age === a ? ' selected' : ''}>${a}</option>`).join('')}</select><input class="cfet qt" value="${esc(q.title)}" placeholder="題目，例如：地址"><span style="flex:1"></span><button class="btn sm" data-mv="-1"${i ? '' : ' disabled'}>↑</button><button class="btn sm" data-mv="1"${i < Q.qs.length - 1 ? '' : ' disabled'}>↓</button><button class="btn sm danger" data-rm>✕</button></div>
+    <input class="cfex qq" value="${esc(q.ask)}" placeholder="怎麼問，例如：「還住這邊嗎？」" style="margin-bottom:6px"><textarea class="cfex qo" rows="${Math.max(3, q.opts.length + 1)}" placeholder="一行一個選項：選項 → 見面可聊">${esc(q.opts.map(([l, h]) => (h ? `${l} → ${h}` : l)).join('\n'))}</textarea></div>`;
+  const draw = () => { ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>問卷題目</h2><button class="btn" id="qRe">還原預設</button><button class="btn" id="qC">取消</button><button class="btn pri" id="qS">完成</button></div>
+   <div class="ovbody" style="flex-direction:column;max-width:900px;margin:0 auto;width:100%"><div class="note">這裡是標準模板，每個客戶的「電訪」分頁都照這裡出題。選項一行一個，寫成「選項 → 見面可聊」。<b>改這裡不會動到已經填好的客戶答案。</b></div>
+   ${Q.qs.map(row).join('')}<div class="actions"><button class="btn" id="qAdd">＋ 新增一題</button></div>
+   <label class="f">最下面的提醒<textarea class="cfex" id="qFoot" rows="3">${esc(Q.foot || '')}</textarea></label></div></div>`;
+    ov.querySelectorAll('.cfeb').forEach((el) => { const i = +el.dataset.i;
+      el.querySelector('.qk').onchange = (e) => { el.querySelector('.qa').style.display = e.target.value === 'age' ? '' : 'none'; };
+      el.querySelectorAll('[data-mv]').forEach((x) => (x.onclick = () => { read(); const j = i + +x.dataset.mv; [Q.qs[i], Q.qs[j]] = [Q.qs[j], Q.qs[i]]; draw(); }));
+      el.querySelector('[data-rm]').onclick = (e) => { const x = e.currentTarget; if (!x.dataset.ok) { x.dataset.ok = 1; x.textContent = '確定刪？'; return; } read(); Q.qs.splice(i, 1); draw(); }; });
+    $('qAdd').onclick = () => { read(); Q.qs.push({ id: 'q_' + uid(), kind: 'base', title: '', ask: '', opts: [] }); draw(); };
+    $('qC').onclick = openCallFlow;
+    $('qRe').onclick = (e) => { const x = e.currentTarget; if (!x.dataset.ok) { x.dataset.ok = 1; x.textContent = '再按一次還原'; return; } Vault.del('settings', 'clueq'); openCallFlow(); toast('問卷已還原成預設'); };
+    $('qS').onclick = () => { read(); Q.qs = Q.qs.filter((q) => q.title.trim()); Vault.put('settings', { id: 'clueq', ...Q }); openCallFlow(); toast('問卷題目已儲存'); }; };
+  const read = () => { ov.querySelectorAll('.cfeb').forEach((el) => { const q = Q.qs[+el.dataset.i]; q.kind = el.querySelector('.qk').value; q.age = q.kind === 'age' ? el.querySelector('.qa').value : ''; q.title = el.querySelector('.qt').value.trim() || (q.kind === 'age' ? q.age : '');
+    q.ask = el.querySelector('.qq').value.trim(); q.opts = el.querySelector('.qo').value.split('\n').map((x) => x.trim()).filter(Boolean).map((x) => { const [l, ...h] = x.split(/\s*→\s*/); return [l.trim(), h.join(' → ').trim()]; }); }); const f = $('qFoot'); if (f) Q.foot = f.value; };
+  draw();
+}
+
 function cfDefaultBlocks() { // 流程頁預設內容：改成一塊一塊，可以自己排
   const F = CALL_FLOW, B = [], add = (title, text, o = {}) => B.push({ id: uid(), title, text, w: 1, ...o });
   F.cols.forEach(([h, l]) => add(h, l.join('\n')));
   add('聊天話題鉤子', '紅利（民國 93 年前的保單）\n職業變更\n受益人\n理賠抵繳');
   add('見面待做', '未訪件 App');
   add('分級', 'A → VIP，高度優先\nB → 有預算、有促約機會\nC-1 → 有關鍵人物，預算不夠\nC-2 → 關係好，觀念還沒到\nC-3 → 排斥、忙、沒需求，用寄的');
-  add(CF_CLUE.title, CF_CLUE.text, { w: 2 });
+  add('問線索', '', { w: 2, q: true });
   F.cheats.filter(([h]) => !['聽到線索提什麼', '年齡挑話題'].includes(h)).forEach(([h, rows, foot]) => add(h, rows.map((r) => (r.length === 1 ? r[0] : r[0] + ' → ' + r[1])).join('\n') + (foot ? '\n' + foot : '')));
   F.folds.forEach(([h, l]) => add(h, l.join('\n'), { fold: true }));
   return B;
@@ -732,6 +777,11 @@ function cfMigrate() { // 一次性：把「聽到線索提什麼」「年齡挑
   const blocks = st.blocks.filter((b) => !old.includes((b.title || '').trim())); if (i >= 0) blocks.splice(Math.min(i, blocks.length), 0, { id: uid(), ...CF_CLUE });
   Vault.put('settings', { ...st, blocks, mig1: true });
 }
+function cfMigrate3() { // 線索那塊改成問卷（題目在「問卷題目」裡改）
+  const st = Vault.get('settings', 'cflow'); if (!st?.blocks || st.mig3) return;
+  st.blocks = st.blocks.map((b) => (/線索/.test(b.title || '') ? { id: b.id, title: '問線索', q: true, w: Math.max(b.w || 1, 2), fold: b.fold } : b));
+  Vault.put('settings', { ...st, mig3: true });
+}
 function cfMigrate2() { // 線索那塊改成表格版
   const st = Vault.get('settings', 'cflow'); if (!st?.blocks || st.mig2) return;
   st.blocks.forEach((b) => { if ((b.title || '').trim() === CF_CLUE.title) { b.text = CF_CLUE.text; delete b.html; b.w = Math.max(b.w || 1, 2); } });
@@ -753,20 +803,20 @@ function cfClean(html) { // 只留粗體、顏色、換行，其他格式拿掉
 }
 const cfPlainHtml = (t) => cfTables(String(t || '').split('\n'), (c) => cfEm(c).replace(/<b class="cfk">(.*?)<\/b>/g, '<b><span style="color:#C0392B">$1</span></b>')).map((x) => x.startsWith('<table') ? x : `<div>${x.trim() ? (x.trim().startsWith('#') ? `<b>${cfEm(x.trim().replace(/^#\s*/, ''))}</b>` : cfEm(x.trim())).replace(/<b class="cfk">(.*?)<\/b>/g, '<b><span style="color:#C0392B">$1</span></b>') : '<br>'}</div>`).join('');
 const cfRichBody = (b) => (b.html != null ? `<div class="cfrich">${cfClean(b.html)}</div>` : cfLines(b.text));
-const cfView = (pr) => `<div class="cfgridx">${cfBlocks().map((b) => b.fold && !pr ? `<details class="cfb w${b.w || 1}"><summary><h2>${esc(b.title)}</h2></summary>${cfRichBody(b)}</details>` : `<div class="cfb w${b.w || 1}"><h2>${esc(b.title)}</h2>${cfRichBody(b)}</div>`).join('')}</div>`;
+const cfView = (pr) => `<div class="cfgridx">${cfBlocks().map((b) => b.q ? `<div class="cfb w${b.w || 2}"><h2>${esc(b.title)} <span class="sub">按上面「✎ 問卷題目」修改</span></h2>${kqTemplateHTML()}</div>` : b.fold && !pr ? `<details class="cfb w${b.w || 1}"><summary><h2>${esc(b.title)}</h2></summary>${cfRichBody(b)}</details>` : `<div class="cfb w${b.w || 1}"><h2>${esc(b.title)}</h2>${cfRichBody(b)}</div>`).join('')}</div>`;
 function openCallFlow() {
-  cfMigrate(); cfMigrate2();
-  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>服務件流程</h2><button class="btn" id="cfE">✎ 排版</button><button class="btn" id="cfP">🖨 印一頁 A4</button><button class="btn pri" id="cfX">關閉</button></div>
+  cfMigrate(); cfMigrate2(); cfMigrate3();
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>服務件流程</h2><button class="btn" id="cfE">✎ 排版</button><button class="btn" id="cfQ">✎ 問卷題目</button><button class="btn" id="cfP">🖨 印一頁 A4</button><button class="btn pri" id="cfX">關閉</button></div>
   <div class="ovbody cfone" style="flex-direction:column;margin:0 auto;width:100%">
    <div class="cfheart">🎯 <b>${esc(CALL_HEART.goal)}</b>　🙏 ${esc(CALL_HEART.prayer)}</div>
    ${cfView(false)}</div></div>`;
   $('cfX').onclick = () => { ov.innerHTML = ''; document.body.classList.remove('printing'); const pa = document.getElementById('printArea'); if (pa) pa.className = ''; };
-  $('cfP').onclick = printCallFlow; $('cfE').onclick = () => editCallFlow();
+  $('cfP').onclick = printCallFlow; $('cfE').onclick = () => editCallFlow(); $('cfQ').onclick = editClueQ;
 }
 function editCallFlow() { // 原地排版：畫面跟平常一樣，直接改字；按住 ⠿ 拖曳換位置；窄／中／整行調寬度
   const B = JSON.parse(JSON.stringify(cfBlocks())), W = [[1, '窄'], [2, '中'], [3, '整行']];
-  const blk = (b) => `<div class="cfb w${b.w || 1} cfeb2${b.fold ? ' folded' : ''}" data-id="${b.id || uid()}"><div class="cfbar"><span class="cfdrag" title="按住拖曳">⠿</span><input class="cfet" value="${esc(b.title)}" placeholder="標題"></div>
-    <div class="cfex cfrich" contenteditable="true">${b.html != null ? cfClean(b.html) : cfPlainHtml(b.text)}</div>
+  const blk = (b) => `<div class="cfb w${b.w || 1} cfeb2${b.fold ? ' folded' : ''}" data-id="${b.id || uid()}"${b.q ? ' data-q="1"' : ''}><div class="cfbar"><span class="cfdrag" title="按住拖曳">⠿</span><input class="cfet" value="${esc(b.title)}" placeholder="標題"></div>
+    ${b.q ? '<div class="cfex sub" style="border:0">問卷：題目到流程頁「✎ 問卷題目」改。這裡可以拖位置、改寬度。</div>' : `<div class="cfex cfrich" contenteditable="true">${b.html != null ? cfClean(b.html) : cfPlainHtml(b.text)}</div>`}
     <div class="cftools">${W.map(([v, l]) => `<button class="cfw${(b.w || 1) === v ? ' on' : ''}" data-w="${v}">${l}</button>`).join('')}<button class="cff${b.fold ? ' on' : ''}" data-f>收起來</button><span style="flex:1"></span><button class="cfrm" data-rm>刪除</button></div></div>`;
   ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>流程排版</h2><button class="btn" id="cfRe">還原預設</button><button class="btn" id="cfC">取消</button><button class="btn pri" id="cfS">完成</button></div>
   <div class="ovbody cfone" style="flex-direction:column;margin:0 auto;width:100%">
@@ -792,8 +842,8 @@ function editCallFlow() { // 原地排版：畫面跟平常一樣，直接改字
   $('cfAdd').onclick = () => { const d = document.createElement('div'); d.innerHTML = blk({ id: uid(), title: '新的一塊', text: '', w: 1 }); const el = d.firstElementChild; $('cfAdd').before(el); wire(el); el.querySelector('.cfet').select(); };
   $('cfC').onclick = openCallFlow;
   $('cfRe').onclick = (e) => { const x = e.currentTarget; if (!x.dataset.ok) { x.dataset.ok = 1; x.textContent = '再按一次還原'; return; } Vault.del('settings', 'cflow'); openCallFlow(); toast('已還原成預設'); };
-  $('cfS').onclick = () => { const out = [...G.querySelectorAll('.cfeb2')].map((el) => ({ id: el.dataset.id, title: el.querySelector('.cfet').value.trim(), html: cfClean(el.querySelector('.cfex').innerHTML), text: el.querySelector('.cfex').innerText, w: +(el.className.match(/\bw(\d)\b/) || [0, 1])[1], fold: el.classList.contains('folded') })).filter((b) => b.title || b.text.trim());
-    Vault.put('settings', { id: 'cflow', blocks: out, mig1: true, mig2: true }); openCallFlow(); toast('排版已儲存'); };
+  $('cfS').onclick = () => { const out = [...G.querySelectorAll('.cfeb2')].map((el) => el.dataset.q ? { id: el.dataset.id, title: el.querySelector('.cfet').value.trim() || '問線索', q: true, text: 'q', w: +(el.className.match(/\bw(\d)\b/) || [0, 2])[1], fold: el.classList.contains('folded') } : ({ id: el.dataset.id, title: el.querySelector('.cfet').value.trim(), html: cfClean(el.querySelector('.cfex').innerHTML), text: el.querySelector('.cfex').innerText, w: +(el.className.match(/\bw(\d)\b/) || [0, 1])[1], fold: el.classList.contains('folded') })).filter((b) => b.title || b.text.trim());
+    Vault.put('settings', { id: 'cflow', blocks: out, mig1: true, mig2: true, mig3: true }); openCallFlow(); toast('排版已儲存'); };
 }
 function printCallFlow() { // 一頁 A4：只印流程，不印 app 畫面
   let pa = document.getElementById('printArea'); if (!pa) { pa = document.createElement('div'); pa.id = 'printArea'; document.body.appendChild(pa); }
@@ -1022,20 +1072,17 @@ const PTB = (x) => { const k = curCall(); return `<button class="tag sm${(k?.pty
 const kTab = () => S.kdtab || (S.kcalling ? 'call' : 'rec');
 const ageNorm = (x) => String(x || '').replace(/\s|歲/g, '').replace(/[~～－]/g, '-');
 function kCallPrepHTML(k, logs) { // 電訪分頁：流程模板套進這個人的資料
-  cfMigrate(); cfMigrate2(); const B = cfBlocks(), find = (re) => B.find((b) => re.test(b.title || ''));
+  cfMigrate(); cfMigrate2(); cfMigrate3(); const B = cfBlocks(), find = (re) => B.find((b) => re.test(b.title || ''));
   const age = (k.tags || []).filter(isAgeTag).map(ageNorm)[0] || '', last = logs[0];
   const facts = [['年齡', age || '未標'], ['地址', k.addr || ''], ['職業', k.job || ''], ['保單', k.policy || ''], ['備註', k.note || ''], ['上次', last ? `${String(last.date || '').slice(5).replace('-', '/')} ${last.result}${last.note ? '（' + last.note + '）' : ''}` : '還沒打過'], ['住址觀察', k.addrNote || '']].filter(([, v]) => v);
-  const pre = find(/^打之前/), mid = find(/^電話中/), clue = find(/線索/);
+  const pre = find(/^打之前/), mid = find(/^電話中/), Q = clueQ();
   const dom = (h) => new DOMParser().parseFromString(`<div>${h}</div>`, 'text/html').body.firstChild;
   let midHTML = mid ? cfRichBody(mid) : '';
-  if (clue) { // 問線索拆開塞進電話中：確認資料表放在②後面，他的年齡那一句放在③後面，「聽到就記」放最後
-    const c = dom(cfRichBody(clue)), tabs = [...c.querySelectorAll('table')];
-    const conf = tabs.find((t) => ![...t.rows].some((tr) => /^\d{2}(-\d{2}|以上)$/.test(ageNorm(tr.cells[0]?.textContent))));
-    const ageTr = tabs.flatMap((t) => [...t.rows]).find((tr) => age && ageNorm(tr.cells[0]?.textContent) === age);
-    const lastTab = tabs[tabs.length - 1], tail = []; let n = lastTab?.nextElementSibling; while (n) { tail.push(n.outerHTML); n = n.nextElementSibling; }
-    const ageBox = ageTr ? `<div class="kclue">🎯 <b>${esc(age)}</b>${ageTr.cells[1] ? `<span class="sub">　${ageTr.cells[1].innerHTML}</span>` : ''}<div>多問一句：<b>${ageTr.cells[2]?.innerHTML || ''}</b></div><div>線索 → ${ageTr.cells[3]?.innerHTML || ''}</div></div>` : '';
-    const confBox = conf ? `<details class="kclue2" data-dk="kpconf" open><summary class="sub">確認資料時順口多問（點一下收起）</summary>${conf.outerHTML}</details>` : '';
-    const tailBox = tail.length ? `<div class="kclue3">${tail.join('')}</div>` : '';
+  { // 問卷拆進電話中：每個人都問的放在③前面，他那個年齡組＋聽到才點放在④前面，提醒放最後
+    const baseQ = Q.qs.filter((q) => q.kind === 'base'), ageQ = Q.qs.filter((q) => q.kind === 'age' && (!age || ageNorm(q.age) === age)), hearQ = Q.qs.filter((q) => q.kind === 'hear');
+    const confBox = baseQ.length ? `<div class="kqbox"><div class="kqbt">確認資料時順口問一句 <span class="sub">挑一兩題就好</span></div>${baseQ.map((q) => kqRowHTML(k, q)).join('')}</div>` : '';
+    const ageBox = ageQ.length || hearQ.length ? `<div class="kqbox kqage">${ageQ.map((q) => kqRowHTML(k, { ...q, title: '🎯 ' + q.title })).join('')}${hearQ.map((q) => kqRowHTML(k, q)).join('')}</div>` : '';
+    const tailBox = Q.foot ? `<div class="kclue3">${String(Q.foot).split('\n').map((x) => `<div>${cfEm(x)}</div>`).join('')}</div>` : '';
     const m = dom(midHTML), kids = [...(m.querySelector('.cfrich') || m).children], at = (ch) => kids.find((x) => x.textContent.trim().startsWith(ch));
     const put = (ch, html) => { if (!html) return false; const el = at(ch); if (!el) return false; el.insertAdjacentHTML('beforebegin', html); return true; };
     const okC = put('③', confBox), okA = put('④', ageBox);
@@ -1090,7 +1137,7 @@ function callDetailHTML() { // 一張「這通電話」卡從上點到下；很�
    <label class="f">備註／線索<textarea id="kf_note" class="grow" data-kf="note" rows="2" placeholder="例：LINE 說要 2 本；最近換工作；女兒要結婚…">${esc(k.note)}</textarea></label>
    <div class="grid2"><label class="f">下次聯絡<input type="date" id="kf_nextDate" data-kf="nextDate" value="${esc(k.nextDate)}"><span class="knq">${[[1, '明天'], [3, '3 天後'], [7, '1 週後'], [14, '2 週後'], [30, '1 個月後']].map(([d, l]) => `<button type="button" class="tag sm" data-knext="${d}">${l}</button>`).join('')}${k.nextDate ? '<button type="button" class="linkbtn" data-knext="0">清除</button>' : ''}</span>${k.nextDate && k.nextDate > localDay() ? '<span class="sub">到這天之前，撥打時會先跳過他</span>' : ''}</label><label class="f">約訪日期<input type="date" id="kf_visitDate" data-kf="visitDate" value="${esc(k.visitDate)}"></label></div>
    <div class="actions kcardgo"><button class="tag${k.met ? ' on' : ''}" data-kchk="met">${k.met ? '✓ ' : ''}已見面</button><span style="flex:1"></span>${S.kcalling ? '<button class="btn pri" data-act="knext">下一位 ›</button>' : ''}</div></div>
-  ${kTab() === 'call' ? kCallMoreHTML() : `${kSvcSectionHTML(k)}
+  ${kTab() === 'call' ? kCallMoreHTML() : `${kqAnswersHTML(k)}${kSvcSectionHTML(k)}
   <details class="sec" data-dk="kdata"><summary><h2 style="display:inline">資料</h2> <span class="sub">聯絡、功課、家戶</span></summary><div class="grid2">
    <label class="f">手機<input id="kf_phone" data-kf="phone" inputmode="tel" value="${esc(k.phone)}"></label>
    <label class="f">住家電話<input id="kf_home" data-kf="home" inputmode="tel" value="${esc(k.home)}"></label>
@@ -2402,6 +2449,8 @@ app.addEventListener('click', async (e) => {
   if (d.knext != null) { const k = curCall(); if (k) { const n = +d.knext; k.nextDate = n ? localDay(new Date(Date.now() + n * 864e5)) : ''; Vault.put('calls', k); App.render(); toast(n ? `下次聯絡：${fmtDay(k.nextDate)}，之前撥打會先跳過` : '已清除下次聯絡'); } return; }
   if (d.kvs) { const k = curCall(); if (k) { const a = new Set(k.visitSlots || []); a.has(d.kvs) ? a.delete(d.kvs) : a.add(d.kvs); k.visitSlots = VSLOTS.filter((v) => a.has(v)); Vault.put('calls', k); App.render(); } return; }
   if (d.kgw != null) { const k = curCall(); if (k) { k.giftWith = d.kgw || ''; if (k.giftWith) { k.giftTbd = false; k.giftQty = ''; k.giftSkip = false; } Vault.put('calls', k); kgSync(k); App.render(); } return; }
+  if (d.kq) { const k = curCall(); if (!k) return; const q = clueQ().qs.find((x) => x.id === d.kq), C = k.clues = k.clues || {}, a = C[d.kq] = C[d.kq] || { t: q?.title || '', sel: [], note: '' };
+    const i = a.sel.findIndex((x) => x[0] === d.ko); if (i >= 0) a.sel.splice(i, 1); else a.sel.push([d.ko, (q?.opts.find((o) => o[0] === d.ko) || [])[1] || '']); a.t = q?.title || a.t; a.at = new Date().toISOString(); Vault.put('calls', k); App.render(); return; }
   if (d.kdtab) { S.kdtab = d.kdtab; App.render(); return; }
   if (d.kres) { const k = curCall(); if (!k) return; const o = kSetResult(k, d.kres); App.render(); if (d.kres === '其他' && !o.removed) setTimeout(() => document.querySelector('[data-klognote]')?.focus(), 60); toast(o.removed ? '已取消這筆結果' : d.kres === '其他' ? '已記錄：其他，在「這通」寫一下發生什麼事' : `已記錄：${d.kres}` + (o.hn ? `；同戶 ${o.hn} 位也標成已聯絡` : '')); return; }
   if (d.kdel) { const k = curCall(); if (k && armConfirm(b, '刪？')) { k.logs = (k.logs || []).filter((x) => x.id !== d.kdel); Vault.put('calls', k); App.render(); } return; }
@@ -2596,6 +2645,7 @@ app.addEventListener('change', (e) => {
   const kgd = e.target.dataset?.kgd; if (kgd) { const g = kgRec(kgd); if (!g) return; g.status = e.target.checked ? '已送' : '預備'; g.doneDate = e.target.checked ? localDay() : ''; kgTidy(g); App.render(); return; }
   const kln = e.target.dataset?.klognote; if (kln) { const k = curCall(); const l = k && (k.logs || []).find((x) => x.id === kln); if (l) { l.note = e.target.value.trim(); Vault.put('calls', k); App.render(); } return; }
   const kte = e.target.dataset?.kte; if (kte) { const k = Vault.get('calls', kte); if (!k) return; const f = e.target.dataset.kfield; k[f] = e.target.type === 'checkbox' ? e.target.checked : f === 'name' || f === 'hh' ? e.target.value.trim() : e.target.value; if (f === 'hh') k.hhOk = !!k.hh; if (f === 'giftQty') { k.giftQty = String(k.giftQty).replace(/\D/g, ''); if (+k.giftQty > 0) { k.giftTbd = true; k.giftSkip = false; } } if (f === 'giftTbd' && !k.giftTbd) k.giftQty = ''; if (f === 'giftTbd' && k.giftTbd) k.giftSkip = false; if (f === 'giftSkip' && k.giftSkip) { k.giftTbd = false; k.giftQty = ''; } Vault.put('calls', k); if (['giftTbd', 'giftQty', 'giftSkip'].includes(f)) kgSync(k); if (e.target.type === 'checkbox' || e.target.tagName === 'SELECT' || f === 'visitDate' || f === 'giftQty') App.render(); return; }
+  const kqn = e.target.dataset?.kqn; if (kqn) { const k = curCall(); if (!k) return; const q = clueQ().qs.find((x) => x.id === kqn), C = k.clues = k.clues || {}, a = C[kqn] = C[kqn] || { t: q?.title || '', sel: [] }; a.note = e.target.value.trim(); a.at = new Date().toISOString(); Vault.put('calls', k); return; }
   const kf = e.target.dataset?.kf; if (kf) { const k = curCall(); if (!k) return; k[kf] = kf === 'name' ? e.target.value.trim() : e.target.value; Vault.put('calls', k); if (['status', 'nextDate', 'visitDate', 'otherWhy'].includes(kf)) App.render(); return; } // 打字的欄位不重畫，鍵盤才不會收起來
   const cf = e.target.dataset?.cf; const cl = curClient();
   if (cf && cl) {
