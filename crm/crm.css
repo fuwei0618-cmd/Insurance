@@ -831,3 +831,18 @@ details.cfb>summary{cursor:pointer;margin-bottom:4px}
 .kprow .klab{min-width:4.5em;font-size:13px;color:var(--muted,#777)}
 .tag.sm{padding:3px 10px;font-size:13px}
 .kpretip{border-top:1px dashed #ddd;margin-top:6px;padding-top:6px;font-size:13px;line-height:1.55}
+
+/* 個人頁壓縮 */
+.khist0{margin:0;font-size:13px}
+.khist{margin:0 0 6px;padding:4px 10px;font-size:13px}
+.khero{gap:6px 8px;margin:4px 0 8px}
+.ktel{font-size:17px;padding:3px 10px;border-radius:10px}
+.khaddr,.khhrow,.khskip{flex-basis:auto;font-size:13px}
+.khhrow .tag,.khskip .tag{padding:2px 9px;font-size:13px}
+.kdtabs{margin:2px 0 6px}.kdtabs .btn{font-size:14px;padding:4px 14px}
+.kprep{gap:6px}
+.kpre{padding:6px 10px!important}
+.kprow{gap:4px;margin:0}.kprow .klab{min-width:0;margin-left:2px}
+.kpsep{display:inline-block;width:1px;height:18px;background:#ddd;margin:0 6px}
+.kprep .kpbox{padding:8px 12px}
+.kopen{margin:2px 0 6px;padding:4px 10px}

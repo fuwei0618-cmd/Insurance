@@ -1041,10 +1041,10 @@ function kCallPrepHTML(k, logs) { // 電訪分頁：流程模板套進這個人�
     midHTML = m.innerHTML + (okC ? '' : confBox) + (okA ? '' : ageBox) + tailBox;
   }
   return `<div class="kprep">
-   <div class="sec kpbox kpre"><div class="kprow"><b>打之前</b><span class="sub">${esc(k.addr || '沒有地址')}</span><span class="sub">上次：${last ? esc(`${String(last.date || '').slice(5).replace('-', '/')} ${last.result}${last.note ? '（' + last.note + '）' : ''}`) : '還沒打過'}</span>${pre ? `<button class="linkbtn" data-act="kpretip">${S.kpretip ? '收起提醒' : '提醒'}</button>` : ''}</div>
-    <div class="kprow"><span class="klab">年齡</span>${kAgeOpts().map(([n, raw]) => `<button class="tag sm${age === n ? ' on' : ''}" data-kage="${esc(raw)}">${esc(n)}</button>`).join('')}</div>
-    <div class="kprow"><span class="klab">已有保單</span>${PTYPES.map((x) => `<button class="tag sm${(k.ptypes || []).includes(x) ? ' on' : ''}" data-kpt="${x}">${x}</button>`).join('')}</div>
-    <div class="kprow"><span class="klab">要確認</span><button class="tag sm${k.needBen ? ' on' : ''}" data-kchk="needBen">受益人</button><button class="tag sm${k.needJob ? ' on' : ''}" data-kchk="needJob">職業類別</button></div>
+   <div class="sec kpbox kpre"><div class="kprow"><b>打之前</b>
+    <span class="klab">年齡</span>${kAgeOpts().map(([n, raw]) => `<button class="tag sm${age === n ? ' on' : ''}" data-kage="${esc(raw)}">${esc(n)}</button>`).join('')}<i class="kpsep"></i>
+    <span class="klab">已有</span>${PTYPES.map((x) => `<button class="tag sm${(k.ptypes || []).includes(x) ? ' on' : ''}" data-kpt="${x}">${x}</button>`).join('')}<i class="kpsep"></i>
+    <span class="klab">要確認</span><button class="tag sm${k.needBen ? ' on' : ''}" data-kchk="needBen">受益人</button><button class="tag sm${k.needJob ? ' on' : ''}" data-kchk="needJob">職業類別</button>${pre ? `<button class="linkbtn" data-act="kpretip">${S.kpretip ? '收起提醒' : '提醒'}</button>` : ''}</div>
     ${pre && S.kpretip ? `<div class="kpretip">${cfRichBody(pre)}</div>` : ''}</div>
    <div class="sec kpbox kmid"><h2>電話中</h2><div class="kopen">開口：「請問是 <b>${esc(k.name || '')}</b> 嗎？」</div>${midHTML}</div>
   </div>`;
@@ -1062,8 +1062,8 @@ function callDetailHTML() { // 一張「這通電話」卡從上點到下；很�
   const g = ev && giftsOf(ev.id).find((x) => x.who?.type === 'call' && x.who.id === k.id), gItems = g && Object.keys(g.items || {}).length;
   const tel = (x, lab) => x ? `<a class="ktel" href="tel:${esc(x.replace(/[^0-9+#*]/g, ''))}"><span>${lab}</span>📞 ${esc(x)}</a>` : '';
   return `${S.kcolHide ? '<button class="btn sm kcolshow" data-act="kcol">» 名單</button>' : ''}${kCallBarHTML(k)}<button class="back" data-act="back">‹ 服務件名單</button>${S.kfromTable ? '<button class="btn sm" data-act="ktable" style="margin-bottom:8px">‹ 回總表</button>' : ''}
-  <div class="dhead"><input class="title" id="kf_name" data-kf="name" value="${esc(k.name)}" placeholder="姓名" aria-label="姓名"><button class="btn sm" data-act="kphotoin">📷 拍照帶入</button><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></div>
-  ${(() => { if (!logs.length) return '<div class="khist0">📞 還沒打過</div>'; const one = (l) => `${String(l.date || '').slice(5).replace('-', '/')}${l.at ? ' ' + callWhen(l.at) : ''} <b>${esc(l.result)}</b>${l.sms ? ' 💬' : ''}${l.note ? `<span class="sub">（${esc(l.note)}）</span>` : ''}`;
+  <div class="dhead"><input class="title" id="kf_name" data-kf="name" value="${esc(k.name)}" placeholder="姓名" aria-label="姓名">${logs.length ? '' : '<span class="khist0">📞 還沒打過</span>'}<button class="btn sm" data-act="kphotoin">📷 拍照帶入</button><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></div>
+  ${(() => { if (!logs.length) return ''; const one = (l) => `${String(l.date || '').slice(5).replace('-', '/')}${l.at ? ' ' + callWhen(l.at) : ''} <b>${esc(l.result)}</b>${l.sms ? ' 💬' : ''}${l.note ? `<span class="sub">（${esc(l.note)}）</span>` : ''}`;
     return `<details class="khist" data-dk="khist"><summary>📞 打過 <b>${logs.length}</b> 次：${logs.slice(0, 3).map(one).join('　・　')}${logs.length > 3 ? '　…' : ''} <span class="linkbtn">看全部／補備註</span></summary>
      <div class="tl">${logs.map((l) => `<div class="tli"><span class="tldot"></span><div class="tlrow"><span class="tldate" style="padding:3px 6px">${fmtDay(l.date)}${l.at ? ' ' + callWhen(l.at) : ''}</span><span class="tltitle" style="padding:3px 6px">${esc(l.result)}${l.sms ? '・💬 ' + esc(l.sms) : ''}</span><button class="tldel" data-kdel="${l.id}" aria-label="刪除這通">✕</button></div><input class="klnote" id="klnote2_${l.id}" data-klognote="${l.id}" value="${esc(l.note || '')}" placeholder="這通的備註（可補寫）"></div>`).join('')}</div>${answerStatsHTML(k)}</details>`; })()}
   <div class="khero">${tel(k.phone, '手機')}${/^09/.test((k.phone || '').replace(/\D/g, '')) ? '<button class="ktel ksms" data-act="ksms"><span>簡訊</span>💬 選範本傳</button>' : ''}${tel(k.home, '住家')}${!k.phone && !k.home ? '<span class="sub">沒有電話：到「聯絡資料」補，或用寄的</span>' : ''}
