@@ -606,7 +606,7 @@ const CALL_FLOW = { // 服務件流程：上面三欄照時間排，中間小抄
   cols: [
     ['打之前', ['一通電話**只做三件事**：顧關係、聽一個線索、約見面。**不在電話裡賣東西。**', '**先在「標記」點年齡組**（從 60以上往下），再按「📞 開始打電話」，只帶這一組。', '**一次只打一區**，之後排拜訪才順。', '看一眼他的功課：住址、保單、年齡組。', '已加 LINE 的：**先傳 LINE 再打**：「年底準備了年曆想送您，什麼時間方便打給您？」']],
     ['電話中（四步，2～3 分鐘）', ['① 問候、身分、目的：「我是國泰的○○，負責您的保單服務。年底了，打來**確認一下您的資料**，也準備了**年曆要送您**。」', '② 確認資料、保單一句話：地址、電話、家戶、職業。保單**只講現況**：「您目前有醫療和意外，都正常有效。」意外險升級的人在這裡順帶提。', '③ 關心、聽、關鍵字：「**快年底了，今年過得還好嗎？**」**聽**到生活上的變化，順口**只提一樣**（看下面小抄），說完就停。', '④ 年曆約時間、加 LINE：「年曆想親自拿給您，**哪天方便？**我**加您 LINE** 好聯絡。」不要就道謝結束，**不追**。', '接到同戶的人：家人的資料一起問；記錄後同戶其他人會自動標「同戶已聯絡」，撥打時跳過。']],
-    ['掛電話後（30 秒內記完）', ['**30 秒內記完**：結果（未接、已接・聊過、約訪成功…）。', '分級；勾家戶、職業確認。', '年曆：要、份數或不送；LINE 點一下。', '**線索寫進備註**，見面前翻需求地圖。', '按「**下一位 ›**」。', '沒接：**換時段再打**（灰＝還沒打、紅＝沒接、綠＝接了）；三段都紅 → 傳簡訊或 LINE，年曆改寄送。']],
+    ['掛電話後（30 秒內記完）', ['**30 秒內記完**：結果（未接、已接・聊過、約訪成功…）。', '分級；勾家戶、職業確認。', '年曆：要、份數或不送；LINE 點一下。', '**線索寫進備註**，見面前翻需求地圖。', '按「**下一位 ›**」。', '沒接：**換時段再打**（灰＝還沒打、紅＝沒接、綠＝接了）；傳簡訊或 LINE，這一輪先跳過，**下一輪再打**；沒接的不寄年曆。']],
   ],
   cheats: [
     ['聽到線索提什麼', [['#車和出門'], ['換車、常騎車', '車險、強制險'], ['要出國', '旅綜險'], ['#家和事業'], ['買房、颱風', '住宅險'], ['自己開店', '頭家壓箱保'], ['#健康和家人'], ['家人住院、自費貴', '實支實付'], ['朋友得癌、經濟支柱', '癌症、重大傷病'], ['爸媽年紀大', '長照(失能)'], ['#人生階段'], ['結婚、小孩、房貸', '保單整理'], ['快退休', '每年有錢領'], ['#錢'], ['定存到期、領年終', '存錢'], ['想存錢又怕生病', '存錢＋保一種病'], ['在玩股票', '證券'], ['#什麼都沒聽到'], ['沒聽到線索', '保單整理（免費整理成一張表）']], '**一次只提一樣**；缺口等客戶自己問「這樣夠嗎？」再談。'],
@@ -686,17 +686,49 @@ function openSmsPicker(k) { // 選一則範本，改好再傳（iPad 會用 iPho
     location.href = `sms:${num}${/iPad|iPhone|Mac/.test(navigator.userAgent) ? '&' : '?'}body=${encodeURIComponent(text)}`; toast('已打開簡訊，確認後再按傳送'); };
 }
 
+function cfDefaultBlocks() { // 流程頁預設內容：改成一塊一塊，可以自己排
+  const F = CALL_FLOW, B = [], add = (title, text, o = {}) => B.push({ id: uid(), title, text, w: 1, ...o });
+  F.cols.forEach(([h, l]) => add(h, l.join('\n')));
+  add('聊天話題鉤子', '紅利（民國 93 年前的保單）\n職業變更\n受益人\n理賠抵繳');
+  add('見面待做', '未訪件 App');
+  add('分級', 'A → VIP，高度優先\nB → 有預算、有促約機會\nC-1 → 有關鍵人物，預算不夠\nC-2 → 關係好，觀念還沒到\nC-3 → 排斥、忙、沒需求，用寄的');
+  F.cheats.forEach(([h, rows, foot]) => add(h, rows.map((r) => (r.length === 1 ? r[0] : r[0] + ' → ' + r[1])).join('\n') + (foot ? '\n' + foot : '')));
+  F.folds.forEach(([h, l]) => add(h, l.join('\n'), { fold: true }));
+  return B;
+}
+const cfBlocks = () => Vault.get('settings', 'cflow')?.blocks || cfDefaultBlocks();
+const cfLines = (t) => String(t || '').split('\n').map((x) => x.trim()).filter(Boolean).map((x) => x.startsWith('#') ? `<div class="cfh">${cfEm(x.slice(1).trim())}</div>`
+  : x.includes('→') && x.split('→')[0].trim().length <= 16 ? (([a, ...r]) => `<div class="cfr"><span>${cfEm(a.trim())}</span><span>→ ${cfEm(r.join('→').trim())}</span></div>`)(x.split('→'))
+  : /^[①②③④⑤⑥⑦⑧⑨⑩0-9]/.test(x) ? `<div class="cfn">${cfEm(x)}</div>` : `<div class="cfl">${cfEm(x)}</div>`).join('');
+const cfView = (pr) => `<div class="cfgridx">${cfBlocks().map((b) => b.fold && !pr ? `<details class="cfb w${b.w || 1}"><summary><h2>${esc(b.title)}</h2></summary>${cfLines(b.text)}</details>` : `<div class="cfb w${b.w || 1}"><h2>${esc(b.title)}</h2>${cfLines(b.text)}</div>`).join('')}</div>`;
 function openCallFlow() {
-  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>服務件流程</h2><button class="btn" id="cfP">🖨 印一頁 A4</button><button class="btn pri" id="cfX">關閉</button></div>
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>服務件流程</h2><button class="btn" id="cfE">✎ 排版</button><button class="btn" id="cfP">🖨 印一頁 A4</button><button class="btn pri" id="cfX">關閉</button></div>
   <div class="ovbody cfone" style="flex-direction:column;margin:0 auto;width:100%">
    <div class="cfheart">🎯 <b>${esc(CALL_HEART.goal)}</b>　🙏 ${esc(CALL_HEART.prayer)}</div>
-   ${cfBody(false)}</div></div>`;
+   ${cfView(false)}</div></div>`;
   $('cfX').onclick = () => { ov.innerHTML = ''; document.body.classList.remove('printing'); const pa = document.getElementById('printArea'); if (pa) pa.className = ''; };
-  $('cfP').onclick = printCallFlow;
+  $('cfP').onclick = printCallFlow; $('cfE').onclick = () => editCallFlow();
+}
+function editCallFlow(draft) { // 手動排版：改標題、內容、寬度、順序，新增或刪掉一塊
+  const B = draft || JSON.parse(JSON.stringify(cfBlocks()));
+  const W = [[1, '三分之一寬'], [2, '三分之二寬'], [3, '整行']];
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>流程排版</h2><button class="btn" id="cfRe">還原預設</button><button class="btn" id="cfC">取消</button><button class="btn pri" id="cfS">完成</button></div>
+  <div class="ovbody" style="flex-direction:column;max-width:900px;margin:0 auto;width:100%">
+   <div class="note">一行一項。<b>**這樣**</b> 會變紅色粗體；<b>#</b> 開頭是小標題；中間有 <b>→</b> 會排成對照；①、② 開頭不加點。排在前面的就在畫面上面，寬度決定一排放幾塊（一排三格）。</div>
+   ${B.map((b, i) => `<div class="cfeb" data-i="${i}"><div class="cfebh"><input class="cfet" value="${esc(b.title)}" placeholder="區塊標題"><select class="cfew">${W.map(([v, l]) => `<option value="${v}"${(b.w || 1) === v ? ' selected' : ''}>${l}</option>`).join('')}</select><label class="sub"><input type="checkbox" class="cfef"${b.fold ? ' checked' : ''}> 收起來</label><span style="flex:1"></span><button class="btn sm" data-mv="-1"${i ? '' : ' disabled'}>↑</button><button class="btn sm" data-mv="1"${i < B.length - 1 ? '' : ' disabled'}>↓</button><button class="btn sm danger" data-rm>✕</button></div><textarea class="cfex grow" rows="${Math.min(14, Math.max(3, String(b.text || '').split('\n').length + 1))}">${esc(b.text)}</textarea></div>`).join('')}
+   <div class="actions"><button class="btn" id="cfAdd">＋ 新增一塊</button></div></div></div>`;
+  const read = () => ov.querySelectorAll('.cfeb').forEach((el) => { const b = B[+el.dataset.i]; b.title = el.querySelector('.cfet').value.trim(); b.w = +el.querySelector('.cfew').value; b.fold = el.querySelector('.cfef').checked; b.text = el.querySelector('.cfex').value; });
+  ov.querySelectorAll('.cfeb').forEach((el) => { const i = +el.dataset.i;
+    el.querySelectorAll('[data-mv]').forEach((x) => (x.onclick = () => { read(); const j = i + +x.dataset.mv; [B[i], B[j]] = [B[j], B[i]]; editCallFlow(B); }));
+    el.querySelector('[data-rm]').onclick = (e) => { const x = e.currentTarget; if (!x.dataset.ok) { x.dataset.ok = 1; x.textContent = '確定刪？'; return; } read(); B.splice(i, 1); editCallFlow(B); }; });
+  $('cfAdd').onclick = () => { read(); B.push({ id: uid(), title: '新的一塊', text: '', w: 1 }); editCallFlow(B); setTimeout(() => ov.querySelector('.cfeb:last-of-type .cfet')?.select(), 50); };
+  $('cfC').onclick = openCallFlow;
+  $('cfRe').onclick = (e) => { const x = e.currentTarget; if (!x.dataset.ok) { x.dataset.ok = 1; x.textContent = '再按一次還原'; return; } Vault.del('settings', 'cflow'); openCallFlow(); toast('已還原成預設'); };
+  $('cfS').onclick = () => { read(); Vault.put('settings', { id: 'cflow', blocks: B.filter((b) => b.title || b.text.trim()) }); openCallFlow(); toast('排版已儲存'); };
 }
 function printCallFlow() { // 一頁 A4：只印流程，不印 app 畫面
   let pa = document.getElementById('printArea'); if (!pa) { pa = document.createElement('div'); pa.id = 'printArea'; document.body.appendChild(pa); }
-  pa.innerHTML = `<div class="cfprint"><h1>服務件流程</h1><div class="cfheart">🎯 <b>${esc(CALL_HEART.goal)}</b>　🙏 ${esc(CALL_HEART.prayer)}</div>${cfBody(true)}</div>`;
+  pa.innerHTML = `<div class="cfprint"><h1>服務件流程</h1><div class="cfheart">🎯 <b>${esc(CALL_HEART.goal)}</b>　🙏 ${esc(CALL_HEART.prayer)}</div>${cfView(true)}</div>`;
   pa.className = 'on'; document.body.classList.add('printing'); // iPad 會提早觸發列印結束，所以等關掉流程視窗才收回
   setTimeout(() => window.print(), 80);
 }
