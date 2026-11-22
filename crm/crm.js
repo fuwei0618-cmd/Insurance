@@ -686,6 +686,19 @@ function openSmsPicker(k) { // 選一則範本，改好再傳（iPad 會用 iPho
     location.href = `sms:${num}${/iPad|iPhone|Mac/.test(navigator.userAgent) ? '&' : '?'}body=${encodeURIComponent(text)}`; toast('已打開簡訊，確認後再按傳送'); };
 }
 
+function openTagPicker(k) { // 點一下就幫這位加／拿掉標籤；標籤會變成總表上的篩選
+  const draw = () => { const all = [...new Set([...callTags(), ...(k.tags || [])])].filter((t) => !isAgeTag(t)).sort((a, b) => a.localeCompare(b));
+    $('tgList').innerHTML = all.length ? all.map((t) => `<button class="chip${(k.tags || []).includes(t) ? ' on' : ''}" data-tg="${esc(t)}">${(k.tags || []).includes(t) ? '✓ ' : ''}${esc(t)}</button>`).join('') : '<span class="sub">還沒有標籤，在下面打一個新的</span>'; };
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${esc(k.name || '')} 的標籤</h2><button class="btn pri" id="tgX">好了</button></div>
+   <div class="ovbody" style="flex-direction:column;max-width:720px;margin:0 auto;width:100%"><div class="sub">點一下加上，再點一下拿掉。加了標籤，總表「標記」那排就能一鍵篩出這群人。</div><div class="chips" id="tgList"></div>
+   <div style="display:flex;gap:8px"><input id="tgNew" placeholder="新標籤，例如：姿慧姊姊的件" autocomplete="off" style="flex:1"><button class="btn" id="tgAdd">加上</button></div></div></div>`;
+  const tog = (t) => { const has = (k.tags || []).includes(t); k.tags = has ? k.tags.filter((x) => x !== t) : [...new Set([...(k.tags || []), t])]; Vault.put('calls', k); draw(); };
+  const add = () => { const t = $('tgNew').value.trim(); if (!t) return; if (!(k.tags || []).includes(t)) tog(t); $('tgNew').value = ''; };
+  draw(); $('tgList').onclick = (e) => { const b = e.target.closest('[data-tg]'); if (b) tog(b.dataset.tg); };
+  $('tgAdd').onclick = add; $('tgNew').onkeydown = (e) => { if (e.key === 'Enter' && !e.isComposing) add(); };
+  $('tgX').onclick = () => { ov.innerHTML = ''; App.render(); };
+}
+
 function cfDefaultBlocks() { // 流程頁預設內容：改成一塊一塊，可以自己排
   const F = CALL_FLOW, B = [], add = (title, text, o = {}) => B.push({ id: uid(), title, text, w: 1, ...o });
   F.cols.forEach(([h, l]) => add(h, l.join('\n')));
@@ -955,7 +968,7 @@ function callDetailHTML() { // 一張「這通電話」卡從上點到下；很�
   return `${S.kcolHide ? '<button class="btn sm kcolshow" data-act="kcol">» 名單</button>' : ''}${kCallBarHTML(k)}<button class="back" data-act="back">‹ 服務件名單</button>${S.kfromTable ? '<button class="btn sm" data-act="ktable" style="margin-bottom:8px">‹ 回總表</button>' : ''}
   <div class="dhead"><input class="title" id="kf_name" data-kf="name" value="${esc(k.name)}" placeholder="姓名" aria-label="姓名"><button class="btn sm" data-act="kphotoin">📷 拍照帶入</button><span class="pill ${stCls(k.status)}">${esc(k.status)}</span></div>
   <div class="khero">${tel(k.phone, '手機')}${/^09/.test((k.phone || '').replace(/\D/g, '')) ? '<button class="ktel ksms" data-act="ksms"><span>簡訊</span>💬 選範本傳</button>' : ''}${tel(k.home, '住家')}${!k.phone && !k.home ? '<span class="sub">沒有電話：到「聯絡資料」補，或用寄的</span>' : ''}
-   <span class="khtags">${(k.tags || []).map((t) => `<span class="pill p-go">${esc(t)}</span>`).join(' ')} ${k.line ? '' : '<span class="sub">LINE</span>'}${klmBtn(k)}</span>
+   <span class="khtags">${(k.tags || []).map((t) => `<span class="pill p-go">${esc(t)}</span>`).join(' ')}<button class="linkbtn" data-act="ktagpick" style="margin:0 6px">＋ 標籤</button> ${k.line ? '' : '<span class="sub">LINE</span>'}${klmBtn(k)}</span>
    ${k.addr ? `<div class="sub khaddr">${esc(k.addr)}${k.hh ? '・' + esc(k.hh) : ''}</div>` : ''}
    ${(() => { const oth = (callHouseholds(calls()).get(hhKey(k)) || []).filter((o) => o.id !== k.id); return `<div class="khhrow"><span class="sub">同戶</span>${oth.map((o) => { const gf = callGift(o), pg = callProg(o); return `<button class="tag" data-ksel="${o.id}">${esc(o.name || '未填')}<span class="sub">　${esc(pg)}${gf ? '・年曆' + esc(gf === '要' ? '要' : gf) : ''}</span> ›</button>`; }).join('')}<button class="linkbtn" data-act="hhopen">${oth.length ? '＋ 再連結家人' : '＋ 連結家人'}</button></div>`; })()}
    <div class="khskip"><button class="tag${k.other ? ' on' : ''}" data-kchk="other">${k.other ? '✓ ' : ''}不追蹤</button>${k.other ? `<select data-kf="otherWhy" id="kf_otherWhy2" aria-label="原因">${KSKIP.map((x) => `<option${skipWhy(k) === x ? ' selected' : ''}>${x}</option>`).join('')}</select><input data-kf="otherWho" id="kf_otherWho2" value="${esc(k.otherWho)}" placeholder="${skipWhy(k) === '同事的件' ? '哪位同事' : '補充'}">` : '<span class="sub">停效、同事的件、保經…按這個，撥打時就跳過</span>'}<button class="tag${k.mailBack ? ' on' : ''}" data-kchk="mailBack">寄信退件</button></div></div>
@@ -2367,6 +2380,7 @@ app.addEventListener('click', async (e) => {
     case 'ktagimp': openCallTagImport(); break;
     case 'hhopen': S.hhOpen = true; S.hhq = ''; App.render(); { const el = document.getElementById('khhsec'); if (el) { el.open = true; el.scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => $('kHhQ')?.focus(), 300); } } break;
     case 'ksmsmark': { const k = curCall(); if (!k) break; const cl = S.kcur?.k === k.id ? (k.logs || []).find((l) => l.id === S.kcur.l) : null; if (cl?.sms) { delete cl.sms; Vault.put('calls', k); } else kMarkSms(k, '手機傳的'); App.render(); break; }
+    case 'ktagpick': { const k = curCall(); if (k) openTagPicker(k); break; }
     case 'ksms': { const k = curCall(); if (k) openSmsPicker(k); break; }
     case 'gsvctog': S.gsvcOpen = !S.gsvcOpen; App.render(); break;
     case 'knewround': { const r = kRound(), left = kQueue().filter((k) => !kInRound(k)).length; if (!armConfirm(b, left ? `這輪還剩 ${left} 位，再按一次開始第 ${r.n + 1} 輪` : `再按一次開始第 ${r.n + 1} 輪`)) break; Vault.put('settings', { id: 'kround', n: r.n + 1, start: new Date().toISOString() }); S.kqSnap = null; App.render(); toast(`第 ${r.n + 1} 輪開始，上一輪沒接的人會再帶到`); break; }
