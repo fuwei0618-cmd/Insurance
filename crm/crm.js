@@ -584,7 +584,7 @@ function caseDetailHTML() {
 const calls = () => Vault.all('calls');
 const curCall = () => Vault.get('calls', S.ksel);
 const CALL_ST = ['待撥', '再聯絡', '已約訪', '結案'];
-const RESULTS = [['未接', '再聯絡'], ['已接・聊過', '再聯絡'], ['約訪成功', '已約訪'], ['請我再打', '再聯絡'], ['拒絕', '結案'], ['空號／錯號', '結案']];
+const RESULTS = [['未接', '再聯絡'], ['已接・聊過', '再聯絡'], ['LINE 已聯絡', '再聯絡'], ['約訪成功', '已約訪'], ['請我再打', '再聯絡'], ['拒絕', '結案'], ['空號／錯號', '結案']];
 const noCmp = (a, b) => { const x = parseInt(a.no, 10), y = parseInt(b.no, 10); return (isNaN(x) ? 1e9 : x) - (isNaN(y) ? 1e9 : y) || (a.name || '').localeCompare(b.name || '', 'zh-Hant'); };
 const NO_ANSWER = ['未接', '空號／錯號'];
 const PROGS = ['未打', '未接', '已接通', '已排訪', '已見面', '不經營'];
@@ -598,7 +598,7 @@ function callProg(k) { // 這個人走到哪一關
 }
 function callSlots(k) { // 三個時段：上午、下午、晚上，各打過沒、接了沒
   const m = { 上午: '', 下午: '', 晚上: '' };
-  (k.logs || []).filter((l) => l.at).forEach((l) => { const h = new Date(l.at).getHours(), s = h < 12 ? '上午' : h < 18 ? '下午' : '晚上'; if (l.result === '同戶已聯絡') return; if (!NO_ANSWER.includes(l.result)) m[s] = 'ok'; else if (!m[s]) m[s] = 'no'; });
+  (k.logs || []).filter((l) => l.at).forEach((l) => { const h = new Date(l.at).getHours(), s = h < 12 ? '上午' : h < 18 ? '下午' : '晚上'; if (l.result === '同戶已聯絡' || l.result === 'LINE 已聯絡') return; if (!NO_ANSWER.includes(l.result)) m[s] = 'ok'; else if (!m[s]) m[s] = 'no'; });
   return m;
 }
 function callGift(k) { const gs = Vault.all('gifts').filter((g) => g.who?.type === 'call' && g.who?.id === k.id); if (gs.length) return gs.every((g) => g.status === '已送') ? '已送' : '預備'; return k.giftWith ? '同戶一份' : k.giftSkip ? '不送' : +k.giftQty > 0 || k.giftTbd ? '要' : ''; }
