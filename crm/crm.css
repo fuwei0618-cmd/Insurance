@@ -866,3 +866,8 @@ details.cfb>summary{cursor:pointer;margin-bottom:4px}
 .kptri3 b{font-size:13px;margin-left:6px;color:var(--accent,#5f7d4a)}
 .kpside{display:flex;flex-direction:column;gap:4px;align-items:flex-start;border-left:1px solid #e5e2da;padding-left:14px}
 @media (max-width:900px){.kpgrid{grid-template-columns:1fr}.kpside{flex-direction:row;border-left:0;padding-left:0}}
+
+.kptri3 .tag,.kpside .tag,.kptri3 b,.kpgrid .tag{white-space:nowrap;flex-shrink:0}
+.kptri3>div{flex-wrap:nowrap}
+.kpgrid{grid-template-columns:minmax(min-content,1fr) auto auto}.kpleft .kprow{flex-wrap:nowrap}.kpleft .kpnote{min-width:4em;width:100%}
+@media (max-width:1050px){.kpgrid{grid-template-columns:auto auto}.kpside{grid-column:1/-1;flex-direction:row;border-left:0;padding-left:0}}
