@@ -936,12 +936,19 @@ details.cfb>summary{cursor:pointer;margin-bottom:4px}
 .uwok{color:#4e7a3a;font-weight:700;white-space:nowrap}.uwng{color:#c0392b;font-weight:700;white-space:nowrap}
 
 .uwbodywrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px}
-.uwbody{width:190px;height:auto;flex:0 0 auto}
-.uwfig *{fill:#f3ede2;stroke:#c9bfa8;stroke-width:1.5}
-.uworg *{fill:#f6dcd3;stroke:#e0b9ab;stroke-width:1}.uworg .uwheart{fill:#efb7a8}
-.uwpt{cursor:pointer}.uwpt circle{fill:#5f7d4a;stroke:#fff;stroke-width:2;opacity:.9}.uwpt text{fill:#fff;font-size:10px;font-weight:700;pointer-events:none}
-.uwpt.on circle{fill:#c0392b;r:12}
 .uwlegend{display:flex;flex-direction:column;gap:3px;flex:1;min-width:220px}
 .uwlg{text-align:left;font:inherit;font-size:13px;border:1px solid #e5dfcc;background:#fff;border-radius:8px;padding:3px 8px;cursor:pointer}
 .uwlg.on{background:#fbeee9;border-color:#c0392b}
 .uwsec .uwok,.uwsec .uwng{white-space:normal;min-width:5em}.uwgrid .cftab{table-layout:auto}
+
+/* 人體圖 v2 */
+.uwbody{width:260px;height:auto;flex:0 0 auto}
+.uwfig *{stroke:#d9cdb6;stroke-width:1.2;stroke-linejoin:round}
+.uwo{cursor:pointer;transition:opacity .15s}.uwo *{stroke:rgba(0,0,0,.12);stroke-width:1}
+.o-brain{fill:#e9c9d8}.o-spine{stroke:#c9b3d6!important;stroke-width:3!important;fill:none}
+.o-lung{fill:#f2b8b5}.o-heart{fill:#d9534f}.o-liver{fill:#b9774f}.o-stomach{fill:#e8a77f}.o-gut{fill:#f1c9a5}.o-gutl{fill:none;stroke:#d49a72!important;stroke-width:1.4!important}
+.o-kidney{fill:#9c5a4e}.o-bladder{fill:#e9d48a}.o-lymph{fill:#7fb069}.o-skin{fill:#f6d2b8;stroke-dasharray:2 2}.o-joint{fill:#fff;stroke:#b8a78a!important;stroke-width:2!important}
+.uwbody:has(.uwo.on) .uwo:not(.on){opacity:.35}
+.uwo.on *{stroke:#c0392b!important;stroke-width:2!important}
+.uwlab{cursor:pointer}.uwlab path{fill:none;stroke:#b5aa95;stroke-width:.8}.uwlab circle{fill:#8a7f6a}.uwlab text{font-size:12px;fill:#555;font-weight:600}
+.uwlab.on text{fill:#c0392b;font-weight:800}.uwlab.on path{stroke:#c0392b}

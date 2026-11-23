@@ -2203,11 +2203,27 @@ const UW_BODY = [ // 人體圖：系統｜科別｜位置(x,y)｜說明
   ['神經', '神經科', 100, 28, '腦、脊髓'], ['呼吸', '胸腔科', 72, 108, '肺'], ['循環', '血液科', 118, 112, '心臟、血液'], ['消化', '腸胃科', 100, 160, '胃、腸、肝、膽、胰'],
   ['泌尿', '腎臟科', 132, 170, '腎'], ['免疫', '風濕免疫科', 62, 150, '淋巴、免疫'], ['骨骼', '風濕免疫科', 70, 245, '關節、脊椎'], ['皮膚', '皮膚科', 150, 235, '皮膚'], ['各器官', '腫瘤科', 100, 205, '癌症哪裡都可能']];
 function uwFilter(q) { document.querySelectorAll('.uwtab tr').forEach((tr, i) => { if (i) tr.style.display = !q || tr.textContent.includes(q) ? '' : 'none'; }); document.querySelectorAll('[data-uwsys]').forEach((g) => g.classList.toggle('on', !!q && g.dataset.uwsys === q)); }
-function uwBodySVG() { // 簡單人形＋器官點，點了篩下面的表
-  return `<svg class="uwbody" viewBox="0 0 200 330" role="img" aria-label="人體圖"><g class="uwfig"><circle cx="100" cy="32" r="22"/><rect x="92" y="52" width="16" height="12" rx="4"/><path d="M62 66 Q100 58 138 66 L146 190 Q100 204 54 190 Z"/><path d="M62 70 L36 160 L46 164 L72 96"/><path d="M138 70 L164 160 L154 164 L128 96"/><path d="M70 192 L66 318 L86 318 L98 206"/><path d="M130 192 L134 318 L114 318 L102 206"/></g>
-   <g class="uworg"><ellipse cx="84" cy="104" rx="13" ry="22"/><ellipse cx="116" cy="104" rx="13" ry="22"/><path d="M106 110 q8 -10 14 0 q-2 10 -14 16 q-12 -6 -14 -16 q6 -10 14 0z" class="uwheart"/><ellipse cx="96" cy="150" rx="18" ry="11"/><path d="M80 168 h40 v26 h-40z" rx="6"/><ellipse cx="78" cy="168" rx="5" ry="8"/><ellipse cx="122" cy="168" rx="5" ry="8"/></g>
-   ${UW_BODY.map(([sys, dept, x, y, note]) => `<g class="uwpt" data-uwsys="${sys}" tabindex="0"><circle cx="${x}" cy="${y}" r="9"/><text x="${x}" y="${y + 3.5}" text-anchor="middle">${sys[0]}</text><title>${sys}：${note}（${dept}）</title></g>`).join('')}</svg>
-   <div class="uwlegend">${UW_BODY.map(([sys, dept, , , note]) => `<button class="uwlg" data-uwsys="${sys}"><b>${sys}</b> ${esc(note)}<span class="sub">　${esc(dept)}</span></button>`).join('')}<button class="uwlg" data-uwsys="">全部</button></div>`;
+function uwBodySVG() { // 人體圖：器官本身可以點，右邊有標籤線
+  const M = (x) => 240 - x, arm = (f) => `M${f(66)} 100 Q${f(50)} 104 ${f(48)} 126 L${f(38)} 232 Q${f(36)} 256 ${f(42)} 292 Q${f(47)} 302 ${f(55)} 297 Q${f(57)} 272 ${f(59)} 238 L${f(74)} 142 Z`;
+  const leg = (f) => `M${f(80)} 262 L${f(119)} 262 L${f(114)} 420 Q${f(112)} 434 ${f(100)} 434 L${f(92)} 434 Q${f(84)} 432 ${f(86)} 420 L${f(78)} 300 Z`;
+  const id = (x) => x;
+  const org = (sys, inner) => `<g class="uwo" data-uwsys="${sys}" tabindex="0">${inner}</g>`;
+  const LAB = [['神經', 120, 34, 34], ['免疫', 131, 82, 76], ['呼吸', 143, 126, 118], ['循環', 127, 146, 152], ['消化', 141, 188, 186], ['泌尿', 147, 216, 220], ['皮膚', 194, 236, 254], ['骨骼', 140, 346, 346]];
+  return `<svg class="uwbody" viewBox="0 0 300 445" role="img" aria-label="人體圖">
+   <defs><linearGradient id="uwSkin" x1="0" x2="1"><stop offset="0" stop-color="#f4ece0"/><stop offset=".5" stop-color="#faf5ee"/><stop offset="1" stop-color="#f0e6d6"/></linearGradient></defs>
+   <g class="uwfig" fill="url(#uwSkin)"><ellipse cx="120" cy="46" rx="25" ry="30"/><rect x="108" y="68" width="24" height="24" rx="8"/>
+    <path d="M70 96 Q120 82 170 96 Q183 101 180 122 L172 222 Q170 250 163 272 L77 272 Q70 250 68 222 L60 122 Q57 101 70 96 Z"/><path d="${arm(id)}"/><path d="${arm(M)}"/><path d="${leg(id)}"/><path d="${leg(M)}"/></g>
+   ${org('神經', '<path d="M100 38 Q102 18 120 17 Q138 18 140 38 Q140 52 120 54 Q100 52 100 38Z" class="o-brain"/><path d="M120 54 L120 250" class="o-spine"/>')}
+   ${org('呼吸', '<path d="M116 106 Q100 104 94 124 Q90 150 96 170 Q108 176 116 166 Z" class="o-lung"/><path d="M124 106 Q140 104 146 124 Q150 150 144 170 Q132 176 124 166 Z" class="o-lung"/>')}
+   ${org('循環', '<path d="M127 158 Q112 148 113 138 Q114 130 121 131 Q125 132 127 136 Q129 132 133 131 Q140 130 141 138 Q141 148 127 158Z" class="o-heart"/>')}
+   ${org('消化', '<path d="M88 176 Q110 168 128 176 Q126 194 104 196 Q90 194 88 176Z" class="o-liver"/><path d="M132 176 Q150 172 152 186 Q150 202 134 200 Q128 192 132 176Z" class="o-stomach"/><rect x="98" y="202" width="44" height="42" rx="14" class="o-gut"/><path d="M106 212 q6 -6 12 0 t12 0 M106 224 q6 -6 12 0 t12 0 M106 236 q6 -6 12 0 t12 0" class="o-gutl"/>')}
+   ${org('泌尿', '<path d="M90 206 q-8 8 0 20 q6 4 8 -4 q-2 -6 2 -10 q-2 -8 -10 -6z" class="o-kidney"/><path d="M150 206 q8 8 0 20 q-6 4 -8 -4 q2 -6 -2 -10 q2 -8 10 -6z" class="o-kidney"/><ellipse cx="120" cy="256" rx="10" ry="8" class="o-bladder"/>')}
+   ${org('免疫', [[110, 82], [131, 82], [78, 112], [162, 112], [100, 266], [140, 266]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4" class="o-lymph"/>`).join(''))}
+   ${org('皮膚', '<rect x="184" y="214" width="16" height="44" rx="7" class="o-skin" transform="rotate(-6 192 236)"/>')}
+   ${org('骨骼', '<circle cx="100" cy="346" r="8" class="o-joint"/><circle cx="140" cy="346" r="8" class="o-joint"/><circle cx="72" cy="100" r="6" class="o-joint"/><circle cx="168" cy="100" r="6" class="o-joint"/>')}
+   ${LAB.map(([sys, x, y, ly]) => `<g class="uwlab" data-uwsys="${sys}"><path d="M${x} ${y} L206 ${ly} L214 ${ly}"/><circle cx="${x}" cy="${y}" r="2"/><text x="218" y="${ly + 4}">${sys}</text></g>`).join('')}
+  </svg>
+  <div class="uwlegend">${UW_BODY.map(([sys, dept, , , note]) => `<button class="uwlg" data-uwsys="${sys}"><b>${sys}</b> ${esc(note)}<span class="sub">　${esc(dept)}</span></button>`).join('')}<button class="uwlg" data-uwsys="">全部</button></div>`;
 }
 function uwHTML() {
   const sec = (t, body, sub = '') => `<div class="sec uwsec"><h2>${t}${sub ? ` <span class="sub">${sub}</span>` : ''}</h2>${body}</div>`;
