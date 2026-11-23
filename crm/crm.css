@@ -924,3 +924,24 @@ details.cfb>summary{cursor:pointer;margin-bottom:4px}
 .kqpyr .kqgs{border-left:2px solid #bbb}
 .kqpyr td.kqpl,.kqpyr th.kqpl{min-width:12em}
 .cfgridx>.cfb{min-width:0}.cfb .scroll{overflow-x:auto}
+
+/* 核保重點 */
+.uwpage{max-width:1200px;margin:0 auto}
+.uwhead h1{font-size:22px;margin:4px 0}.uwhead .pill{font-size:12px;vertical-align:middle}
+.uwq{width:100%;box-sizing:border-box;border:1px solid var(--line,#ddd);border-radius:8px;padding:6px 10px;font:inherit;margin-bottom:6px}
+.uwtab td{font-size:13.5px;vertical-align:top}.uwtab td:first-child{white-space:nowrap}
+.uwgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
+.uwsec{font-size:14px;line-height:1.6}.uwsec>div{margin:2px 0}
+.uwbox{background:#fff6d6;border-left:4px solid #e0b43c;border-radius:8px;padding:6px 10px;margin:4px 0 8px!important}
+.uwok{color:#4e7a3a;font-weight:700;white-space:nowrap}.uwng{color:#c0392b;font-weight:700;white-space:nowrap}
+
+.uwbodywrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px}
+.uwbody{width:190px;height:auto;flex:0 0 auto}
+.uwfig *{fill:#f3ede2;stroke:#c9bfa8;stroke-width:1.5}
+.uworg *{fill:#f6dcd3;stroke:#e0b9ab;stroke-width:1}.uworg .uwheart{fill:#efb7a8}
+.uwpt{cursor:pointer}.uwpt circle{fill:#5f7d4a;stroke:#fff;stroke-width:2;opacity:.9}.uwpt text{fill:#fff;font-size:10px;font-weight:700;pointer-events:none}
+.uwpt.on circle{fill:#c0392b;r:12}
+.uwlegend{display:flex;flex-direction:column;gap:3px;flex:1;min-width:220px}
+.uwlg{text-align:left;font:inherit;font-size:13px;border:1px solid #e5dfcc;background:#fff;border-radius:8px;padding:3px 8px;cursor:pointer}
+.uwlg.on{background:#fbeee9;border-color:#c0392b}
+.uwsec .uwok,.uwsec .uwng{white-space:normal;min-width:5em}.uwgrid .cftab{table-layout:auto}

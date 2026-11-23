@@ -240,6 +240,7 @@ function getImg(fileId) { if (!imgCache.has(fileId)) imgCache.set(fileId, Files.
 
 /* ================= 選項 ================= */
 const ICON = {
+  shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>',
   gift: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12M12 8c-1.5-3-5-4-5-1.5S9.5 8 12 8zm0 0c1.5-3 5-4 5-1.5S14.5 8 12 8z"/></svg>',
   scan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M4 12h16"/></svg>',
   bolt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3 4 14h7l-1 7 9-11h-7l1-7z"/></svg>',
@@ -250,7 +251,7 @@ const ICON = {
   user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
   msg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>',
 };
-const NAV = [['quick', '快查', 'bolt'], ['clients', '客戶', 'user'], ['cases', '案件', 'folder'], ['calls', '服務件', 'phone'], ['refs', '理賠參考', 'book'], ['sop', 'SOP', 'list'], ['tpl', '範本', 'msg'], ['gifts', '送禮', 'gift']];
+const NAV = [['quick', '快查', 'bolt'], ['clients', '客戶', 'user'], ['cases', '案件', 'folder'], ['calls', '服務件', 'phone'], ['refs', '理賠參考', 'book'], ['uw', '核保重點', 'shield'], ['sop', 'SOP', 'list'], ['tpl', '範本', 'msg'], ['gifts', '送禮', 'gift']];
 const DEFAULT_CATS = ['理賠', '建議書', '新契約', '保全', '保費', '保校', '服務', '其他'];
 const CATS = [...DEFAULT_CATS]; // 可以在 App 裡自己改，存在設定裡
 // 分類分兩層：大類（照公司拜訪事件）› 小類（案件、SOP、範本共用）
@@ -465,6 +466,7 @@ const App = {
     else if (v === 'calls' && S.ktable) h += '<section class="wide">' + callTableHTML() + '</section>';
     else if (v === 'calls') h += callListHTML() + '<section class="detail split">' + callDetailHTML() + '</section>';
     else if (v === 'refs') h += refListHTML() + '<section class="detail split">' + refDetailHTML() + '</section>';
+    else if (v === 'uw') h += '<section class="wide">' + uwHTML() + '</section>';
     else if (v === 'sop') h += '<section class="wide">' + notesHTML('sop') + '</section>';
     else if (v === 'quick') h += '<section class="wide">' + quickHTML() + '</section>';
     else if (v === 'tpl') h += '<section class="wide">' + notesHTML('tpl') + '</section>';
@@ -2182,6 +2184,53 @@ function sopTplsHTML(sop, c) { // 掛在這個 SOP 底下、要傳給客戶的�
   const ts = notes().filter((t) => t.kind === 'tpl' && sopsOf(t).includes(sop.id));
   return `<div class="soptpls">${ts.map((t) => `<details class="tplrow"><summary>${chPills(t)}<span class="tpltitle">${esc(t.title)}</span><button class="btn" data-copy="${t.id}"${c ? ' data-forcase="1"' : ''} style="padding:4px 10px;font-size:13px">複製</button></summary><pre>${esc(fillTpl(t.body, c))}</pre></details>`).join('')}<button class="linkbtn" data-newtplfor="${sop.id}">＋ 給客戶的範本</button></div>`;
 }
+// 核保重點（草稿）：只在工作手冊，不放公開網站。來源：115 年下半年營業單位早會核保交流簡報
+const UW_DEPT_NOTE = '點人體圖的部位，下面只留那個系統';
+const UW_DEPT = [ // 科別｜簡報列為承保機率低的病｜病的性質｜常聽到的治療、用藥｜身體系統
+  ['腫瘤科・血液科', '癌症、白血病（血癌）、淋巴瘤、多發性骨髓瘤', '腫瘤', '化療、放療、標靶、定期追蹤', '各器官；血液、淋巴'],
+  ['風濕免疫科', '類風濕性關節炎、紅斑性狼瘡、風濕病（含風濕熱）、僵直性脊椎炎、膠原症', '自體免疫', '類固醇、免疫抑制劑、生物製劑、定期抽血', '免疫；骨骼肌肉'],
+  ['腎臟科', '腎功能異常、慢性腎臟病第 3～4 期、末期腎衰竭（尿毒症）、慢性腎絲球腎炎、腎病症候群、蛋白尿', '器官慢性受損', '洗腎、驗尿驗血追蹤、控制血壓', '泌尿'],
+  ['腸胃科・肝膽科', '發炎性腸疾病（克隆氏症、潰瘍性結腸炎）、大腸腺瘤性瘜肉、胰臟炎、幽門螺旋桿菌／慢性萎縮性胃炎、原發性硬化性膽管炎', '長期發炎；瘜肉屬癌前病變', '大腸鏡、胃鏡、長期吃藥', '消化'],
+  ['血液科（非腫瘤）', '地中海型貧血（血紅蛋白 H 病、庫利氏貧血）、再生不良性貧血', '先天遺傳；造血異常', '輸血、定期抽血', '循環（血液）'],
+  ['皮膚科', '乾癬、壞疽性膿皮症', '自體免疫', '生物製劑、類固醇', '皮膚；免疫'],
+  ['神經科', '多發性硬化症', '自體免疫', '免疫調節藥物、核磁共振追蹤', '神經'],
+  ['胸腔科', '慢性阻塞性肺病', '器官慢性受損', '吸入劑、氧氣', '呼吸']];
+const UW_BODY = [ // 人體圖：系統｜科別｜位置(x,y)｜說明
+  ['神經', '神經科', 100, 28, '腦、脊髓'], ['呼吸', '胸腔科', 72, 108, '肺'], ['循環', '血液科', 118, 112, '心臟、血液'], ['消化', '腸胃科', 100, 160, '胃、腸、肝、膽、胰'],
+  ['泌尿', '腎臟科', 132, 170, '腎'], ['免疫', '風濕免疫科', 62, 150, '淋巴、免疫'], ['骨骼', '風濕免疫科', 70, 245, '關節、脊椎'], ['皮膚', '皮膚科', 150, 235, '皮膚'], ['各器官', '腫瘤科', 100, 205, '癌症哪裡都可能']];
+function uwFilter(q) { document.querySelectorAll('.uwtab tr').forEach((tr, i) => { if (i) tr.style.display = !q || tr.textContent.includes(q) ? '' : 'none'; }); document.querySelectorAll('[data-uwsys]').forEach((g) => g.classList.toggle('on', !!q && g.dataset.uwsys === q)); }
+function uwBodySVG() { // 簡單人形＋器官點，點了篩下面的表
+  return `<svg class="uwbody" viewBox="0 0 200 330" role="img" aria-label="人體圖"><g class="uwfig"><circle cx="100" cy="32" r="22"/><rect x="92" y="52" width="16" height="12" rx="4"/><path d="M62 66 Q100 58 138 66 L146 190 Q100 204 54 190 Z"/><path d="M62 70 L36 160 L46 164 L72 96"/><path d="M138 70 L164 160 L154 164 L128 96"/><path d="M70 192 L66 318 L86 318 L98 206"/><path d="M130 192 L134 318 L114 318 L102 206"/></g>
+   <g class="uworg"><ellipse cx="84" cy="104" rx="13" ry="22"/><ellipse cx="116" cy="104" rx="13" ry="22"/><path d="M106 110 q8 -10 14 0 q-2 10 -14 16 q-12 -6 -14 -16 q6 -10 14 0z" class="uwheart"/><ellipse cx="96" cy="150" rx="18" ry="11"/><path d="M80 168 h40 v26 h-40z" rx="6"/><ellipse cx="78" cy="168" rx="5" ry="8"/><ellipse cx="122" cy="168" rx="5" ry="8"/></g>
+   ${UW_BODY.map(([sys, dept, x, y, note]) => `<g class="uwpt" data-uwsys="${sys}" tabindex="0"><circle cx="${x}" cy="${y}" r="9"/><text x="${x}" y="${y + 3.5}" text-anchor="middle">${sys[0]}</text><title>${sys}：${note}（${dept}）</title></g>`).join('')}</svg>
+   <div class="uwlegend">${UW_BODY.map(([sys, dept, , , note]) => `<button class="uwlg" data-uwsys="${sys}"><b>${sys}</b> ${esc(note)}<span class="sub">　${esc(dept)}</span></button>`).join('')}<button class="uwlg" data-uwsys="">全部</button></div>`;
+}
+function uwHTML() {
+  const sec = (t, body, sub = '') => `<div class="sec uwsec"><h2>${t}${sub ? ` <span class="sub">${sub}</span>` : ''}</h2>${body}</div>`;
+  return `<div class="uwpage"><div class="uwhead"><h1>核保重點 <span class="pill">草稿</span></h1><div class="note">只在工作手冊，不放公開網站。核保結果<b>一律以公司審核為準</b>；對客戶不說「放寬承保」、「可以除外」，只說「送公司評估」。</div></div>
+   ${sec('科別對照表', `<div class="uwbodywrap">${uwBodySVG()}</div><input id="uwQ" class="uwq" placeholder="打關鍵字找，例如：洗腎、類固醇、腎臟" autocomplete="off"><div class="scroll"><table class="cftab uwtab"><tr><th>科別</th><th>簡報列為承保機率低的病</th><th>病的性質</th><th>常聽到的治療、用藥</th><th>身體系統</th></tr>${UW_DEPT.map((r) => `<tr>${r.map((c, i) => `<td>${i === 0 ? `<b>${esc(c)}</b>` : esc(c)}</td>`).join('')}</tr>`).join('')}</table></div>
+    <div class="sub">見面時問：「平常有固定看哪一科嗎？」聽到上面任何一格，就先記下來，送件前跟核保確認。這張表只舉例，不是全部。</div>`, '問「固定看哪一科」最好開口')}
+  <div class="uwgrid">
+  ${sec('簡報案例', `<table class="cftab"><tr><th>情況</th><th>結果</th></tr>
+    <tr><td>高血壓，有吃藥控制良好，沒有併發症</td><td class="uwok">承保機率高</td></tr>
+    <tr><td>高血壓有吃藥，但兩年前心肌梗塞住院</td><td class="uwng">承保機率低</td></tr>
+    <tr><td>良性腫瘤已手術切除，有病理報告，追蹤正常</td><td class="uwok">承保機率高</td></tr>
+    <tr><td>抽吸是良性，但還沒切除，追蹤中沒變化</td><td class="uwok">可能除外承保</td></tr></table><div class="sub">重點：控制得好、沒有併發症、有報告佐證。實際仍看個案。</div>`, '美愛康泰')}
+  ${sec('高齡客戶財務核保', `<div class="uwbox">高齡 ＋ 沒有固定職業收入（退休、家管、無業） ＋ 保費達新台幣 500 萬以上 → <b>要徵提動產財力證明</b></div>
+    <div><b>招攬時確認三件事</b></div><div>① 投保目的：清楚嗎？保額、保費符合實際需求嗎？</div><div>② 資金來源：有沒有貸款、保單借款？</div><div>③ 繳費能力：收入、資產跟保費相當嗎？付得起續期嗎？</div>
+    <div class="sub">爭議怎麼來：退休收入減少 → 生活改變 → 續期保費有壓力 → 質疑當初規劃 → 申訴。</div>`, '九工起')}
+  ${sec('電訪三重點', `<div class="uwbox"><b>保費來源</b>・<b>近三個月有沒有貸款或解約</b>（含部分提領、縮小保額）・<b>投保目的</b></div>
+    <table class="cftab"><tr><th>文件</th><th>保費來源</th><th>近3月貸款解約</th><th>投保目的</th></tr><tr><td>要保書</td><td>✓</td><td></td><td></td></tr><tr><td>生調表</td><td>✓</td><td>✓</td><td></td></tr><tr><td><b>財務狀況告知書</b></td><td>✓</td><td>✓</td><td>✓</td></tr><tr><td>商品應遵循事項檢核表</td><td></td><td></td><td>✓</td></tr></table>
+    <div class="sub">投保文件要跟電訪結果一致。知道客戶最近有貸款或解約，事先提醒會電訪、要據實回答。</div>`)}
+  ${sec('常見補全', `<div>☐ 生調表的貸款、解約勾選，跟實際一樣嗎？不一致要寫原因（誤勾、忘記告知）</div>
+    <div>☐ 生調表勾了「三個月內有貸款或保單借款」→ 財告書要填<b>借款種類＋原因</b></div>
+    <div>☐ 要保人未成年或沒有經濟能力（家管、退休、無業、學生）→ 財告書填<b>主要經濟來源者</b>、關係、工作、財力</div>
+    <div>☐ 保費來源要改：傳統型在要保書「繳費方式」改；投資型在「生調表」改</div>`)}
+  ${sec('文宣規定', `<div>① 只要提到商品的文宣、圖卡、招攬內容，<b>要先送審</b>才能用</div><div>② 疾病、體況由公司評估，結果以公司為準</div><div>③ 不說「放寬承保」、「可除外承保」</div>
+    <div class="sub">保險手冊、LINE 範本只要提到具體商品，就要注意這條。</div>`)}
+  ${sec('還要補的資料', `<div>☐ 健康告知書題目（最新版）→ 做「告知書對照」</div><div>☐ 商品專區完整的核保案例說明</div><div>☐ 確認這份簡報能不能公開（目前當內部資料）</div><div>☐ 你客戶最常出現的科別</div>`)}
+  </div></div>`;
+}
 function sopHTML() {
   const q = S.q.trim(), list = notes().filter((n) => n.kind === 'sop' && sopMatch(n) && (!q || (n.title + n.body).includes(q)));
   const g = GROUPS.find((x) => x.name === S.sg);
@@ -2406,6 +2455,7 @@ app.addEventListener('click', async (e) => {
   const kl = e.target.closest('[data-klink]'); if (kl) { const a = Vault.get('calls', kl.dataset.kprev), b = Vault.get('calls', kl.dataset.klink); if (a && b) { if (a.hh && a.hh === b.hh) { b.hh = ''; b.hhOk = false; Vault.put('calls', b); if (!calls().some((x) => x.id !== a.id && x.hh === a.hh)) { a.hh = ''; a.hhOk = false; Vault.put('calls', a); } toast('拆開了'); } else toast('同一戶：' + linkHH(a, b)); App.render(); } return; }
   const klm = e.target.closest('[data-klm]'); if (klm) { const k = Vault.get('calls', klm.dataset.klm); if (k) { if (!k.line) k.line = true; else k.lineMsg = LMSG[(LMSG.indexOf(lmsg(k)) + 1) % LMSG.length]; Vault.put('calls', k); App.render(); } return; }
   const kr = e.target.closest('tr[data-ksel]'); if (kr) { S.ktable = false; S.kfromTable = true; S.ksel = kr.dataset.ksel; S.kres = ''; S.showDetail = true; App.render(); window.scrollTo(0, 0); return; }
+  const uwp = e.target.closest('[data-uwsys]'); if (uwp) { const inp = document.getElementById('uwQ'); if (inp) inp.value = ''; uwFilter(uwp.dataset.uwsys); return; }
   const b = e.target.closest('button'); if (!b) return; const d = b.dataset; const c = cur();
   if (d.nav) { if (d.nav === 'calls' && !S.kcalling) { S.ktable = true; S.kfromTable = false; } S.view = d.nav; S.showDetail = false; S.q = ''; App.render(); return; }
   if (d.cat) { S.cat = d.cat; App.render(); return; }
@@ -2700,6 +2750,7 @@ app.addEventListener('change', (e) => {
 });
 app.addEventListener('change', (e) => { if (e.target.dataset?.catgroup != null) { const c = cur(); const g = GROUPS.find((x) => x.name === e.target.value); if (c && g?.cats.length) { c.cat = g.cats[0]; saveCase(c); App.render(); setTimeout(() => $('f_cat')?.focus(), 30); } return; } if (e.target.dataset?.f === 'client') { const c = cur(); if (!c) return; c.client = e.target.value; const made = linkClient(c); saveCase(c); App.render(); if (made) toast(`已建立客戶「${made.name}」`); return; } if (e.target.id === 'nImgs') { const k = e.target.files.length; $('nImgsN').textContent = k ? `已選 ${k} 張` : ''; return; } const f = e.target.dataset?.f; const c = cur(); if (!f || !c) return; c[f] = e.target.value; saveCase(c); if (['cat', 'status', 'cost', 'ratio', 'client', 'title', 'date'].includes(f)) App.render(); });
 app.addEventListener('input', (e) => {
+  if (e.target.id === 'uwQ') { S.uwSys = ''; uwFilter(e.target.value.trim()); return; }
   const ds = e.target.dataset || {}; if (ds.f || ds.cf || ds.kf || ds.tltitle || ds.tlnote || ds.pprod) savePill('editing');
   if (e.target.classList?.contains('grow')) fitNote(e.target);
   if (e.target.classList?.contains('tlnote')) { fitNote(e.target); return; }
