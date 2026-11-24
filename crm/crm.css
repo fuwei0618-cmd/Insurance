@@ -952,3 +952,5 @@ details.cfb>summary{cursor:pointer;margin-bottom:4px}
 .uwo.on *{stroke:#c0392b!important;stroke-width:2!important}
 .uwlab{cursor:pointer}.uwlab path{fill:none;stroke:#b5aa95;stroke-width:.8}.uwlab circle{fill:#8a7f6a}.uwlab text{font-size:12px;fill:#555;font-weight:600}
 .uwlab.on text{fill:#c0392b;font-weight:800}.uwlab.on path{stroke:#c0392b}
+
+.scmerge{display:inline-flex;align-items:center;gap:4px;font-size:14px;margin-left:10px;white-space:nowrap}

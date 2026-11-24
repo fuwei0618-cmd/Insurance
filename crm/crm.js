@@ -2954,8 +2954,15 @@ const CASE_DOC_NAMES = ['醫療收據', '診斷證明', '申請書', '其他'];
 const CLIENT_DOC_NAMES = ['身分證正面', '身分證反面', '存摺封面', '健保卡', '其他'];
 function openScanner(c, opts = {}) { SC = { c, folder: opts.folder || '', coll: opts.coll || 'cases', names: opts.names || CASE_DOC_NAMES, pages: [], img: null, corners: null, filter: opts.filter || 'gray', level: 50, drag: -1, queue: [], onDone: opts.onDone, onCancel: opts.onCancel }; renderScanner(); }
 function scanForClient(cl) { if (!cl) { toast('先選一位客戶'); return; } openScanner(cl, { coll: 'clients', names: CLIENT_DOC_NAMES, filter: 'color' }); }
+async function mergePages(pages) { // 好幾頁上下接成一張（身分證、健保卡正反面放一起）
+  try { const ims = []; for (const p of pages) ims.push(await createImageBitmap(p.blob));
+    const W = Math.min(1600, Math.max(...ims.map((i) => i.width))), gap = 24, hs = ims.map((i) => Math.round(i.height * W / i.width)), H = hs.reduce((a, b) => a + b, 0) + gap * (ims.length - 1);
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+    let y = 0; ims.forEach((im, i) => { g.drawImage(im, 0, y, W, hs[i]); y += hs[i] + gap; });
+    return await new Promise((r) => cv.toBlob(r, 'image/jpeg', 0.85)); } catch (e) { toast('合成失敗，改成分開存'); return null; }
+}
 function renderScanner() {
-  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>掃描文件</h2><span class="sub">${SC.pages.length} 頁</span><button class="btn" id="scCancel">取消</button><button class="btn pri" id="scDone">完成（${SC.pages.length + (SC.img ? 1 : 0)}）</button></div>
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>掃描文件</h2><span class="sub">${SC.pages.length} 頁</span><label class="scmerge"><input type="checkbox" id="scMerge"${SC.merge ? ' checked' : ''}> 正反面合成一張</label><button class="btn" id="scCancel">取消</button><button class="btn pri" id="scDone">完成（${SC.pages.length + (SC.img ? 1 : 0)}）</button></div>
   <div class="ovbody">${SC.img ? `<div class="stage"><canvas id="scCv"></canvas></div>
   <div class="side"><div class="note">拖曳四個角對齊文件邊緣；拖四邊中間的點可以整條邊一起移。對好按「加入這頁」，最後一張直接按「完成」也會收進去。</div>
    <div><div class="sub" style="margin-bottom:4px">效果</div><div class="seg">${[['color', '原色'], ['gray', '灰階增強'], ['bw', '黑白']].map(([k, l]) => `<button data-flt="${k}" class="${SC.filter === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>
@@ -2975,6 +2982,7 @@ function renderScanner() {
       SC.img = null;
     }
     const s = SC; ov.innerHTML = ''; SC = null;
+    if (s.merge && s.pages.length > 1) { toast('合成中…'); const blob = await mergePages(s.pages); if (blob) s.pages = [{ name: (s.pages[0].name || '文件') + '（正反面）', blob, url: '' }]; }
     if (s.onDone) { if (s.pages.length) toast('加入中…'); await s.onDone(s.pages); return; }
     if (s.pages.length) {
       for (const p of s.pages) { const fileId = await Files.add(p.blob, p.name); s.c.docs.push({ id: uid(), name: p.name, fileId, masks: [], folder: s.folder || '', date: localDay() }); }
@@ -2982,6 +2990,7 @@ function renderScanner() {
     }
     App.render();
   };
+  $('scMerge').onchange = (e) => { SC.merge = e.target.checked; };
   if (!SC.img) { $('scCam').onclick = () => fileIn.click(); $('scLib').onclick = () => fileLib.click(); return; }
   ov.querySelectorAll('[data-flt]').forEach((b) => (b.onclick = () => { SC.filter = b.dataset.flt; renderScanner(); }));
   if ($('scLv')) $('scLv').oninput = (e) => { SC.level = +e.target.value; scPreview(); };
