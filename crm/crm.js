@@ -2954,7 +2954,7 @@ const fileIn = $('fileIn'), fileLib = $('fileLib');
 let SC = null;
 const CASE_DOC_NAMES = ['醫療收據', '診斷證明', '申請書', '其他'];
 const CLIENT_DOC_NAMES = ['身分證正面', '身分證反面', '存摺封面', '健保卡', '其他'];
-function openScanner(c, opts = {}) { SC = { c, folder: opts.folder || '', coll: opts.coll || 'cases', names: opts.names || CASE_DOC_NAMES, pages: [], img: null, corners: null, filter: opts.filter || 'gray', level: 50, drag: -1, queue: [], onDone: opts.onDone, onCancel: opts.onCancel }; renderScanner(); }
+function openScanner(c, opts = {}) { SC = { c, folder: opts.folder || '', coll: opts.coll || 'cases', names: opts.names || CASE_DOC_NAMES, pages: [], shots: [], cur: -1, img: null, corners: null, filter: opts.filter || 'gray', level: 50, drag: -1, queue: [], onDone: opts.onDone, onCancel: opts.onCancel }; renderScanner(); }
 function scanForClient(cl) { if (!cl) { toast('先選一位客戶'); return; } openScanner(cl, { coll: 'clients', names: CLIENT_DOC_NAMES, filter: 'color' }); }
 async function scanMeta(p) { // 留原本的照片和四個角，之後「裁切」可以從原圖重新調
   if (!p.orig) return {}; try { const b = await new Promise((r) => p.orig.toBlob(r, 'image/jpeg', 0.88)); return { scan: { src: await Files.add(b, '原圖'), k: p.k.map((q) => q.map((v) => Math.round(v))), filter: p.filter, level: p.level } }; } catch (e) { return {}; }
@@ -2966,26 +2966,42 @@ async function mergePages(pages) { // 好幾頁上下接成一張（身分證、
     let y = 0; ims.forEach((im, i) => { g.drawImage(im, 0, y, W, hs[i]); y += hs[i] + gap; });
     return await new Promise((r) => cv.toBlob(r, 'image/jpeg', 0.85)); } catch (e) { toast('合成失敗，改成分開存'); return null; }
 }
+const scMargin = (cv) => { const w = cv.width, h = cv.height, m = 0.05; return [[w * m, h * m], [w * (1 - m), h * m], [w * (1 - m), h * (1 - m)], [w * m, h * (1 - m)]]; };
+const scNameAt = (i) => SC.names[Math.min(i, SC.names.length - 1)];
+async function addShots(files) { // 連續拍：先全部收進來（自動找邊），拍完再一張一張調
+  const my = SC; SC.loading = (SC.loading || 0) + files.length; if (!SC.img) renderScanner();
+  for (const f of files) { const cv = f instanceof HTMLCanvasElement ? f : await fileToCanvas(f); if (SC !== my) return; SC.loading--; if (!cv) { toast('有一張圖片打不開'); continue; }
+    SC.shots.push({ img: cv, k: findPaper(cv) || scMargin(cv), name: scNameAt(SC.shots.length) }); if (!SC.img) renderScanner(); }
+}
+function scSaveCur() { const t = SC.shots[SC.cur]; if (!t || !SC.img) return; t.img = SC.img; t.k = SC.corners; const n = $('scName'); if (n) t.name = n.value || t.name; }
+function scEdit(i) { scSaveCur(); const t = SC.shots[i]; if (!t) { SC.cur = -1; SC.img = null; renderScanner(); return; } SC.cur = i; SC.img = t.img; SC.corners = t.k; renderScanner(); }
+function scList() { scSaveCur(); SC.cur = -1; SC.img = null; renderScanner(); }
+function scThumbs() { const my = SC; let i = 0; const next = () => { if (SC !== my || SC.img) return; const cv = ov.querySelector(`.scth canvas[data-i="${i}"]`), t = SC.shots[i]; if (!cv || !t) return;
+  const key = JSON.stringify([t.k, SC.filter, SC.level, t.img.width]); if (t.tk !== key) { t.th = warp(t.img, t.k, SC.filter, SC.level, 320, true); t.tk = key; } cv.width = t.th.width; cv.height = t.th.height; cv.getContext('2d').drawImage(t.th, 0, 0); i++; setTimeout(next, 0); }; next(); }
 function renderScanner() {
-  ov.innerHTML = `<div class="ov"><canvas id="scLoupe" class="scloupe" width="260" height="260"></canvas><div class="ovhead">${SC.editDoc ? `<h2>編輯 · ${esc(SC.names[0] || '')}</h2><div class="edtabs"><button class="on">裁切・調色</button><button id="scToMk">標註、遮罩</button></div>` : `<h2>掃描文件</h2><span class="sub">${SC.pages.length} 頁</span><label class="scmerge"><input type="checkbox" id="scMerge"${SC.merge ? ' checked' : ''}> 正反面合成一張</label>`}<button class="btn" id="scCancel">取消</button><button class="btn pri" id="scDone">${SC.editDoc ? '儲存' : `完成（${SC.pages.length + (SC.img ? 1 : 0)}）`}</button></div>
-  <div class="ovbody">${SC.img ? `<div class="stage"><canvas id="scCv"></canvas></div>
-  <div class="side"><div class="note">拖曳四個角對齊文件邊緣；拖四邊中間的點可以整條邊一起移。對好按「加入這頁」，最後一張直接按「完成」也會收進去。</div>
-   <div><div class="sub" style="margin-bottom:4px">效果</div><div class="seg">${[['color', '原色'], ['gray', '灰階增強'], ['bw', '黑白']].map(([k, l]) => `<button data-flt="${k}" class="${SC.filter === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>
-   ${SC.filter !== 'color' ? `<label class="f">${SC.filter === 'bw' ? '黑白程度' : '對比程度'}<span class="sub">（往右字越黑、底越白；字太淡就往右，糊成一團就往左）</span><input type="range" id="scLv" min="0" max="100" value="${SC.level}"></label>` : ''}
+  const batch = !SC.editDoc, n = SC.shots.length, editing = !!SC.img;
+  const flt = `<div><div class="sub" style="margin-bottom:4px">效果（每一頁都套用）</div><div class="seg">${[['color', '原色'], ['gray', '灰階增強'], ['bw', '黑白']].map(([k, l]) => `<button data-flt="${k}" class="${SC.filter === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>
+   ${SC.filter !== 'color' ? `<label class="f">${SC.filter === 'bw' ? '黑白程度' : '對比程度'}<span class="sub">（字太淡往右，糊成一團往左）</span><input type="range" id="scLv" min="0" max="100" value="${SC.level}"></label>` : ''}`;
+  const busy = SC.loading ? `<div class="sub">處理照片中…還有 ${SC.loading} 張</div>` : '';
+  let body;
+  if (editing) body = `<div class="stage"><canvas id="scCv"></canvas></div>
+  <div class="side"><div class="note">拖四個角對齊文件邊緣，拖的時候會出現放大鏡；拖四邊中間的點可以整條邊一起移。</div>${flt}
    <div class="scprev"><div class="sub" style="margin-bottom:4px">完成後的樣子</div><canvas id="scPv"></canvas></div>
-   <label class="f">文件名稱<input id="scName" value="${SC.names[Math.min(SC.pages.length, SC.names.length - 1)]}"></label>
-   <div class="actions"><button class="btn pri" id="scAdd">加入這頁</button><button class="btn" id="scRetake">重拍</button><button class="btn" id="scAuto">自動找邊</button><button class="btn" id="scFull">用整張圖</button><button class="btn" id="scRot">↻ 轉方向</button></div>
-   ${SC.pages.length ? `<div class="pages">${SC.pages.map((p) => `<img src="${p.url}" alt="${esc(p.name)}">`).join('')}</div>` : ''}</div>`
-    : `<div class="pick">${ICON.scan}<div>拍一張文件、從相簿選照片，<br>或把圖片拖進來、按 Ctrl+V 貼上截圖</div><div class="actions" style="justify-content:center"><button class="btn pri" id="scCam">開相機</button><button class="btn" id="scLib">從相簿選</button></div>${SC.pages.length ? `<div class="pages">${SC.pages.map((p) => `<img src="${p.url}" alt="">`).join('')}</div>` : ''}</div>`}
-  </div></div>`;
-  $('scCancel').onclick = () => { const s = SC; s.pages.forEach((p) => URL.revokeObjectURL(p.url)); ov.innerHTML = ''; SC = null; if (s.onCancel) s.onCancel(); else App.render(); };
+   <label class="f">文件名稱<input id="scName" value="${esc(batch ? SC.shots[SC.cur]?.name || '' : SC.names[0] || '')}"></label>
+   <div class="actions">${batch ? `<button class="btn pri" id="scBack">← 回全部（${n} 張）</button>${SC.cur < n - 1 ? '<button class="btn" id="scNext">下一張 ›</button>' : ''}` : ''}<button class="btn" id="scAuto">自動找邊</button><button class="btn" id="scFull">用整張圖</button><button class="btn" id="scRot">↻ 轉方向</button>${batch ? '<button class="btn danger" id="scDel">刪掉這張</button>' : ''}</div></div>`;
+  else if (n || SC.loading) body = `<div class="sclist"><div class="actions"><button class="btn pri" id="scLive">📷 連續拍</button><button class="btn" id="scCam">相機拍一張</button><button class="btn" id="scLib">從相簿加</button></div>${busy}
+   <div class="sub">點一張可以調四個角、改名字；順序就是存進去的順序。</div>
+   <div class="scgrid">${SC.shots.map((t, i) => `<div class="sccard"><button class="scth" data-sci="${i}"><canvas data-i="${i}"></canvas><span>${i + 1}. ${esc(t.name)}</span></button><div class="sccb">${i ? `<button data-scmv="${i}" data-d="-1" aria-label="往前">‹</button>` : ''}<button data-sci="${i}">調整</button><button data-scdel="${i}" aria-label="刪掉">✕</button>${i < n - 1 ? `<button data-scmv="${i}" data-d="1" aria-label="往後">›</button>` : ''}</div></div>`).join('')}</div></div>
+   <div class="side">${flt}<button class="btn pri" id="scDone2">全部存進去（${n} 頁）</button></div>`;
+  else body = `<div class="pick">${ICON.scan}<div>可以連續拍好幾頁，拍完再一起調整；<br>也可以從相簿一次選好幾張，或把圖片拖進來、按 Ctrl+V 貼上</div><div class="actions" style="justify-content:center"><button class="btn pri" id="scLive">📷 連續拍</button><button class="btn" id="scCam">相機拍一張</button><button class="btn" id="scLib">從相簿選</button></div></div>`;
+  ov.innerHTML = `<div class="ov"><canvas id="scLoupe" class="scloupe" width="260" height="260"></canvas><div class="ovhead">${SC.editDoc ? `<h2>編輯 · ${esc(SC.names[0] || '')}</h2><div class="edtabs"><button class="on">裁切・調色</button><button id="scToMk">標註、遮罩</button></div>` : `<h2>掃描文件</h2><span class="sub">${n ? `${editing ? `第 ${SC.cur + 1} / ` : ''}${n} 張` : ''}</span><label class="scmerge"><input type="checkbox" id="scMerge"${SC.merge ? ' checked' : ''}> 正反面合成一張</label>`}<button class="btn" id="scCancel">取消</button><button class="btn pri" id="scDone">${SC.editDoc ? '儲存' : `完成（${n}）`}</button></div>
+  <div class="ovbody">${body}</div></div>`;
+  $('scCancel').onclick = () => { if (batch && n && !SC.cancelOk) { SC.cancelOk = 1; $('scCancel').textContent = `${n} 張還沒存，再按一次放棄`; return; } const s = SC; ov.innerHTML = ''; SC = null; if (s.onCancel) s.onCancel(); else App.render(); };
   $('scDone').onclick = async () => {
-    if (SC.img) { // 還沒按「加入這頁」就按完成：把眼前這張也收進去，不要弄丟
-      $('scDone').disabled = true; toast('整理中…');
-      SC.pages.push({ name: $('scName').value || '文件', blob: await warp(SC.img, SC.corners, SC.filter, SC.level), url: '', orig: SC.img, k: SC.corners.map((q) => [...q]), filter: SC.filter, level: SC.level });
-      for (const f of SC.queue.splice(0)) { const cv = await fileToCanvas(f); if (!cv) continue; const w = cv.width, h = cv.height; const kk = findPaper(cv) || [[0, 0], [w, 0], [w, h], [0, h]]; SC.pages.push({ name: SC.names[Math.min(SC.pages.length, SC.names.length - 1)], blob: await warp(cv, kk, SC.filter, SC.level), url: '', orig: cv, k: kk, filter: SC.filter, level: SC.level }); }
-      SC.img = null;
-    }
+    $('scDone').disabled = true;
+    if (batch) { scSaveCur(); if (SC.loading) { toast('照片還在處理，等一下再按'); $('scDone').disabled = false; return; } toast('整理中…');
+      for (const t of SC.shots) SC.pages.push({ name: t.name || '文件', blob: await warp(t.img, t.k, SC.filter, SC.level), url: '', orig: t.img, k: t.k.map((q) => [...q]), filter: SC.filter, level: SC.level }); }
+    else if (SC.img) SC.pages.push({ name: $('scName')?.value || SC.names[0] || '文件', blob: await warp(SC.img, SC.corners, SC.filter, SC.level), url: '', orig: SC.img, k: SC.corners.map((q) => [...q]), filter: SC.filter, level: SC.level });
     const s = SC; ov.innerHTML = ''; SC = null;
     if (s.merge && s.pages.length > 1) { toast('合成中…'); const blob = await mergePages(s.pages); if (blob) s.pages = [{ name: (s.pages[0].name || '文件') + '（正反面）', blob, url: '' }]; }
     if (s.onDone) { if (s.pages.length && (!s.editDoc || s.changed)) toast('處理中…'); await s.onDone(s.pages, s); return; }
@@ -2995,17 +3011,35 @@ function renderScanner() {
     }
     App.render();
   };
+  if ($('scDone2')) $('scDone2').onclick = () => $('scDone').click();
   if ($('scMerge')) $('scMerge').onchange = (e) => { SC.merge = e.target.checked; };
   if ($('scToMk')) $('scToMk').onclick = () => { SC.thenMask = true; $('scDone').click(); };
-  if (!SC.img) { $('scCam').onclick = () => fileIn.click(); $('scLib').onclick = () => fileLib.click(); return; }
-  ov.querySelectorAll('[data-flt]').forEach((b) => (b.onclick = () => { SC.filter = b.dataset.flt; SC.changed = true; renderScanner(); }));
-  if ($('scLv')) $('scLv').oninput = (e) => { SC.level = +e.target.value; SC.changed = true; scPreview(); };
-  $('scRetake').onclick = () => { SC.img = null; nextQueued(); };
-  $('scRot').onclick = () => { SC.changed = true; const h = SC.img.height; SC.img = rotateCanvas(SC.img); SC.corners = SC.corners.map(([x, y]) => [h - y, x]); SC.corners = [3, 0, 1, 2].map((i) => SC.corners[i]); renderScanner(); };
-  $('scAuto').onclick = () => { const k = findPaper(SC.img); if (k) { SC.corners = k; SC.changed = true; renderScanner(); } else toast('找不到明顯的紙張邊緣，請手動拖四個角'); };
-  $('scFull').onclick = () => { SC.changed = true; const w = SC.img.width, h = SC.img.height; SC.corners = [[0, 0], [w, 0], [w, h], [0, h]]; renderScanner(); };
-  $('scAdd').onclick = async () => { const blob = await warp(SC.img, SC.corners, SC.filter, SC.level); SC.pages.push({ name: $('scName').value || '文件', blob, url: URL.createObjectURL(blob), orig: SC.img, k: SC.corners.map((q) => [...q]), filter: SC.filter, level: SC.level }); SC.img = null; nextQueued(); };
+  ov.querySelectorAll('[data-flt]').forEach((b) => (b.onclick = () => { if (editing) scSaveCur(); SC.filter = b.dataset.flt; SC.changed = true; renderScanner(); }));
+  if ($('scLv')) $('scLv').oninput = (e) => { SC.level = +e.target.value; SC.changed = true; if (editing) scPreview(); else { clearTimeout(SC.lvT); SC.lvT = setTimeout(scThumbs, 150); } };
+  if (!editing) {
+    if ($('scLive')) $('scLive').onclick = openLiveCam; if ($('scCam')) $('scCam').onclick = () => fileIn.click(); if ($('scLib')) $('scLib').onclick = () => fileLib.click();
+    ov.querySelectorAll('[data-sci]').forEach((b) => (b.onclick = () => scEdit(+b.dataset.sci)));
+    ov.querySelectorAll('[data-scdel]').forEach((b) => (b.onclick = () => { SC.shots.splice(+b.dataset.scdel, 1); renderScanner(); }));
+    ov.querySelectorAll('[data-scmv]').forEach((b) => (b.onclick = () => { const i = +b.dataset.scmv, j = i + +b.dataset.d, a = SC.shots; [a[i], a[j]] = [a[j], a[i]]; renderScanner(); }));
+    scThumbs(); return;
+  }
+  if ($('scBack')) $('scBack').onclick = scList;
+  if ($('scNext')) $('scNext').onclick = () => scEdit(SC.cur + 1);
+  if ($('scDel')) $('scDel').onclick = () => { const i = SC.cur; SC.img = null; SC.shots.splice(i, 1); SC.cur = -1; renderScanner(); };
+  $('scRot').onclick = () => { SC.changed = true; const h = SC.img.height; SC.img = rotateCanvas(SC.img); SC.corners = SC.corners.map(([x, y]) => [h - y, x]); SC.corners = [3, 0, 1, 2].map((i) => SC.corners[i]); if (batch) scSaveCur(); renderScanner(); };
+  $('scAuto').onclick = () => { const k = findPaper(SC.img); if (k) { SC.corners = k; SC.changed = true; if (batch) scSaveCur(); renderScanner(); } else toast('找不到明顯的紙張邊緣，請手動拖四個角'); };
+  $('scFull').onclick = () => { SC.changed = true; const w = SC.img.width, h = SC.img.height; SC.corners = [[0, 0], [w, 0], [w, h], [0, h]]; if (batch) scSaveCur(); renderScanner(); };
   setupCornerCanvas(); scPreview();
+}
+let LIVE = null;
+async function openLiveCam() { // 連續拍：相機一直開著，按快門一張接一張，按「拍好了」再一起調
+  let st; try { st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 3840 }, height: { ideal: 2160 } }, audio: false }); } catch (e) { toast('打不開相機，改用「相機拍一張」'); fileIn.click(); return; }
+  const el = document.createElement('div'); el.className = 'livecam'; el.innerHTML = `<video playsinline autoplay muted></video><div class="lcflash"></div><div class="lcbar"><button class="btn" id="lcX">拍好了</button><button class="lcshot" id="lcShot" aria-label="拍照"></button><span class="lccnt" id="lcCnt">${SC.shots.length} 張</span></div><div class="lctip">把文件放平、光線亮一點，從正上方拍；邊會自動找</div>`;
+  document.body.appendChild(el); const v = el.querySelector('video'); v.srcObject = st; LIVE = { st, el };
+  const close = () => { st.getTracks().forEach((t) => t.stop()); el.remove(); LIVE = null; if (SC) renderScanner(); };
+  el.querySelector('#lcX').onclick = close;
+  el.querySelector('#lcShot').onclick = () => { if (!v.videoWidth) return; const cv = document.createElement('canvas'); cv.width = v.videoWidth; cv.height = v.videoHeight; cv.getContext('2d').drawImage(v, 0, 0);
+    const fl = el.querySelector('.lcflash'); fl.classList.remove('on'); void fl.offsetWidth; fl.classList.add('on'); addShots([cv]).then(() => { const c = el.querySelector('#lcCnt'); if (c && SC) c.textContent = `${SC.shots.length} 張`; }); };
 }
 /* 拖曳／貼上圖片：在任何畫面都可以，會加進目前的案件（沒有就新建一個） */
 let addingImgs = Promise.resolve();
@@ -3038,8 +3072,7 @@ function takeImages(files) {
   if (!SC && S.view === 'clients') { const cl = curClient(); if (!cl) { toast('先選一位客戶，再把證件拖進來'); return; } addImagesDirect(cl, 'clients', imgs, ''); return; }
   if (!SC && (S.view === 'sop' || S.view === 'tpl')) { const n = Vault.put('notes', { kind: S.view, group: S.view === 'sop' ? '' : '其他', ...(S.view === 'sop' ? { v2: true, cat: S.sc !== '全部' ? S.sc : '', kinds: S.sk ? [S.sk] : [], tools: S.st ? [S.st] : [] } : {}), title: '', body: '', images: [] }); editNote(n.id, true); toast('加入中…'); addNoteImages(n, imgs).then(() => NE?.refresh?.()); return; }
   if (!SC) { let t = S.view === 'cases' ? cur() : null; if (!t) { t = newCase('理賠'); S.view = 'cases'; } addImagesDirect(t, 'cases', imgs, curFolder(t)); return; }
-  if (SC.img) SC.queue.push(...imgs); else onFiles(imgs);
-  if (imgs.length > 1) toast(`收到 ${imgs.length} 張，一張一張對齊後按「加入這頁」`);
+  onFiles(imgs);
 }
 // ── 文件拖曳：排順序、拖進資料夾（滑鼠直接拖；觸控長按後拖）──
 let DD = null;
@@ -3109,7 +3142,7 @@ document.addEventListener('paste', (e) => {
   e.preventDefault(); if (DSC) { discAddFiles(files, true); return; } if (CRMI) { crmFromImage(files[0]); return; } if (KPH) { callPhotoFrom(files[0]); return; } takeImages(files);
 });
 function nextQueued() { if (SC.queue.length) loadFile(SC.queue.shift()); else renderScanner(); }
-function onFiles(files) { if (!SC || !files.length) return; SC.queue.push(...[...files].slice(1)); loadFile(files[0]); }
+function onFiles(files) { if (!SC || !files.length) return; if (SC.editDoc) { loadFile(files[0]); return; } if (SC.img) scList(); addShots([...files]); }
 fileIn.onchange = () => { onFiles(fileIn.files); fileIn.value = ''; };
 fileLib.onchange = () => { onFiles(fileLib.files); fileLib.value = ''; };
 async function fileToCanvas(f) {
@@ -3156,7 +3189,7 @@ function setupCornerCanvas() {
   };
   cv.onpointermove = (e) => {
     if (SC.drag < 0) return; const p = pt(e);
-    SC.changed = true; if (SC.drag < 4) SC.corners[SC.drag] = clamp(p);
+    SC.changed = true; if (SC.drag < 4) SC.corners[SC.drag] = clamp(p); if (SC.shots && SC.cur >= 0 && SC.shots[SC.cur]) SC.shots[SC.cur].k = SC.corners;
     else { const [a, b] = EDGE[SC.drag - 4], dx = p[0] - start.p[0], dy = p[1] - start.p[1]; SC.corners[a] = clamp([start.k[a][0] + dx, start.k[a][1] + dy]); SC.corners[b] = clamp([start.k[b][0] + dx, start.k[b][1] + dy]); }
     draw(); loupe(e, SC.drag < 4 ? SC.corners[SC.drag] : mids()[SC.drag - 4]);
   };
