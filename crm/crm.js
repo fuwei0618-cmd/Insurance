@@ -2562,7 +2562,7 @@ app.addEventListener('click', async (e) => {
   if (d.csel) { S.ccat = '全部'; S.csel = d.csel; S.showDetail = true; S.showIds = false; App.render(); return; }
   if (d.reveal) { const el = $(d.reveal); if (el) { const on = el.classList.toggle('shown'); b.textContent = on ? '隱藏' : '顯示'; } return; }
   const ccl = curClient();
-  if (d.cview && ccl) { openGallery(b, ccl.docs, 'cview'); return; }
+  if (d.cview && ccl) { openGallery(b, ccl.docs, 'cview', ccl, 'clients'); return; }
   if (d.cpdfimg != null && ccl) { pdfToImages(ccl, 'clients', +d.cpdfimg, b); return; }
   if (d.crot != null && ccl) { rotateDoc(ccl, 'clients', +d.crot, b); return; }
   if (d.ccrop != null && ccl) { recropDoc(ccl, 'clients', +d.ccrop); return; }
@@ -2589,7 +2589,7 @@ app.addEventListener('click', async (e) => {
   if (d.rot != null && c) { rotateDoc(c, 'cases', +d.rot, b); return; }
   if (d.crop != null && c) { recropDoc(c, 'cases', +d.crop); return; }
   if (d.mask && c) { openMask(c, +d.mask); return; }
-  if (d.view && c) { openGallery(b, c.docs, 'view'); return; }
+  if (d.view && c) { openGallery(b, c.docs, 'view', c, 'cases'); return; }
   if (d.deldoc && c) { if (armConfirm(b, '確定？')) { const [doc] = c.docs.splice(+d.deldoc, 1); saveCase(c); if (doc) { Files.remove(doc.fileId, { coll: 'cases', recId: c.id, doc }); toast('已移到「最近刪除」，30 天內可以救回'); } App.render(); } return; }
   if (d.copy && Vault.get('notes', d.copy)) { e.preventDefault(); openSend(Vault.get('notes', d.copy), d.forcase ? c : null); return; }
   if (d.copy) { e.preventDefault(); const n = Vault.get('notes', d.copy); const txt = fillTpl(n.body, d.forcase ? c : null); try { await navigator.clipboard.writeText(txt); toast('已複製' + (d.forcase && c?.client ? `（已帶入 ${c.client}）` : '')); } catch (err) { toast('無法自動複製，請長按文字選取'); } return; }
@@ -3228,9 +3228,19 @@ function warp(img, k, filter, level = 50, max = 2800, raw = false) { // level 0�
   if (raw) return out;
   return new Promise((ok) => out.toBlob((b) => ok(b), 'image/jpeg', 0.9));
 }
+function paperRatio(k, iw, ih) { // 斜拍時紙會看起來變矮：用透視推回真正的寬高比（Zhang 白板校正法）
+  try { const u0 = iw / 2, v0 = ih / 2, P = (q) => [q[0], q[1], 1], m1 = P(k[0]), m2 = P(k[1]), m3 = P(k[3]), m4 = P(k[2]);
+    const cr = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], dt = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    const k2 = dt(cr(m1, m4), m3) / dt(cr(m2, m4), m3), k3 = dt(cr(m1, m4), m2) / dt(cr(m3, m4), m2);
+    const n2 = m2.map((v, i) => k2 * v - m1[i]), n3 = m3.map((v, i) => k3 * v - m1[i]);
+    const f2 = -((n2[0] * n3[0] - (n2[0] * n3[2] + n2[2] * n3[0]) * u0 + n2[2] * n3[2] * u0 * u0) + (n2[1] * n3[1] - (n2[1] * n3[2] + n2[2] * n3[1]) * v0 + n2[2] * n3[2] * v0 * v0)) / (n2[2] * n3[2]);
+    const M = Math.max(iw, ih), ok = f2 > 0 && Math.sqrt(f2) > 0.45 * M && Math.sqrt(f2) < 2.5 * M, F2 = ok ? f2 : (0.8 * M) ** 2; // 只有一個方向斜時算不出焦距，就用手機常見的焦距
+    const q = (n) => ((n[0] - u0 * n[2]) ** 2 + (n[1] - v0 * n[2]) ** 2) / F2 + n[2] ** 2, r = Math.sqrt(q(n2) / q(n3));
+    return isFinite(r) && r > 0.25 && r < 4 ? r : null; } catch (e) { return null; }
+}
 function warpCv(img,k,filter,level,max){ // 跟 Chorus 共用：去陰影、紙變白、去小黑點（原色也會整理）
   const d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
-  let W=Math.max(d(k[0],k[1]),d(k[3],k[2])),H=Math.max(d(k[0],k[3]),d(k[1],k[2]));const s=Math.min(1,(max||2200)/Math.max(W,H));W=Math.max(1,Math.round(W*s));H=Math.max(1,Math.round(H*s));
+  let W=Math.max(d(k[0],k[1]),d(k[3],k[2])),H=Math.max(d(k[0],k[3]),d(k[1],k[2]));{const r=paperRatio(k,img.width,img.height);if(r){const A=Math.sqrt(W*H);W=A*Math.sqrt(r);H=A/Math.sqrt(r)}}const s=Math.min(1,(max||2200)/Math.max(W,H));W=Math.max(1,Math.round(W*s));H=Math.max(1,Math.round(H*s));
   const h=solveH([[0,0],[W,0],[W,H],[0,H]],k),sd=img.getContext('2d').getImageData(0,0,img.width,img.height).data,iw=img.width,ih=img.height;
   const out=document.createElement('canvas');out.width=W;out.height=H;const ox=out.getContext('2d'),od=ox.createImageData(W,H),o=od.data;
   for(let v=0;v<H;v++)for(let u=0;u<W;u++){ // bilinear sampling keeps thin staff lines sharp
@@ -3305,11 +3315,11 @@ function findPaper(img){
 
 /* ================= 看原圖 ================= */
 // 依畫面上的排列順序翻頁看文件
-function openGallery(btn, docs, key) {
+function openGallery(btn, docs, key, rec, coll) {
   const tiles = [...btn.closest('.docs').querySelectorAll('.doc[data-di]')];
   const list = tiles.map((t) => docs[+t.dataset.di]).filter(Boolean);
   const i = list.indexOf(docs[+btn.dataset[key]]);
-  openViewer(list[i], false, { list, i });
+  openViewer(list[i], false, { list, i, rec, coll });
 }
 async function openViewer(d, overEdit, nav) {
   if (nav && (nav.list.length > 1 || nav.masked)) return showGallery(nav);
@@ -3377,12 +3387,13 @@ async function showGallery(nav) {
   let url = null; try { url = nav.masked && !isPdf(d) ? (await renderDoc(d, true)).toDataURL('image/jpeg', 0.9) : await Files.url(d.fileId); } catch (e) { } // 理賠參考：看的是遮罩版
   if (GV !== nav) return; if (!url) { toast('檔案讀取失敗，請確認網路'); return; }
   const body = isPdf(d) ? `<iframe src="${url}" title="${esc(d.name)}" style="flex:1;width:100%;border:0;background:#fff;min-height:70vh"></iframe>` : `<img src="${url}" alt="${esc(d.name)}" class="gvimg">`;
-  ov.innerHTML = `<div class="ov gv"><div class="ovhead"><h2>${esc(d.name)}</h2><span class="gvcnt">${nav.i + 1} / ${n}</span><button class="btn" id="gvPrev" ${nav.i ? '' : 'disabled'} aria-label="上一張">‹ 上一張</button><button class="btn" id="gvNext" ${nav.i < n - 1 ? '' : 'disabled'} aria-label="下一張">下一張 ›</button>${isPdf(d) ? '<button class="btn" id="vShare">分享／儲存</button>' : ''}<button class="btn pri" id="vClose">關閉</button></div>
+  ov.innerHTML = `<div class="ov gv"><div class="ovhead"><h2>${esc(d.name)}</h2><span class="gvcnt">${nav.i + 1} / ${n}</span>${nav.rec && !isPdf(d) ? '<button class="btn" id="gvCrop">裁切</button><button class="btn" id="gvMask">標註</button>' : ''}<button class="btn" id="gvPrev" ${nav.i ? '' : 'disabled'} aria-label="上一張">‹ 上一張</button><button class="btn" id="gvNext" ${nav.i < n - 1 ? '' : 'disabled'} aria-label="下一張">下一張 ›</button>${isPdf(d) ? '<button class="btn" id="vShare">分享／儲存</button>' : ''}<button class="btn pri" id="vClose">關閉</button></div>
    <div class="ovbody gvbody">${body}<button class="gvside l" id="gvL" ${nav.i ? '' : 'hidden'} aria-label="上一張">‹</button><button class="gvside r" id="gvR" ${nav.i < n - 1 ? '' : 'hidden'} aria-label="下一張">›</button></div></div>`;
   const go = (k) => { const j = nav.i + k; if (j < 0 || j >= n) return; showGallery({ ...nav, i: j }); };
   $('gvPrev').onclick = $('gvL').onclick = () => go(-1);
   $('gvNext').onclick = $('gvR').onclick = () => go(1);
   $('vClose').onclick = () => { ov.innerHTML = ''; GV = null; };
+  if ($('gvCrop')) { const j = nav.rec.docs.indexOf(d); $('gvCrop').onclick = () => { GV = null; recropDoc(nav.rec, nav.coll, j); }; $('gvMask').onclick = () => { GV = null; ov.innerHTML = ''; openMask(nav.rec, j, nav.coll); }; }
   if ($('vShare')) $('vShare').onclick = async () => { const blob = await (await fetch(url)).blob(); shareOrSave([new File([blob], d.name.replace(/[\\/:*?"<>|]/g, '_') + '.pdf', { type: 'application/pdf' })]); };
   const img = ov.querySelector('.gvimg');
   if (img) {
