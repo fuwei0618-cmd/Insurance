@@ -2060,7 +2060,7 @@ function docTile(d, i, p, folders) { // p：'' 案件、'c' 客戶
   const media = isPdf(d) ? `<div class="pdftile">PDF<small>${esc(d.name)}</small></div>` : `<canvas data-${p}thumb="${i}" width="240" height="320"></canvas>`;
   const mv = folders ? `<select class="mv" data-movedoc="${i}" aria-label="移到資料夾"><option value="">未分類</option>${folders.map((f) => `<option${f === d.folder ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select>` : '';
   const dt = `<input type="date" class="ddate" data-${p}docdate="${i}" value="${esc(d.date || '')}" aria-label="文件日期">`;
-  return `<div class="doc" data-di="${i}" data-dp="${p}">${media}${dt}${d.note ? `<div class="docnote" title="${esc(d.note)}">📝 ${esc(d.note)}</div>` : ''}<div class="bar"><button class="docname" data-${p}rename="${i}" title="改名">${esc(d.name)}${d.masks?.length ? ' · 已遮 ' + d.masks.length : ''}</button><span><button data-${p}view="${i}" hidden>看</button>${isPdf(d) ? `<button data-${p}pdfimg="${i}" title="轉成圖片頁之後就能標註、蓋章">轉成圖片頁</button>` : `<button data-${p}crop="${i}" title="重新拉四個角、換效果">裁切</button><button data-${p}rot="${i}" aria-label="向右轉 90 度" title="轉方向">↻</button><button data-${p}mask="${i}">標註</button>`}<button data-${p}deldoc="${i}" aria-label="刪除文件">刪</button></span></div>${mv}</div>`;
+  return `<div class="doc" data-di="${i}" data-dp="${p}">${media}${dt}${d.note ? `<div class="docnote" title="${esc(d.note)}">📝 ${esc(d.note)}</div>` : ''}<div class="bar"><button class="docname" data-${p}rename="${i}" title="改名">${esc(d.name)}${d.masks?.length ? ' · 已遮 ' + d.masks.length : ''}</button><span><button data-${p}view="${i}" hidden>看</button>${isPdf(d) ? `<button data-${p}pdfimg="${i}" title="轉成圖片頁之後就能標註、蓋章">轉成圖片頁</button>` : `<button data-${p}mask="${i}" title="標註、遮罩、裁切、調色">編輯</button>`}<button data-${p}deldoc="${i}" aria-label="刪除文件">刪</button></span></div>${mv}</div>`;
 }
 const STEPS = {
   新契約: ['建議書', 'keyman 再解說', '簽約', '送件', '文件補全', '核保通過', '簽收回條', '紙本保單'],
@@ -2967,7 +2967,7 @@ async function mergePages(pages) { // 好幾頁上下接成一張（身分證、
     return await new Promise((r) => cv.toBlob(r, 'image/jpeg', 0.85)); } catch (e) { toast('合成失敗，改成分開存'); return null; }
 }
 function renderScanner() {
-  ov.innerHTML = `<div class="ov"><canvas id="scLoupe" class="scloupe" width="260" height="260"></canvas><div class="ovhead"><h2>掃描文件</h2><span class="sub">${SC.pages.length} 頁</span><label class="scmerge"><input type="checkbox" id="scMerge"${SC.merge ? ' checked' : ''}> 正反面合成一張</label><button class="btn" id="scCancel">取消</button><button class="btn pri" id="scDone">完成（${SC.pages.length + (SC.img ? 1 : 0)}）</button></div>
+  ov.innerHTML = `<div class="ov"><canvas id="scLoupe" class="scloupe" width="260" height="260"></canvas><div class="ovhead">${SC.editDoc ? `<h2>編輯 · ${esc(SC.names[0] || '')}</h2><div class="edtabs"><button class="on">裁切・調色</button><button id="scToMk">標註、遮罩</button></div>` : `<h2>掃描文件</h2><span class="sub">${SC.pages.length} 頁</span><label class="scmerge"><input type="checkbox" id="scMerge"${SC.merge ? ' checked' : ''}> 正反面合成一張</label>`}<button class="btn" id="scCancel">取消</button><button class="btn pri" id="scDone">${SC.editDoc ? '儲存' : `完成（${SC.pages.length + (SC.img ? 1 : 0)}）`}</button></div>
   <div class="ovbody">${SC.img ? `<div class="stage"><canvas id="scCv"></canvas></div>
   <div class="side"><div class="note">拖曳四個角對齊文件邊緣；拖四邊中間的點可以整條邊一起移。對好按「加入這頁」，最後一張直接按「完成」也會收進去。</div>
    <div><div class="sub" style="margin-bottom:4px">效果</div><div class="seg">${[['color', '原色'], ['gray', '灰階增強'], ['bw', '黑白']].map(([k, l]) => `<button data-flt="${k}" class="${SC.filter === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>
@@ -2988,21 +2988,22 @@ function renderScanner() {
     }
     const s = SC; ov.innerHTML = ''; SC = null;
     if (s.merge && s.pages.length > 1) { toast('合成中…'); const blob = await mergePages(s.pages); if (blob) s.pages = [{ name: (s.pages[0].name || '文件') + '（正反面）', blob, url: '' }]; }
-    if (s.onDone) { if (s.pages.length) toast('加入中…'); await s.onDone(s.pages); return; }
+    if (s.onDone) { if (s.pages.length && (!s.editDoc || s.changed)) toast('處理中…'); await s.onDone(s.pages, s); return; }
     if (s.pages.length) {
       for (const p of s.pages) { const fileId = await Files.add(p.blob, p.name); s.c.docs.push({ id: uid(), name: p.name, fileId, masks: [], folder: s.folder || '', date: localDay(), ...(await scanMeta(p)) }); }
       Vault.put(s.coll, s.c); toast(`已加入 ${s.pages.length} 頁`);
     }
     App.render();
   };
-  $('scMerge').onchange = (e) => { SC.merge = e.target.checked; };
+  if ($('scMerge')) $('scMerge').onchange = (e) => { SC.merge = e.target.checked; };
+  if ($('scToMk')) $('scToMk').onclick = () => { SC.thenMask = true; $('scDone').click(); };
   if (!SC.img) { $('scCam').onclick = () => fileIn.click(); $('scLib').onclick = () => fileLib.click(); return; }
-  ov.querySelectorAll('[data-flt]').forEach((b) => (b.onclick = () => { SC.filter = b.dataset.flt; renderScanner(); }));
-  if ($('scLv')) $('scLv').oninput = (e) => { SC.level = +e.target.value; scPreview(); };
+  ov.querySelectorAll('[data-flt]').forEach((b) => (b.onclick = () => { SC.filter = b.dataset.flt; SC.changed = true; renderScanner(); }));
+  if ($('scLv')) $('scLv').oninput = (e) => { SC.level = +e.target.value; SC.changed = true; scPreview(); };
   $('scRetake').onclick = () => { SC.img = null; nextQueued(); };
-  $('scRot').onclick = () => { const h = SC.img.height; SC.img = rotateCanvas(SC.img); SC.corners = SC.corners.map(([x, y]) => [h - y, x]); SC.corners = [3, 0, 1, 2].map((i) => SC.corners[i]); renderScanner(); };
-  $('scAuto').onclick = () => { const k = findPaper(SC.img); if (k) { SC.corners = k; renderScanner(); } else toast('找不到明顯的紙張邊緣，請手動拖四個角'); };
-  $('scFull').onclick = () => { const w = SC.img.width, h = SC.img.height; SC.corners = [[0, 0], [w, 0], [w, h], [0, h]]; renderScanner(); };
+  $('scRot').onclick = () => { SC.changed = true; const h = SC.img.height; SC.img = rotateCanvas(SC.img); SC.corners = SC.corners.map(([x, y]) => [h - y, x]); SC.corners = [3, 0, 1, 2].map((i) => SC.corners[i]); renderScanner(); };
+  $('scAuto').onclick = () => { const k = findPaper(SC.img); if (k) { SC.corners = k; SC.changed = true; renderScanner(); } else toast('找不到明顯的紙張邊緣，請手動拖四個角'); };
+  $('scFull').onclick = () => { SC.changed = true; const w = SC.img.width, h = SC.img.height; SC.corners = [[0, 0], [w, 0], [w, h], [0, h]]; renderScanner(); };
   $('scAdd').onclick = async () => { const blob = await warp(SC.img, SC.corners, SC.filter, SC.level); SC.pages.push({ name: $('scName').value || '文件', blob, url: URL.createObjectURL(blob), orig: SC.img, k: SC.corners.map((q) => [...q]), filter: SC.filter, level: SC.level }); SC.img = null; nextQueued(); };
   setupCornerCanvas(); scPreview();
 }
@@ -3155,7 +3156,7 @@ function setupCornerCanvas() {
   };
   cv.onpointermove = (e) => {
     if (SC.drag < 0) return; const p = pt(e);
-    if (SC.drag < 4) SC.corners[SC.drag] = clamp(p);
+    SC.changed = true; if (SC.drag < 4) SC.corners[SC.drag] = clamp(p);
     else { const [a, b] = EDGE[SC.drag - 4], dx = p[0] - start.p[0], dy = p[1] - start.p[1]; SC.corners[a] = clamp([start.k[a][0] + dx, start.k[a][1] + dy]); SC.corners[b] = clamp([start.k[b][0] + dx, start.k[b][1] + dy]); }
     draw(); loupe(e, SC.drag < 4 ? SC.corners[SC.drag] : mids()[SC.drag - 4]);
   };
@@ -3198,14 +3199,16 @@ async function pdfToImages(rec, coll, i, btn) { // PDF 每一頁轉成清楚的�
     toast(`已轉成 ${out.length} 張圖片，原本的 PDF 還在`);
   } catch (e) { console.warn(e); toast('轉不了，請確認網路後再試'); btn.disabled = false; btn.textContent = label; }
 }
-async function recropDoc(rec, coll, i) { // 已經存好的文件：有原圖就從原圖重新拉四個角、換效果；沒有就拿現在這張來裁
+async function recropDoc(rec, coll, i) { // 編輯文件第一頁：裁切・調色（有原圖就從原圖），上面可以切到「標註、遮罩」
   const d = rec.docs[i]; if (!d) return; toast('打開中…');
   try { const sc = d.scan, blob = await (await fetch(await Files.url(sc?.src || d.fileId))).blob(); const cv = await fileToCanvas(blob); if (!cv) throw 0;
-    openScanner({ docs: [] }, { names: [d.name], filter: sc?.filter || 'color', onCancel: () => App.render(), onDone: async (pages) => { const p = pages[0]; if (!p) { App.render(); return; } const old = d.fileId; d.fileId = await Files.add(p.blob, d.name);
-      if (sc?.src && p.k) d.scan = { src: sc.src, k: p.k.map((q) => q.map((v) => Math.round(v))), filter: p.filter, level: p.level }; else Object.assign(d, await scanMeta(p));
-      if ((d.masks || []).length || (d.marks || []).length) { d.masks = []; d.marks = []; toast('裁切好了；原本的遮罩、標註位置不準了，已清掉，請再標一次'); } else toast('裁切好了');
-      Files.remove(old); coll === 'cases' ? saveCase(rec) : Vault.put(coll, rec); App.render(); } });
-    SC.img = cv; if (sc?.level != null) SC.level = sc.level; const w = cv.width, h = cv.height; SC.corners = sc?.k && sc.src ? sc.k.map((q) => [...q]) : [[0, 0], [w, 0], [w, h], [0, h]]; renderScanner();
+    openScanner({ docs: [] }, { names: [d.name], filter: sc?.filter || 'color', onCancel: () => App.render(), onDone: async (pages, st) => { const p = pages[0];
+      if (p && st.changed) { const old = d.fileId; d.fileId = await Files.add(p.blob, d.name);
+        if (sc?.src && p.k) d.scan = { src: sc.src, k: p.k.map((q) => q.map((v) => Math.round(v))), filter: p.filter, level: p.level }; else Object.assign(d, await scanMeta(p));
+        if ((d.masks || []).length || (d.marks || []).length) { d.masks = []; d.marks = []; toast('已存；裁切後原本的遮罩、標註位置不準，已清掉'); } else toast('已存');
+        Files.remove(old); coll === 'cases' ? saveCase(rec) : Vault.put(coll, rec); }
+      if (st.thenMask) openMask(rec, rec.docs.indexOf(d), coll); else App.render(); } });
+    SC.editDoc = true; SC.img = cv; if (sc?.level != null) SC.level = sc.level; const w = cv.width, h = cv.height; SC.corners = sc?.k && sc.src ? sc.k.map((q) => [...q]) : [[0, 0], [w, 0], [w, h], [0, h]]; renderScanner();
   } catch (e) { toast('打不開這份，請確認網路後再試'); }
 }
 async function rotateDoc(rec, coll, i, btn) { // 案件、客戶文件轉方向：遮罩和記號跟著轉
@@ -3387,13 +3390,13 @@ async function showGallery(nav) {
   let url = null; try { url = nav.masked && !isPdf(d) ? (await renderDoc(d, true)).toDataURL('image/jpeg', 0.9) : await Files.url(d.fileId); } catch (e) { } // 理賠參考：看的是遮罩版
   if (GV !== nav) return; if (!url) { toast('檔案讀取失敗，請確認網路'); return; }
   const body = isPdf(d) ? `<iframe src="${url}" title="${esc(d.name)}" style="flex:1;width:100%;border:0;background:#fff;min-height:70vh"></iframe>` : `<img src="${url}" alt="${esc(d.name)}" class="gvimg">`;
-  ov.innerHTML = `<div class="ov gv"><div class="ovhead"><h2>${esc(d.name)}</h2><span class="gvcnt">${nav.i + 1} / ${n}</span>${nav.rec && !isPdf(d) ? '<button class="btn" id="gvCrop">裁切</button><button class="btn" id="gvMask">標註</button>' : ''}<button class="btn" id="gvPrev" ${nav.i ? '' : 'disabled'} aria-label="上一張">‹ 上一張</button><button class="btn" id="gvNext" ${nav.i < n - 1 ? '' : 'disabled'} aria-label="下一張">下一張 ›</button>${isPdf(d) ? '<button class="btn" id="vShare">分享／儲存</button>' : ''}<button class="btn pri" id="vClose">關閉</button></div>
+  ov.innerHTML = `<div class="ov gv"><div class="ovhead"><h2>${esc(d.name)}</h2><span class="gvcnt">${nav.i + 1} / ${n}</span>${nav.rec && !isPdf(d) ? '<button class="btn" id="gvMask">編輯</button>' : ''}<button class="btn" id="gvPrev" ${nav.i ? '' : 'disabled'} aria-label="上一張">‹ 上一張</button><button class="btn" id="gvNext" ${nav.i < n - 1 ? '' : 'disabled'} aria-label="下一張">下一張 ›</button>${isPdf(d) ? '<button class="btn" id="vShare">分享／儲存</button>' : ''}<button class="btn pri" id="vClose">關閉</button></div>
    <div class="ovbody gvbody">${body}<button class="gvside l" id="gvL" ${nav.i ? '' : 'hidden'} aria-label="上一張">‹</button><button class="gvside r" id="gvR" ${nav.i < n - 1 ? '' : 'hidden'} aria-label="下一張">›</button></div></div>`;
   const go = (k) => { const j = nav.i + k; if (j < 0 || j >= n) return; showGallery({ ...nav, i: j }); };
   $('gvPrev').onclick = $('gvL').onclick = () => go(-1);
   $('gvNext').onclick = $('gvR').onclick = () => go(1);
   $('vClose').onclick = () => { ov.innerHTML = ''; GV = null; };
-  if ($('gvCrop')) { const j = nav.rec.docs.indexOf(d); $('gvCrop').onclick = () => { GV = null; recropDoc(nav.rec, nav.coll, j); }; $('gvMask').onclick = () => { GV = null; ov.innerHTML = ''; openMask(nav.rec, j, nav.coll); }; }
+  if ($('gvMask')) { const j = nav.rec.docs.indexOf(d); $('gvMask').onclick = () => { GV = null; ov.innerHTML = ''; openMask(nav.rec, j, nav.coll); }; }
   if ($('vShare')) $('vShare').onclick = async () => { const blob = await (await fetch(url)).blob(); shareOrSave([new File([blob], d.name.replace(/[\\/:*?"<>|]/g, '_') + '.pdf', { type: 'application/pdf' })]); };
   const img = ov.querySelector('.gvimg');
   if (img) {
@@ -3554,7 +3557,7 @@ document.addEventListener('wheel', (e) => {
 function renderMask() {
   const st0 = document.querySelector('#ovRoot .stage'), keepScroll = st0 ? [st0.scrollLeft, st0.scrollTop] : null; // 重畫後留在原本放大的位置
   if (MK.note == null) MK.note = MK.d.note || ''; MK.zoom = MK.zoom || 1;
-  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${MK.opts?.title || '標註'} · ${esc(MK.d.name)}</h2><button class="btn" id="mkCancel">取消</button><button class="btn pri" id="mkSave">儲存</button></div>
+  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>${MK.opts?.title || '編輯'} · ${esc(MK.d.name)}</h2>${MK.opts?.onSave || isPdf(MK.d) ? '' : '<div class="edtabs"><button id="mkToSc">裁切・調色</button><button class="on">標註、遮罩</button></div>'}<button class="btn" id="mkCancel">取消</button><button class="btn pri" id="mkSave">儲存</button></div>
   <div class="ovbody"><div class="stage${MK.zoom > 1 ? ' zoomed' : ''}${MK.pan ? ' panning' : ''}"><canvas id="mkCv"></canvas></div>
   <div class="side"><div class="actions zoombar" style="margin:0"><button class="btn" id="mkZo" aria-label="縮小" ${MK.zoom > 1 ? '' : 'disabled'}>－</button><span class="sub">${Math.round(MK.zoom * 100)}%</span><button class="btn" id="mkZi" aria-label="放大" ${MK.zoom < 4 ? '' : 'disabled'}>＋</button>${MK.zoom > 1 ? `<button class="btn${MK.pan ? ' on' : ''}" id="mkPan">${MK.pan ? '✋ 移動中' : '✋ 移動畫面'}</button>` : ''}</div>
   <div class="mktools">${[['mask', '▭ 遮罩'], ['pen', '✏️ 畫筆'], ['circle', '◯ 圈選'], ['stamp', '🔖 印章'], ['erase', '⌫ 橡皮擦']].map(([k, l]) => `<button class="btn${MK.tool === k && !MK.pan ? ' on' : ''}" data-mktool="${k}">${l}</button>`).join('')}</div>
@@ -3574,6 +3577,7 @@ function renderMask() {
   ov.querySelectorAll('[data-mkcolor]').forEach((b) => (b.onclick = () => { MK.color = b.dataset.mkcolor; renderMask(); }));
   $('mkUndo').onclick = mkUndo;
   $('mkSave').onclick = () => { stampSaveRecent(); if (MK.opts?.onSave) { const o = MK.opts, r = { masks: MK.masks, marks: MK.marks, note: MK.note.trim() }; ov.innerHTML = ''; MK = null; o.onSave(r); return; } MK.d.masks = MK.masks; MK.d.marks = MK.marks; MK.d.note = MK.note.trim(); Vault.put(MK.coll, MK.c); ov.innerHTML = ''; MK = null; App.render(); toast('已儲存，原圖保留'); };
+  if ($('mkToSc')) $('mkToSc').onclick = () => { const m = MK; m.d.masks = m.masks; m.d.marks = m.marks; m.d.note = m.note.trim(); Vault.put(m.coll, m.c); ov.innerHTML = ''; MK = null; recropDoc(m.c, m.coll, m.c.docs.indexOf(m.d)); };
   $('mkPrev').onclick = () => { MK.preview = !MK.preview; renderMask(); };
   $('mkDel').onclick = mkDelSel;
   $('mkClear').onclick = () => { const pre = mkState(); MK.masks = []; MK.sel = -1; mkCommit(pre); renderMask(); };
