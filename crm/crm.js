@@ -2956,6 +2956,9 @@ const CASE_DOC_NAMES = ['醫療收據', '診斷證明', '申請書', '其他'];
 const CLIENT_DOC_NAMES = ['身分證正面', '身分證反面', '存摺封面', '健保卡', '其他'];
 function openScanner(c, opts = {}) { SC = { c, folder: opts.folder || '', coll: opts.coll || 'cases', names: opts.names || CASE_DOC_NAMES, pages: [], img: null, corners: null, filter: opts.filter || 'gray', level: 50, drag: -1, queue: [], onDone: opts.onDone, onCancel: opts.onCancel }; renderScanner(); }
 function scanForClient(cl) { if (!cl) { toast('先選一位客戶'); return; } openScanner(cl, { coll: 'clients', names: CLIENT_DOC_NAMES, filter: 'color' }); }
+async function scanMeta(p) { // 留原本的照片和四個角，之後「裁切」可以從原圖重新調
+  if (!p.orig) return {}; try { const b = await new Promise((r) => p.orig.toBlob(r, 'image/jpeg', 0.88)); return { scan: { src: await Files.add(b, '原圖'), k: p.k.map((q) => q.map((v) => Math.round(v))), filter: p.filter, level: p.level } }; } catch (e) { return {}; }
+}
 async function mergePages(pages) { // 好幾頁上下接成一張（身分證、健保卡正反面放一起）
   try { const ims = []; for (const p of pages) ims.push(await createImageBitmap(p.blob));
     const W = Math.min(1600, Math.max(...ims.map((i) => i.width))), gap = 24, hs = ims.map((i) => Math.round(i.height * W / i.width)), H = hs.reduce((a, b) => a + b, 0) + gap * (ims.length - 1);
@@ -2971,7 +2974,7 @@ function renderScanner() {
    ${SC.filter !== 'color' ? `<label class="f">${SC.filter === 'bw' ? '黑白程度' : '對比程度'}<span class="sub">（往右字越黑、底越白；字太淡就往右，糊成一團就往左）</span><input type="range" id="scLv" min="0" max="100" value="${SC.level}"></label>` : ''}
    <div class="scprev"><div class="sub" style="margin-bottom:4px">完成後的樣子</div><canvas id="scPv"></canvas></div>
    <label class="f">文件名稱<input id="scName" value="${SC.names[Math.min(SC.pages.length, SC.names.length - 1)]}"></label>
-   <div class="actions"><button class="btn pri" id="scAdd">加入這頁</button><button class="btn" id="scRetake">重拍</button><button class="btn" id="scFull">用整張圖</button><button class="btn" id="scRot">↻ 轉方向</button></div>
+   <div class="actions"><button class="btn pri" id="scAdd">加入這頁</button><button class="btn" id="scRetake">重拍</button><button class="btn" id="scAuto">自動找邊</button><button class="btn" id="scFull">用整張圖</button><button class="btn" id="scRot">↻ 轉方向</button></div>
    ${SC.pages.length ? `<div class="pages">${SC.pages.map((p) => `<img src="${p.url}" alt="${esc(p.name)}">`).join('')}</div>` : ''}</div>`
     : `<div class="pick">${ICON.scan}<div>拍一張文件、從相簿選照片，<br>或把圖片拖進來、按 Ctrl+V 貼上截圖</div><div class="actions" style="justify-content:center"><button class="btn pri" id="scCam">開相機</button><button class="btn" id="scLib">從相簿選</button></div>${SC.pages.length ? `<div class="pages">${SC.pages.map((p) => `<img src="${p.url}" alt="">`).join('')}</div>` : ''}</div>`}
   </div></div>`;
@@ -2979,15 +2982,15 @@ function renderScanner() {
   $('scDone').onclick = async () => {
     if (SC.img) { // 還沒按「加入這頁」就按完成：把眼前這張也收進去，不要弄丟
       $('scDone').disabled = true; toast('整理中…');
-      SC.pages.push({ name: $('scName').value || '文件', blob: await warp(SC.img, SC.corners, SC.filter, SC.level), url: '' });
-      for (const f of SC.queue.splice(0)) { const cv = await fileToCanvas(f); if (!cv) continue; const w = cv.width, h = cv.height; SC.pages.push({ name: SC.names[Math.min(SC.pages.length, SC.names.length - 1)], blob: await warp(cv, [[0, 0], [w, 0], [w, h], [0, h]], SC.filter, SC.level), url: '' }); }
+      SC.pages.push({ name: $('scName').value || '文件', blob: await warp(SC.img, SC.corners, SC.filter, SC.level), url: '', orig: SC.img, k: SC.corners.map((q) => [...q]), filter: SC.filter, level: SC.level });
+      for (const f of SC.queue.splice(0)) { const cv = await fileToCanvas(f); if (!cv) continue; const w = cv.width, h = cv.height; const kk = findPaper(cv) || [[0, 0], [w, 0], [w, h], [0, h]]; SC.pages.push({ name: SC.names[Math.min(SC.pages.length, SC.names.length - 1)], blob: await warp(cv, kk, SC.filter, SC.level), url: '', orig: cv, k: kk, filter: SC.filter, level: SC.level }); }
       SC.img = null;
     }
     const s = SC; ov.innerHTML = ''; SC = null;
     if (s.merge && s.pages.length > 1) { toast('合成中…'); const blob = await mergePages(s.pages); if (blob) s.pages = [{ name: (s.pages[0].name || '文件') + '（正反面）', blob, url: '' }]; }
     if (s.onDone) { if (s.pages.length) toast('加入中…'); await s.onDone(s.pages); return; }
     if (s.pages.length) {
-      for (const p of s.pages) { const fileId = await Files.add(p.blob, p.name); s.c.docs.push({ id: uid(), name: p.name, fileId, masks: [], folder: s.folder || '', date: localDay() }); }
+      for (const p of s.pages) { const fileId = await Files.add(p.blob, p.name); s.c.docs.push({ id: uid(), name: p.name, fileId, masks: [], folder: s.folder || '', date: localDay(), ...(await scanMeta(p)) }); }
       Vault.put(s.coll, s.c); toast(`已加入 ${s.pages.length} 頁`);
     }
     App.render();
@@ -2998,8 +3001,9 @@ function renderScanner() {
   if ($('scLv')) $('scLv').oninput = (e) => { SC.level = +e.target.value; scPreview(); };
   $('scRetake').onclick = () => { SC.img = null; nextQueued(); };
   $('scRot').onclick = () => { const h = SC.img.height; SC.img = rotateCanvas(SC.img); SC.corners = SC.corners.map(([x, y]) => [h - y, x]); SC.corners = [3, 0, 1, 2].map((i) => SC.corners[i]); renderScanner(); };
+  $('scAuto').onclick = () => { const k = findPaper(SC.img); if (k) { SC.corners = k; renderScanner(); } else toast('找不到明顯的紙張邊緣，請手動拖四個角'); };
   $('scFull').onclick = () => { const w = SC.img.width, h = SC.img.height; SC.corners = [[0, 0], [w, 0], [w, h], [0, h]]; renderScanner(); };
-  $('scAdd').onclick = async () => { const blob = await warp(SC.img, SC.corners, SC.filter, SC.level); SC.pages.push({ name: $('scName').value || '文件', blob, url: URL.createObjectURL(blob) }); SC.img = null; nextQueued(); };
+  $('scAdd').onclick = async () => { const blob = await warp(SC.img, SC.corners, SC.filter, SC.level); SC.pages.push({ name: $('scName').value || '文件', blob, url: URL.createObjectURL(blob), orig: SC.img, k: SC.corners.map((q) => [...q]), filter: SC.filter, level: SC.level }); SC.img = null; nextQueued(); };
   setupCornerCanvas(); scPreview();
 }
 /* 拖曳／貼上圖片：在任何畫面都可以，會加進目前的案件（沒有就新建一個） */
@@ -3116,7 +3120,7 @@ async function fileToCanvas(f) {
 async function loadFile(f) {
   const cv = await fileToCanvas(f);
   if (!cv) { toast('這張圖片打不開，換一張試試'); return; }
-  SC.img = cv; const w = cv.width, h = cv.height, m = 0.06; SC.corners = [[w * m, h * m], [w * (1 - m), h * m], [w * (1 - m), h * (1 - m)], [w * m, h * (1 - m)]];
+  SC.img = cv; const w = cv.width, h = cv.height, m = 0.06; SC.corners = findPaper(cv) || [[w * m, h * m], [w * (1 - m), h * m], [w * (1 - m), h * (1 - m)], [w * m, h * (1 - m)]];
   renderScanner();
 }
 let scPvT = null;
@@ -3194,18 +3198,21 @@ async function pdfToImages(rec, coll, i, btn) { // PDF 每一頁轉成清楚的�
     toast(`已轉成 ${out.length} 張圖片，原本的 PDF 還在`);
   } catch (e) { console.warn(e); toast('轉不了，請確認網路後再試'); btn.disabled = false; btn.textContent = label; }
 }
-async function recropDoc(rec, coll, i) { // 已經存好的文件：重新拉四個角、換效果，存回同一份
+async function recropDoc(rec, coll, i) { // 已經存好的文件：有原圖就從原圖重新拉四個角、換效果；沒有就拿現在這張來裁
   const d = rec.docs[i]; if (!d) return; toast('打開中…');
-  try { const blob = await (await fetch(await Files.url(d.fileId))).blob(); const cv = await fileToCanvas(blob); if (!cv) throw 0;
-    openScanner({ docs: [] }, { names: [d.name], filter: 'color', onCancel: () => App.render(), onDone: async (pages) => { if (!pages[0]) { App.render(); return; } const old = d.fileId; d.fileId = await Files.add(pages[0].blob, d.name); if ((d.masks || []).length || (d.marks || []).length) { d.masks = []; d.marks = []; toast('裁切好了；原本的遮罩、標註位置不準了，已清掉，請再標一次'); } else toast('裁切好了'); Files.remove(old); coll === 'cases' ? saveCase(rec) : Vault.put(coll, rec); App.render(); } });
-    SC.img = cv; const w = cv.width, h = cv.height; SC.corners = [[0, 0], [w, 0], [w, h], [0, h]]; renderScanner();
+  try { const sc = d.scan, blob = await (await fetch(await Files.url(sc?.src || d.fileId))).blob(); const cv = await fileToCanvas(blob); if (!cv) throw 0;
+    openScanner({ docs: [] }, { names: [d.name], filter: sc?.filter || 'color', onCancel: () => App.render(), onDone: async (pages) => { const p = pages[0]; if (!p) { App.render(); return; } const old = d.fileId; d.fileId = await Files.add(p.blob, d.name);
+      if (sc?.src && p.k) d.scan = { src: sc.src, k: p.k.map((q) => q.map((v) => Math.round(v))), filter: p.filter, level: p.level }; else Object.assign(d, await scanMeta(p));
+      if ((d.masks || []).length || (d.marks || []).length) { d.masks = []; d.marks = []; toast('裁切好了；原本的遮罩、標註位置不準了，已清掉，請再標一次'); } else toast('裁切好了');
+      Files.remove(old); coll === 'cases' ? saveCase(rec) : Vault.put(coll, rec); App.render(); } });
+    SC.img = cv; if (sc?.level != null) SC.level = sc.level; const w = cv.width, h = cv.height; SC.corners = sc?.k && sc.src ? sc.k.map((q) => [...q]) : [[0, 0], [w, 0], [w, h], [0, h]]; renderScanner();
   } catch (e) { toast('打不開這份，請確認網路後再試'); }
 }
 async function rotateDoc(rec, coll, i, btn) { // 案件、客戶文件轉方向：遮罩和記號跟著轉
   const d = rec.docs[i]; if (!d || btn.disabled) return; btn.disabled = true;
   try {
     const old = d.fileId, blob = await rotateBlob(old); d.fileId = await Files.add(blob, d.name);
-    const r = rotateMarks({ masks: d.masks || [], marks: d.marks || [] }); d.masks = r.masks; d.marks = r.marks;
+    const r = rotateMarks({ masks: d.masks || [], marks: d.marks || [] }); d.masks = r.masks; d.marks = r.marks; if (d.scan) { Files.remove(d.scan.src); delete d.scan; } // 轉過方向就不再從原圖重裁
     Files.remove(old); coll === 'cases' ? saveCase(rec) : Vault.put(coll, rec); App.render();
   } catch (e) { toast('轉不了，請確認網路後再試'); btn.disabled = false; }
 }
@@ -3217,32 +3224,83 @@ function solveH(dst, src) {
   return A.map((r, i) => r[8] / r[i]);
 }
 function warp(img, k, filter, level = 50, max = 2800, raw = false) { // level 0–100：越大越黑白分明
-  const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
-  let W = Math.max(d(k[0], k[1]), d(k[3], k[2])), H = Math.max(d(k[0], k[3]), d(k[1], k[2])); const s = Math.min(1, max / Math.max(W, H)); W = Math.round(W * s); H = Math.round(H * s);
-  const h = solveH([[0, 0], [W, 0], [W, H], [0, H]], k); const sd = img.getContext('2d').getImageData(0, 0, img.width, img.height).data, iw = img.width, ih = img.height;
-  const out = document.createElement('canvas'); out.width = W; out.height = H; const ox = out.getContext('2d'); const od = ox.createImageData(W, H), o = od.data;
-  const gy = new Float32Array(W * H);
-  for (let v = 0; v < H; v++) for (let u = 0; u < W; u++) { // 雙線性取樣，字的邊緣比較平順不會鋸齒
-    const z = h[6] * u + h[7] * v + 1; let x = (h[0] * u + h[1] * v + h[2]) / z, y = (h[3] * u + h[4] * v + h[5]) / z;
-    x = Math.min(iw - 1.001, Math.max(0, x)); y = Math.min(ih - 1.001, Math.max(0, y)); const x0 = x | 0, y0 = y | 0, fx = x - x0, fy = y - y0;
-    const i00 = (y0 * iw + x0) * 4, i10 = i00 + 4, i01 = i00 + iw * 4, i11 = i01 + 4, oi = (v * W + u) * 4;
-    for (let c = 0; c < 3; c++) o[oi + c] = (sd[i00 + c] * (1 - fx) + sd[i10 + c] * fx) * (1 - fy) + (sd[i01 + c] * (1 - fx) + sd[i11 + c] * fx) * fy;
-    o[oi + 3] = 255; gy[v * W + u] = 0.3 * o[oi] + 0.59 * o[oi + 1] + 0.11 * o[oi + 2];
-  }
-  if (filter !== 'color') { // 用附近的紙色當背景來比，陰影、角落偏暗也能變白
-    const r = Math.max(8, Math.round(Math.max(W, H) / 24)), I = new Float64Array((W + 1) * (H + 1));
-    for (let v = 0; v < H; v++) { let row = 0; for (let u = 0; u < W; u++) { row += gy[v * W + u]; I[(v + 1) * (W + 1) + u + 1] = I[v * (W + 1) + u + 1] + row; } }
-    const L = Math.max(0, Math.min(100, level)) / 100, t = 0.78 + L * 0.14, soft = 0.28 - L * 0.16, lo = 0.25 + L * 0.35;
-    for (let v = 0; v < H; v++) { const y1 = Math.max(0, v - r), y2 = Math.min(H, v + r + 1);
-      for (let u = 0; u < W; u++) { const x1 = Math.max(0, u - r), x2 = Math.min(W, u + r + 1);
-        const bg = (I[y2 * (W + 1) + x2] - I[y1 * (W + 1) + x2] - I[y2 * (W + 1) + x1] + I[y1 * (W + 1) + x1]) / ((x2 - x1) * (y2 - y1));
-        const ratio = gy[v * W + u] / (bg * 1.06 + 1);
-        let g = filter === 'gray' ? 255 * (ratio - lo) / (0.9 - lo) : 255 * (ratio - (t - soft)) / soft;
-        g = g < 0 ? 0 : g > 255 ? 255 : g; const oi = (v * W + u) * 4; o[oi] = o[oi + 1] = o[oi + 2] = g; } }
-  }
-  ox.putImageData(od, 0, 0);
+  const out = warpCv(img, k, filter, level, max);
   if (raw) return out;
   return new Promise((ok) => out.toBlob((b) => ok(b), 'image/jpeg', 0.9));
+}
+function warpCv(img,k,filter,level,max){ // 跟 Chorus 共用：去陰影、紙變白、去小黑點（原色也會整理）
+  const d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+  let W=Math.max(d(k[0],k[1]),d(k[3],k[2])),H=Math.max(d(k[0],k[3]),d(k[1],k[2]));const s=Math.min(1,(max||2200)/Math.max(W,H));W=Math.max(1,Math.round(W*s));H=Math.max(1,Math.round(H*s));
+  const h=solveH([[0,0],[W,0],[W,H],[0,H]],k),sd=img.getContext('2d').getImageData(0,0,img.width,img.height).data,iw=img.width,ih=img.height;
+  const out=document.createElement('canvas');out.width=W;out.height=H;const ox=out.getContext('2d'),od=ox.createImageData(W,H),o=od.data;
+  for(let v=0;v<H;v++)for(let u=0;u<W;u++){ // bilinear sampling keeps thin staff lines sharp
+    const z=h[6]*u+h[7]*v+1;let x=(h[0]*u+h[1]*v+h[2])/z,y=(h[3]*u+h[4]*v+h[5])/z;
+    x=Math.min(iw-1.001,Math.max(0,x));y=Math.min(ih-1.001,Math.max(0,y));
+    const x0=x|0,y0=y|0,fx=x-x0,fy=y-y0,i00=(y0*iw+x0)*4,i10=i00+4,i01=i00+iw*4,i11=i01+4,oi=(v*W+u)*4;
+    for(let c=0;c<3;c++)o[oi+c]=(sd[i00+c]*(1-fx)+sd[i10+c]*fx)*(1-fy)+(sd[i01+c]*(1-fx)+sd[i11+c]*fx)*fy;
+    o[oi+3]=255;
+  }
+  {
+    // Shadow removal: estimate the paper brightness around every spot (notes removed by a max filter, then blurred) and divide it out.
+    const gs=Math.max(6,Math.round(Math.max(W,H)/130)),bw=Math.ceil(W/gs),bh=Math.ceil(H/gs);let bg=new Float32Array(bw*bh);
+    for(let j=0;j<bh;j++)for(let i=0;i<bw;i++){let m=0;for(let y=j*gs;y<Math.min(H,(j+1)*gs);y+=2)for(let x=i*gs;x<Math.min(W,(i+1)*gs);x+=2){const q=(y*W+x)*4,g=.3*o[q]+.59*o[q+1]+.11*o[q+2];if(g>m)m=g}bg[j*bw+i]=m}
+    const pass=(src,f,R)=>{const r=new Float32Array(bw*bh);for(let j=0;j<bh;j++)for(let i=0;i<bw;i++){let acc=0,n=0;for(let dj=-R;dj<=R;dj++)for(let di=-R;di<=R;di++){const jj=j+dj,ii=i+di;if(jj<0||ii<0||jj>=bh||ii>=bw)continue;const val=src[jj*bw+ii];acc=f===Math.max?Math.max(acc,val):acc+val;n++}r[j*bw+i]=f===Math.max?acc:acc/n}return r};
+    bg=pass(pass(pass(bg,Math.max,1),null,2),null,2);
+    const N=W*H,lum=new Uint8ClampedArray(N),hist=new Float64Array(256);
+    for(let v=0;v<H;v++){const gy=Math.min(bh-1.001,Math.max(0,v/gs-.5)),j0=gy|0,ty=gy-j0;
+      for(let u=0;u<W;u++){const gx=Math.min(bw-1.001,Math.max(0,u/gs-.5)),i0=gx|0,tx=gx-i0,q=j0*bw+i0;
+        const b=(bg[q]*(1-tx)+bg[q+1]*tx)*(1-ty)+(bg[q+bw]*(1-tx)+bg[q+bw+1]*tx)*ty,oi=(v*W+u)*4,f=255/Math.max(40,b);
+        for(let c=0;c<3;c++)o[oi+c]=Math.min(255,o[oi+c]*f);
+        const r=.3*o[oi]+.59*o[oi+1]+.11*o[oi+2];lum[v*W+u]=r;hist[r|0]++;
+      }}
+    // Split ink from paper with Otsu's threshold on the shadow-free image, then make everything on the paper side pure white.
+    let tot=0,sb=0,wb=0,best=-1,T=180;for(let i=0;i<256;i++)tot+=i*hist[i];
+    for(let t=0;t<255;t++){wb+=hist[t];if(!wb)continue;const wf=N-wb;if(!wf)break;sb+=t*hist[t];const mb=sb/wb,mf=(tot-sb)/wf,vv=wb*wf*(mb-mf)**2;if(vv>best){best=vv;T=t}}
+    T=Math.max(120,Math.min(225,T));
+    const L=Math.max(0,Math.min(100,level))/100,sh=(L-.5)*70; // slider: right = darker notes
+    const wp=Math.min(252,T+(255-T)*.55+sh*.6),bp=Math.max(0,Math.min(wp-30,T*.45+sh)),cut=Math.max(60,Math.min(245,T+sh));
+    const ink=new Uint8Array(N);
+    for(let i=0;i<N;i++){const r=lum[i],oi=i*4;
+      if(filter==='bw'){const g=r<cut?0:255;o[oi]=o[oi+1]=o[oi+2]=g;ink[i]=g?0:1;continue}
+      if(r>=wp){o[oi]=o[oi+1]=o[oi+2]=255;continue}
+      const st=t=>Math.max(0,Math.min(255,255*(t-bp)/(wp-bp)));
+      if(filter==='gray'){const g=st(r);o[oi]=o[oi+1]=o[oi+2]=g}
+      else{o[oi]=st(o[oi]);o[oi+1]=st(o[oi+1]);o[oi+2]=st(o[oi+2])} // colour: same stretch per channel keeps the hue
+      ink[i]=r<wp-4?1:0;
+    }
+    // Remove specks: tiny dots with no other ink nearby (dots inside characters and notes have neighbours, dust usually does not),
+    // and dark strips along the cut edge (table or paper edge left by a loose crop).
+    const sc=Math.max(W,H)/2200,minA=Math.max(3,Math.round(30*sc*sc)),near=Math.max(3,Math.round(14*sc)),mx=Math.round(W*.03),my=Math.round(H*.03),lab=new Int32Array(N),stk=[];let id=0;
+    for(let s0=0;s0<N;s0++){if(!ink[s0]||lab[s0])continue;id++;lab[s0]=id;stk.push(s0);const mem=[];let x0=W,x1=0,y0=H,y1=0;
+      while(stk.length){const p=stk.pop(),px=p%W,py=(p-px)/W;mem.push(p);if(px<x0)x0=px;if(px>x1)x1=px;if(py<y0)y0=py;if(py>y1)y1=py;
+        for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;const qx=px+dx,qy=py+dy;if(qx<0||qy<0||qx>=W||qy>=H)continue;const q=qy*W+qx;if(ink[q]&&!lab[q]){lab[q]=id;stk.push(q)}}}
+      const edge=(x1<mx&&x0===0)||(x0>W-1-mx&&x1===W-1)||(y1<my&&y0===0)||(y0>H-1-my&&y1===H-1);
+      let drop=edge;
+      if(!drop&&mem.length<minA){drop=true;
+        for(let yy=Math.max(0,y0-near);drop&&yy<=Math.min(H-1,y1+near);yy++)for(let xx=Math.max(0,x0-near);xx<=Math.min(W-1,x1+near);xx++){const q=yy*W+xx;if(ink[q]&&lab[q]!==id){drop=false;break}}}
+      if(drop)for(const p of mem){const q=p*4;o[q]=o[q+1]=o[q+2]=255}
+    }
+  }
+  ox.putImageData(od,0,0);
+  return out;
+}
+/* 自動找紙張四個角（跟 Chorus 共用） */
+function findPaper(img){
+  const S=Math.min(1,320/Math.max(img.width,img.height)),w=Math.max(8,Math.round(img.width*S)),h=Math.max(8,Math.round(img.height*S));
+  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.filter='blur(2px)';x.drawImage(img,0,0,w,h);
+  const d=x.getImageData(0,0,w,h).data,n=w*h,sc=new Float32Array(n),hist=new Array(256).fill(0);
+  for(let i=0;i<n;i++){const r=d[i*4],g=d[i*4+1],b=d[i*4+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b);const v=Math.max(0,Math.min(255,(r+g+b)/3-(mx-mn)*.8));sc[i]=v;hist[v|0]++}
+  let sum=0;for(let i=0;i<256;i++)sum+=i*hist[i];let sb=0,wb=0,best=0,th=128; // Otsu threshold
+  for(let t=0;t<256;t++){wb+=hist[t];if(!wb)continue;const wf=n-wb;if(!wf)break;sb+=t*hist[t];const mb=sb/wb,mf=(sum-sb)/wf,v=wb*wf*(mb-mf)**2;if(v>best){best=v;th=t}}
+  const lab=new Int32Array(n).fill(-1);let bestId=-1,bestScore=0,id=0;const sizes=[];
+  for(let s0=0;s0<n;s0++){if(lab[s0]>=0||sc[s0]<=th)continue;let cnt=0,cx=0,cy=0;const st=[s0];lab[s0]=id;
+    while(st.length){const p=st.pop(),px=p%w,py=(p-px)/w;cnt++;cx+=px;cy+=py;for(const q of[p-1,p+1,p-w,p+w]){if(q<0||q>=n||lab[q]>=0||sc[q]<=th)continue;if((q===p-1&&px===0)||(q===p+1&&px===w-1))continue;lab[q]=id;st.push(q)}}
+    const dc=Math.hypot(cx/cnt/w-.5,cy/cnt/h-.5),score=cnt*(1-dc);if(score>bestScore){bestScore=score;bestId=id}sizes[id]=cnt;id++}
+  if(bestId<0||sizes[bestId]<n*.15)return null;
+  let k=[[0,0,1e9],[0,0,-1e9],[0,0,-1e9],[0,0,1e9]];
+  for(let i=0;i<n;i++){if(lab[i]!==bestId)continue;const px=i%w,py=(i-px)/w,a=px+py,b=px-py;
+    if(a<k[0][2])k[0]=[px,py,a];if(b>k[1][2])k[1]=[px,py,b];if(a>k[2][2])k[2]=[px,py,a];if(b<k[3][2])k[3]=[px,py,b]}
+  return k.map(([px,py])=>[Math.min(img.width,(px+.5)/S),Math.min(img.height,(py+.5)/S)]);
 }
 
 /* ================= 看原圖 ================= */
