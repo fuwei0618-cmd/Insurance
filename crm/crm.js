@@ -3311,7 +3311,7 @@ function warpCv(img,k,filter,level,max){ // 跟 Chorus 共用：去陰影、紙�
       if(r>=wp){o[oi]=o[oi+1]=o[oi+2]=255;continue}
       const st=t=>Math.max(0,Math.min(255,255*(t-bp)/(wp-bp)));
       if(filter==='gray'){const g=st(r);o[oi]=o[oi+1]=o[oi+2]=g}
-      else{o[oi]=st(o[oi]);o[oi+1]=st(o[oi+1]);o[oi+2]=st(o[oi+2])} // colour: same stretch per channel keeps the hue
+      else{const g=st(r),fd=Math.max(0,Math.min(1,(wp-r)/Math.max(1,wp-T*.85)));for(let c=0;c<3;c++)o[oi+c]=Math.max(0,Math.min(255,g+(o[oi+c]-r)*fd*1.25))} // 原色：只拉亮暗，不放大顏色；越接近紙色越淡，淡黃底、光線偏色不會變濃，紅藍筆跡照樣留著 // colour: same stretch per channel keeps the hue
       ink[i]=r<wp-4?1:0;
     }
     // Remove specks: tiny dots with no other ink nearby (dots inside characters and notes have neighbours, dust usually does not),
