@@ -3189,8 +3189,9 @@ function setupCornerCanvas() {
   };
   cv.onpointermove = (e) => {
     if (SC.drag < 0) return; const p = pt(e);
-    SC.changed = true; if (SC.drag < 4) SC.corners[SC.drag] = clamp(p); if (SC.shots && SC.cur >= 0 && SC.shots[SC.cur]) SC.shots[SC.cur].k = SC.corners;
+    SC.changed = true; if (SC.drag < 4) SC.corners[SC.drag] = clamp(p);
     else { const [a, b] = EDGE[SC.drag - 4], dx = p[0] - start.p[0], dy = p[1] - start.p[1]; SC.corners[a] = clamp([start.k[a][0] + dx, start.k[a][1] + dy]); SC.corners[b] = clamp([start.k[b][0] + dx, start.k[b][1] + dy]); }
+    if (SC.shots && SC.cur >= 0 && SC.shots[SC.cur]) SC.shots[SC.cur].k = SC.corners;
     draw(); loupe(e, SC.drag < 4 ? SC.corners[SC.drag] : mids()[SC.drag - 4]);
   };
   const L = $('scLoupe'), lx = L.getContext('2d');
