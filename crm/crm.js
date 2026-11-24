@@ -2060,7 +2060,7 @@ function docTile(d, i, p, folders) { // p：'' 案件、'c' 客戶
   const media = isPdf(d) ? `<div class="pdftile">PDF<small>${esc(d.name)}</small></div>` : `<canvas data-${p}thumb="${i}" width="240" height="320"></canvas>`;
   const mv = folders ? `<select class="mv" data-movedoc="${i}" aria-label="移到資料夾"><option value="">未分類</option>${folders.map((f) => `<option${f === d.folder ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select>` : '';
   const dt = `<input type="date" class="ddate" data-${p}docdate="${i}" value="${esc(d.date || '')}" aria-label="文件日期">`;
-  return `<div class="doc" data-di="${i}" data-dp="${p}">${media}${dt}${d.note ? `<div class="docnote" title="${esc(d.note)}">📝 ${esc(d.note)}</div>` : ''}<div class="bar"><button class="docname" data-${p}rename="${i}" title="改名">${esc(d.name)}${d.masks?.length ? ' · 已遮 ' + d.masks.length : ''}</button><span><button data-${p}view="${i}" hidden>看</button>${isPdf(d) ? `<button data-${p}pdfimg="${i}" title="轉成圖片頁之後就能標註、蓋章">轉成圖片頁</button>` : `<button data-${p}rot="${i}" aria-label="向右轉 90 度" title="轉方向">↻</button><button data-${p}mask="${i}">標註</button>`}<button data-${p}deldoc="${i}" aria-label="刪除文件">刪</button></span></div>${mv}</div>`;
+  return `<div class="doc" data-di="${i}" data-dp="${p}">${media}${dt}${d.note ? `<div class="docnote" title="${esc(d.note)}">📝 ${esc(d.note)}</div>` : ''}<div class="bar"><button class="docname" data-${p}rename="${i}" title="改名">${esc(d.name)}${d.masks?.length ? ' · 已遮 ' + d.masks.length : ''}</button><span><button data-${p}view="${i}" hidden>看</button>${isPdf(d) ? `<button data-${p}pdfimg="${i}" title="轉成圖片頁之後就能標註、蓋章">轉成圖片頁</button>` : `<button data-${p}crop="${i}" title="重新拉四個角、換效果">裁切</button><button data-${p}rot="${i}" aria-label="向右轉 90 度" title="轉方向">↻</button><button data-${p}mask="${i}">標註</button>`}<button data-${p}deldoc="${i}" aria-label="刪除文件">刪</button></span></div>${mv}</div>`;
 }
 const STEPS = {
   新契約: ['建議書', 'keyman 再解說', '簽約', '送件', '文件補全', '核保通過', '簽收回條', '紙本保單'],
@@ -2565,6 +2565,7 @@ app.addEventListener('click', async (e) => {
   if (d.cview && ccl) { openGallery(b, ccl.docs, 'cview'); return; }
   if (d.cpdfimg != null && ccl) { pdfToImages(ccl, 'clients', +d.cpdfimg, b); return; }
   if (d.crot != null && ccl) { rotateDoc(ccl, 'clients', +d.crot, b); return; }
+  if (d.ccrop != null && ccl) { recropDoc(ccl, 'clients', +d.ccrop); return; }
   if (d.cmask && ccl) { openMask(ccl, +d.cmask, 'clients'); return; }
   if (d.cdeldoc && ccl) { if (armConfirm(b, '確定？')) { const [doc] = ccl.docs.splice(+d.cdeldoc, 1); Vault.put('clients', ccl); if (doc) { Files.remove(doc.fileId, { coll: 'clients', recId: ccl.id, doc }); toast('已移到「最近刪除」，30 天內可以救回'); } App.render(); } return; }
   if (d.addstep != null && c) {
@@ -2586,6 +2587,7 @@ app.addEventListener('click', async (e) => {
   if (d.cdet && c) { c.causeDetail = c.causeDetail === d.cdet ? '' : d.cdet; saveCase(c); App.render(); return; }
   if (d.pdfimg != null && c) { pdfToImages(c, 'cases', +d.pdfimg, b); return; }
   if (d.rot != null && c) { rotateDoc(c, 'cases', +d.rot, b); return; }
+  if (d.crop != null && c) { recropDoc(c, 'cases', +d.crop); return; }
   if (d.mask && c) { openMask(c, +d.mask); return; }
   if (d.view && c) { openGallery(b, c.docs, 'view'); return; }
   if (d.deldoc && c) { if (armConfirm(b, '確定？')) { const [doc] = c.docs.splice(+d.deldoc, 1); saveCase(c); if (doc) { Files.remove(doc.fileId, { coll: 'cases', recId: c.id, doc }); toast('已移到「最近刪除」，30 天內可以救回'); } App.render(); } return; }
@@ -2962,7 +2964,7 @@ async function mergePages(pages) { // 好幾頁上下接成一張（身分證、
     return await new Promise((r) => cv.toBlob(r, 'image/jpeg', 0.85)); } catch (e) { toast('合成失敗，改成分開存'); return null; }
 }
 function renderScanner() {
-  ov.innerHTML = `<div class="ov"><div class="ovhead"><h2>掃描文件</h2><span class="sub">${SC.pages.length} 頁</span><label class="scmerge"><input type="checkbox" id="scMerge"${SC.merge ? ' checked' : ''}> 正反面合成一張</label><button class="btn" id="scCancel">取消</button><button class="btn pri" id="scDone">完成（${SC.pages.length + (SC.img ? 1 : 0)}）</button></div>
+  ov.innerHTML = `<div class="ov"><canvas id="scLoupe" class="scloupe" width="260" height="260"></canvas><div class="ovhead"><h2>掃描文件</h2><span class="sub">${SC.pages.length} 頁</span><label class="scmerge"><input type="checkbox" id="scMerge"${SC.merge ? ' checked' : ''}> 正反面合成一張</label><button class="btn" id="scCancel">取消</button><button class="btn pri" id="scDone">完成（${SC.pages.length + (SC.img ? 1 : 0)}）</button></div>
   <div class="ovbody">${SC.img ? `<div class="stage"><canvas id="scCv"></canvas></div>
   <div class="side"><div class="note">拖曳四個角對齊文件邊緣；拖四邊中間的點可以整條邊一起移。對好按「加入這頁」，最後一張直接按「完成」也會收進去。</div>
    <div><div class="sub" style="margin-bottom:4px">效果</div><div class="seg">${[['color', '原色'], ['gray', '灰階增強'], ['bw', '黑白']].map(([k, l]) => `<button data-flt="${k}" class="${SC.filter === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>
@@ -3145,15 +3147,21 @@ function setupCornerCanvas() {
     const p = pt(e); let best = -1, bd = R * 3.5;
     [...SC.corners, ...mids()].forEach((c, i) => { const d = Math.hypot(c[0] - p[0], c[1] - p[1]) + (i >= 4 ? R * 0.3 : 0); if (d < bd) { bd = d; best = i; } }); // 角和中點很近時，優先抓角
     SC.drag = best; start = best >= 4 ? { p, k: SC.corners.map((c) => [...c]) } : null;
-    if (best >= 0) cv.setPointerCapture(e.pointerId);
+    if (best >= 0) { cv.setPointerCapture(e.pointerId); loupe(e, best < 4 ? SC.corners[best] : mids()[best - 4]); }
   };
   cv.onpointermove = (e) => {
     if (SC.drag < 0) return; const p = pt(e);
     if (SC.drag < 4) SC.corners[SC.drag] = clamp(p);
     else { const [a, b] = EDGE[SC.drag - 4], dx = p[0] - start.p[0], dy = p[1] - start.p[1]; SC.corners[a] = clamp([start.k[a][0] + dx, start.k[a][1] + dy]); SC.corners[b] = clamp([start.k[b][0] + dx, start.k[b][1] + dy]); }
-    draw();
+    draw(); loupe(e, SC.drag < 4 ? SC.corners[SC.drag] : mids()[SC.drag - 4]);
   };
-  cv.onpointerup = cv.onpointercancel = () => { if (SC.drag >= 0) scPreview(); SC.drag = -1; start = null; };
+  const L = $('scLoupe'), lx = L.getContext('2d');
+  const loupe = (e, c) => { // 拖角的時候，手指旁邊放大顯示那一角，才看得清楚邊線
+    const z = 3, sz = 260, src = sz / z * (cv.width / cv.getBoundingClientRect().width);
+    lx.save(); lx.clearRect(0, 0, sz, sz); lx.beginPath(); lx.arc(sz / 2, sz / 2, sz / 2 - 3, 0, 7); lx.clip(); lx.fillStyle = '#222'; lx.fillRect(0, 0, sz, sz);
+    lx.drawImage(SC.img, c[0] - src / 2, c[1] - src / 2, src, src, 0, 0, sz, sz); lx.strokeStyle = '#e74c3c'; lx.lineWidth = 2; lx.beginPath(); lx.moveTo(sz / 2 - 18, sz / 2); lx.lineTo(sz / 2 + 18, sz / 2); lx.moveTo(sz / 2, sz / 2 - 18); lx.lineTo(sz / 2, sz / 2 + 18); lx.stroke(); lx.restore();
+    const up = e.clientY > 220; L.style.left = Math.max(6, Math.min(innerWidth - 136, e.clientX - 65)) + 'px'; L.style.top = (up ? e.clientY - 170 : e.clientY + 40) + 'px'; L.classList.add('on'); };
+  cv.onpointerup = cv.onpointercancel = () => { if (SC.drag >= 0) scPreview(); SC.drag = -1; start = null; L.classList.remove('on'); };
 }
 async function rotateBlob(fileId) { // 向右轉 90 度
   const u = await Files.url(fileId); if (!u) throw new Error('讀不到圖片');
@@ -3185,6 +3193,13 @@ async function pdfToImages(rec, coll, i, btn) { // PDF 每一頁轉成清楚的�
     rec.docs.splice(i + 1, 0, ...out); coll === 'cases' ? saveCase(rec) : Vault.put(coll, rec); App.render();
     toast(`已轉成 ${out.length} 張圖片，原本的 PDF 還在`);
   } catch (e) { console.warn(e); toast('轉不了，請確認網路後再試'); btn.disabled = false; btn.textContent = label; }
+}
+async function recropDoc(rec, coll, i) { // 已經存好的文件：重新拉四個角、換效果，存回同一份
+  const d = rec.docs[i]; if (!d) return; toast('打開中…');
+  try { const blob = await (await fetch(await Files.url(d.fileId))).blob(); const cv = await fileToCanvas(blob); if (!cv) throw 0;
+    openScanner({ docs: [] }, { names: [d.name], filter: 'color', onCancel: () => App.render(), onDone: async (pages) => { if (!pages[0]) { App.render(); return; } const old = d.fileId; d.fileId = await Files.add(pages[0].blob, d.name); if ((d.masks || []).length || (d.marks || []).length) { d.masks = []; d.marks = []; toast('裁切好了；原本的遮罩、標註位置不準了，已清掉，請再標一次'); } else toast('裁切好了'); Files.remove(old); coll === 'cases' ? saveCase(rec) : Vault.put(coll, rec); App.render(); } });
+    SC.img = cv; const w = cv.width, h = cv.height; SC.corners = [[0, 0], [w, 0], [w, h], [0, h]]; renderScanner();
+  } catch (e) { toast('打不開這份，請確認網路後再試'); }
 }
 async function rotateDoc(rec, coll, i, btn) { // 案件、客戶文件轉方向：遮罩和記號跟著轉
   const d = rec.docs[i]; if (!d || btn.disabled) return; btn.disabled = true;
