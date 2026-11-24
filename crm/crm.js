@@ -1284,7 +1284,7 @@ function giftTableHTML(all, ev) { // 像試算表：一列一個人，一欄一�
   const fold = S.gtype === '全部', svc = fold ? all.filter((g) => g.who?.type === 'call') : [], list = fold ? all.filter((g) => g.who?.type !== 'call') : all;
   const items = giftItemsSorted(ev.items || []); const cats = []; items.forEach((it) => { const c = it.cat || '未分類'; const last = cats[cats.length - 1]; last && last.c === c ? last.n++ : cats.push({ c, n: 1 }); });
   const tot = (id) => all.reduce((a, g) => a + (g.items?.[id] || 0), 0), stot = (id) => svc.reduce((a, g) => a + (g.items?.[id] || 0), 0);
-  const row = (g, sub) => `<tr class="${g.status === '已送' ? 'gdone' : ''}${sub ? ' gsvcrow' : ''}"><td class="gstick"><span class="gname">${sub ? '　' : ''}<input class="gcell gnm" data-gname="${g.id}" value="${esc(giftWho(g))}" aria-label="名字"><button class="linkbtn" data-gopen="${g.id}" title="打開完整資料">›</button></span></td>
+  const row = (g, sub) => `<tr class="${g.status === '已送' ? 'gdone' : ''}${sub ? ' gsvcrow' : ''}"><td class="gstick"><span class="gname">${sub ? '　' : ''}<input class="gcell gnm" data-gname="${g.id}" value="${esc(giftWho(g) === '未填' ? '' : giftWho(g))}" placeholder="打名字" aria-label="名字"><button class="linkbtn" data-gopen="${g.id}" title="打開完整資料">›</button></span></td>
      <td style="text-align:center"><input type="checkbox" class="gchk" data-gdone="${g.id}"${g.status === '已送' ? ' checked' : ''}></td>
      <td><select class="gcell gtype" data-gwho="${g.id}">${GIFT_TYPES.map(([t, l]) => `<option value="${t}"${(g.who?.type || 'other') === t ? ' selected' : ''}>${l}</option>`).join('')}</select></td>
      <td><select class="gcell gw" data-gg="${g.id}:group">${['', ...giftGroups(), ...(g.group && !giftGroups().includes(g.group) ? [g.group] : [])].map((x) => `<option${(g.group || '') === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}<option value="__edit">✎ 編修分類…</option></select></td>
@@ -2646,7 +2646,9 @@ app.addEventListener('click', async (e) => {
     case 'ktable': S.ktable = true; S.kfromTable = false; S.showDetail = false; App.render(); break;
     case 'klist': S.ktable = false; App.render(); break;
     case 'cflow': openCallFlow(); break;
-    case 'gaddwho': openGiftEditor(null, null); break;
+    case 'gaddwho': { if (S.gview !== 'table') { openGiftEditor(null, null); break; } const evs = gevents(); if (!evs.length) { openGiftEditor(null, null); break; } // 表格：直接多一列空白，游標在名字
+      const ev = S.gev && Vault.get('gevents', S.gev) ? S.gev : evs[0].id; const g = Vault.put('gifts', { eventId: ev, who: { type: 'other', id: '', name: '' }, group: '', items: {}, method: '', status: '預備', note: '', created: Date.now() });
+      S.gtype = '全部'; S.gst = '全部'; App.render(); setTimeout(() => { const el = document.querySelector(`[data-gname="${g.id}"]`); if (el) { el.scrollIntoView({ block: 'center' }); el.focus(); } }, 60); break; }
     case 'gbulki': openGiftBulkItems(); break;
     case 'gbulkw': openGiftBulkWho(); break;
     case 'gpickw': openGiftPickWho(); break;
