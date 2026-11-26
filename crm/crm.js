@@ -654,7 +654,7 @@ function openKSvc(k, id, draft, addedIn) {
   draw();
   $('svAdd').onchange = (e) => { const fs = [...e.target.files]; e.target.value = ''; addFiles(fs); };
   $('svScan').onclick = () => { r.date = $('svDate').value || r.date; r.kind = $('svKind').value; r.note = $('svNote').value; ov.onpaste = null; const back = () => openKSvc(k, id, r, added);
-    openScanner(k, { names: [r.kind === '理賠' ? '理賠申請書' : '保全申請書', '附件'], filter: 'gray', onCancel: back,
+    openScanner(k, { names: [r.kind === '理賠' ? '理賠申請書' : '保全申請書', '附件'], filter: 'color', onCancel: back,
       onDone: async (pages) => { for (const p of pages) { const fileId = await Files.add(p.blob, p.name || '掃描'); added.push(fileId); r.files.push({ fileId, name: p.name || '掃描', type: 'img' }); if (p.url) URL.revokeObjectURL(p.url); } back(); } }); };
   $('svPaste').onclick = async () => { const fs = await clipFiles(); if (fs.length) addFiles(fs); };
   ov.onpaste = (e) => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); addFiles(fs); } };
@@ -2956,7 +2956,7 @@ const fileIn = $('fileIn'), fileLib = $('fileLib');
 let SC = null;
 const CASE_DOC_NAMES = ['醫療收據', '診斷證明', '申請書', '其他'];
 const CLIENT_DOC_NAMES = ['身分證正面', '身分證反面', '存摺封面', '健保卡', '其他'];
-function openScanner(c, opts = {}) { SC = { c, folder: opts.folder || '', coll: opts.coll || 'cases', names: opts.names || CASE_DOC_NAMES, pages: [], shots: [], cur: -1, img: null, corners: null, filter: opts.filter || 'gray', level: 50, drag: -1, queue: [], onDone: opts.onDone, onCancel: opts.onCancel }; renderScanner(); }
+function openScanner(c, opts = {}) { SC = { c, folder: opts.folder || '', coll: opts.coll || 'cases', names: opts.names || CASE_DOC_NAMES, pages: [], shots: [], cur: -1, img: null, corners: null, filter: opts.filter || 'color', level: 50, drag: -1, queue: [], onDone: opts.onDone, onCancel: opts.onCancel }; renderScanner(); }
 function scanForClient(cl) { if (!cl) { toast('先選一位客戶'); return; } openScanner(cl, { coll: 'clients', names: CLIENT_DOC_NAMES, filter: 'color' }); }
 async function scanMeta(p) { // 留原本的照片和四個角，之後「裁切」可以從原圖重新調
   if (!p.orig) return {}; try { const b = await new Promise((r) => p.orig.toBlob(r, 'image/jpeg', 0.88)); return { scan: { src: await Files.add(b, '原圖'), k: p.k.map((q) => q.map((v) => Math.round(v))), filter: p.filter, level: p.level } }; } catch (e) { return {}; }
