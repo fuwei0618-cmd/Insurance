@@ -434,7 +434,7 @@ const TPLGROUPS = ['LINE', '簡訊', '信件', '通話', '其他'];
 const linkify = (html) => html.replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.length > 60 ? u.slice(0, 57) + '…' : u}</a>`);
 
 /* ================= 狀態與畫面 ================= */
-const S = { railMini: (() => { try { return localStorage.getItem('crm-railmini') === '1'; } catch (e) { return false; } })(), ginvOpen: false, gview: 'table', kcolHide: (() => { try { return localStorage.getItem('crm-kcolhide') === '1'; } catch (e) { return false; } })(), kfold: (() => { try { return localStorage.getItem('crm-kfold') === '1'; } catch (e) { return false; } })(), ktable: true, kprog: '全部', kmark: '全部', ksort: 'no', kview: 'prog', kedit: false, kfromTable: false, kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'calls' /* 年底服務件期間：打開先到服務件總表；之後改回 'cases' */, showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
+const S = { ccolHide: (() => { try { return localStorage.getItem('crm-ccolhide') === '1'; } catch (e) { return false; } })(), railMini: (() => { try { return localStorage.getItem('crm-railmini') === '1'; } catch (e) { return false; } })(), ginvOpen: false, gview: 'table', kcolHide: (() => { try { return localStorage.getItem('crm-kcolhide') === '1'; } catch (e) { return false; } })(), kfold: (() => { try { return localStorage.getItem('crm-kfold') === '1'; } catch (e) { return false; } })(), ktable: true, kprog: '全部', kmark: '全部', ksort: 'no', kview: 'prog', kedit: false, kfromTable: false, kar: '全部', klv: '全部', gev: null, gtype: '全部', gst: '全部', gedit: false, view: 'calls' /* 年底服務件期間：打開先到服務件總表；之後改回 'cases' */, showHealth: false, tplGroup: '全部', tplCat: '全部', ksel: null, kst: '全部', kres: '', script: null, ccat: '全部', csel: null, showIds: false, sel: null, refSel: null, cat: '全部', q: '', refItem: '全部', refCause: '全部', cg: '全部', tg: '全部', sg: '全部', sc: '全部', sk: '', st: '', showDetail: false };
 const NAV_KEYS = ['kdtab', 'view', 'ktable', 'kview', 'ksel', 'showDetail', 'kcalling', 'khist', 'kqSnap', 'kcur', 'kmark', 'kar', 'klv', 'kprog', 'kst', 'kfromTable', 'sel', 'csel']; // 更新或重開後回到原本的頁面（30 分鐘內）
 try { const nv = JSON.parse(localStorage.getItem('crm-nav') || 'null'); if (nv && Date.now() - nv.t < 30 * 60000) NAV_KEYS.forEach((k) => { if (k in nv) S[k] = nv[k]; }); } catch (e) { }
 const cases = () => Vault.all('cases');
@@ -458,7 +458,7 @@ const App = {
     if (!Vault.db) return;
     syncCats(); syncRefLists(); if (S.cat !== '全部' && !CATS.includes(S.cat)) S.cat = '全部'; if (S.cg !== '全部' && !GROUPS.some((g) => g.name === S.cg)) S.cg = '全部';
     const v = S.view;
-    app.className = 'app' + ((v === 'cases' || v === 'refs' || v === 'clients' || (v === 'calls' && !S.ktable)) ? '' : ' single') + (S.showDetail ? ' showdetail' : '') + (MOCK ? ' test' : '') + (S.railMini ? ' railmini' : '') + (v === 'calls' && !S.ktable && S.kcolHide ? ' colhide' : '');
+    app.className = 'app' + ((v === 'cases' || v === 'refs' || v === 'clients' || (v === 'calls' && !S.ktable)) ? '' : ' single') + (S.showDetail ? ' showdetail' : '') + (MOCK ? ' test' : '') + (S.railMini ? ' railmini' : '') + ((v === 'calls' && !S.ktable && S.kcolHide) || (v === 'cases' && S.ccolHide) ? ' colhide' : '');
     let h = MOCK ? '<div class="testbar">測試模式：資料只存在這台裝置，不會上傳 OneDrive</div>' : '';
     h += railHTML();
     if (v === 'clients') h += clientListHTML() + '<section class="detail split">' + clientDetailHTML() + '</section>';
@@ -517,7 +517,7 @@ function caseChipsHTML() { // 先選大類，再出現它的小類；只列有�
 }
 function caseListHTML() {
   const list = filteredCases();
-  return `<section class="col"><div class="colhead"><h1>案件 <button class="btn" data-act="newcase">＋ 新增</button></h1>
+  return `<section class="col"><div class="colhead"><h1>案件 <span style="display:flex;gap:6px"><button class="btn" data-act="ccol" title="收起名單，右邊變寬">«</button><button class="btn" data-act="newcase">＋ 新增</button></span></h1>
   <div class="mobsync">${syncHTML()}</div>
   <input class="search" id="q" placeholder="搜尋客戶、案件、備註" value="${esc(S.q)}" autocomplete="off">
   ${caseChipsHTML()}</div>
@@ -548,7 +548,7 @@ function caseDetailHTML() {
   ensureFolders(c);
   const isClaim = c.cat === '理賠';
   const cost = +c.cost || 0, ratio = +c.ratio || 0, auto = cost && ratio ? Math.round(cost * ratio / 100) : 0;
-  return `<button class="back" data-act="back">‹ 案件列表</button>
+  return `${S.ccolHide ? '<button class="btn sm kcolshow" data-act="ccol">» 名單</button>' : ''}<button class="back" data-act="back">‹ 案件列表</button>
   <div class="dhead"><input class="title" id="f_title" data-f="title" value="${esc(c.title)}" placeholder="案件名稱" aria-label="案件名稱"><span class="pill ${pillCls(c.status)}">${c.status}</span></div>
   ${c.convertedAt ? `<div class="note">由建議書轉成新契約 · ${esc(c.convertedAt)}</div>` : ''}
   ${c.cat === '建議書' && c.outcome !== '成交' ? `<div class="sec banner"><div><div style="font-weight:500">成交了嗎？</div><div class="sub">會另外開一件新契約，帶入客戶和要保人／被保險人。建議書的準備筆記留在這裡，不會混進新契約。</div></div><button class="btn pri" data-act="convert">成交，建立新契約</button></div>` : ''}
@@ -2638,6 +2638,7 @@ app.addEventListener('click', async (e) => {
     case 'gsvctog': S.gsvcOpen = !S.gsvcOpen; App.render(); break;
     case 'kundoround': { const r = kRound(); if (r.n < 2) break; if (!armConfirm(b, `再按一次回到第 ${r.n - 1} 輪`)) break; const p = r.prev || { n: r.n - 1, start: '2026-11-01' }; Vault.put('settings', { id: 'kround', n: p.n, start: p.start, prev: p.prev || null }); S.kqSnap = null; App.render(); toast(`回到第 ${p.n} 輪了`); break; }
     case 'knewround': { const r = kRound(), left = kQueue().filter((k) => !kInRound(k)).length; if (!armConfirm(b, left ? `這輪還剩 ${left} 位，再按一次開始第 ${r.n + 1} 輪` : `再按一次開始第 ${r.n + 1} 輪`)) break; Vault.put('settings', { id: 'kround', n: r.n + 1, start: new Date().toISOString(), prev: { n: r.n, start: r.start, prev: r.prev || null } }); S.kqSnap = null; App.render(); toast(`第 ${r.n + 1} 輪開始，上一輪沒接的人會再帶到`); break; }
+    case 'ccol': S.ccolHide = !S.ccolHide; try { localStorage.setItem('crm-ccolhide', S.ccolHide ? '1' : '0'); } catch (e) {} App.render(); break;
     case 'kcol': S.kcolHide = !S.kcolHide; try { localStorage.setItem('crm-kcolhide', S.kcolHide ? '1' : '0'); } catch (e) {} App.render(); break;
     case 'kfold': S.kfold = !S.kfold; try { localStorage.setItem('crm-kfold', S.kfold ? '1' : '0'); } catch (e) {} App.render(); break;
     case 'kphoto': openCallPhoto(null); break;
@@ -3462,8 +3463,10 @@ const NC_FLOW = [
 ];
 const NC_LOG = [['認識', ['名單來源', '背景', '關係建立']], ['需求', ['缺口與觀念', '預算', '體況與核保']], ['方案', ['規劃', '促約關鍵', '結果']], ['後續', ['待辦', '下次', '一句話心得（早會用）']]];
 /* 新契約、建議書案件裡的三塊：準備清單、流程提醒、過程紀錄。項目存在設定（所有案件共用），每件的打勾和文字存在案件 c.nc */
-function ncDefault() { let i = 0; const mk = (arr) => arr.map(([g, l, k]) => ({ g, k: k || '', items: l.map((t) => ({ id: 'd' + (++i), t, on: true })) })); return { id: 'nctpl', prep: mk(NC_PREP), flow: mk(NC_FLOW), log: mk(NC_LOG) }; }
-function ncTpl() { const t = Vault.get('settings', 'nctpl'); return t?.prep ? t : ncDefault(); }
+function ncDefault() { let i = 0; const mk = (arr) => arr.map(([g, l, k]) => ({ g, k: k || '', items: l.map((t) => ({ id: 'd' + (++i), t, on: true })) })); const t = { id: 'nctpl', prep: mk(NC_PREP), flow: mk(NC_FLOW), log: mk(NC_LOG) }; ncAddMob(t); return t; }
+function ncAddMob(t) { // 「我要準備」加「行動投保預備」（固定編號，不影響已經打勾的其他項目）
+  if (t.prep.some((g) => g.items.some((x) => x.id === 'dmob'))) return false; const g = t.prep.find((x) => x.g === '我要準備') || t.prep[1]; if (!g) return false; g.items.push({ id: 'dmob', t: '行動投保預備', on: true }); return true; }
+function ncTpl() { const t = Vault.get('settings', 'nctpl'); if (!t?.prep) return ncDefault(); if (!t.mob1) { ncAddMob(t); t.mob1 = true; Vault.put('settings', t); } return t; }
 const NC_SECS = [['prep', '一、準備清單', '見客戶前要準備、要帶、要問到的'], ['flow', '二、流程提醒', '簽約當下照順序走'], ['log', '三、過程紀錄', '早會分享、自己的業務紀錄']];
 function ncCaseHTML(c) {
   const t = ncTpl(), st = c.nc || {}, chk = st.chk || {}, val = st.val || {};
